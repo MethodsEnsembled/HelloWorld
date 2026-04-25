@@ -400,7 +400,11 @@
 
   // ---------------- Audio ----------------
   // Lazy AudioContext (created on first user gesture).
-  const audio = { ctx: null, master: null, music: null, muted: false };
+  const audio = {
+    ctx: null, master: null, musicGain: null,
+    muted: false, schedulerOn: false,
+    nextNoteTime: 0, melodyIdx: 0, schedTimer: null,
+  };
   const muteBtn = document.getElementById('muteBtn');
 
   function ensureAudio() {
@@ -409,13 +413,27 @@
     if (!Ctx) return null;
     audio.ctx = new Ctx();
     audio.master = audio.ctx.createGain();
-    audio.master.gain.value = audio.muted ? 0 : 0.6;
+    audio.master.gain.value = audio.muted ? 0 : 0.7;
     audio.master.connect(audio.ctx.destination);
     return audio.ctx;
   }
 
-  // A small twinkly C-major melody, looping. Each step is a single note.
-  // Notes are MIDI numbers; duration in seconds.
+  // Always try to resume — idempotent on already-running contexts and
+  // necessary on iOS Safari where the context starts suspended.
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+  // Safety net: any tap anywhere unlocks audio. Once unlocked we remove it.
+  const _unlockOnce = () => {
+    unlockAudio();
+    document.removeEventListener('touchstart', _unlockOnce, true);
+    document.removeEventListener('mousedown', _unlockOnce, true);
+  };
+  document.addEventListener('touchstart', _unlockOnce, true);
+  document.addEventListener('mousedown', _unlockOnce, true);
+
+  // A small twinkly C-major melody that loops forever.
   const MELODY = [
     [72, 0.25], [76, 0.25], [79, 0.25], [76, 0.25],
     [74, 0.25], [77, 0.25], [81, 0.50],
@@ -424,43 +442,59 @@
   ];
   const midi2hz = m => 440 * Math.pow(2, (m - 69) / 12);
 
+  function scheduleNote(midi, dur, t) {
+    const ctx = audio.ctx;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = midi2hz(midi);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.7, t + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.musicGain);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+
+  // Canonical Web Audio lookahead scheduler: short setTimeout polling
+  // schedules notes that fall inside a small lookahead window so the
+  // audio clock stays accurate even if the JS timer drifts.
+  function scheduler() {
+    if (!audio.schedulerOn || !audio.ctx) return;
+    const lookahead = 0.2; // seconds
+    while (audio.nextNoteTime < audio.ctx.currentTime + lookahead) {
+      const [midi, dur] = MELODY[audio.melodyIdx % MELODY.length];
+      scheduleNote(midi, dur, audio.nextNoteTime);
+      audio.nextNoteTime += dur;
+      audio.melodyIdx++;
+    }
+    audio.schedTimer = setTimeout(scheduler, 50);
+  }
+
   function startMusic() {
     const ctx = ensureAudio();
-    if (!ctx || audio.music) return;
-    const musicGain = ctx.createGain();
-    musicGain.gain.value = 0.18;
-    musicGain.connect(audio.master);
-
-    let tStart = ctx.currentTime + 0.05;
-    const scheduleLoop = (when) => {
-      let t = when;
-      for (const [midi, dur] of MELODY) {
-        const osc = ctx.createOscillator();
-        const env = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = midi2hz(midi);
-        env.gain.setValueAtTime(0, t);
-        env.gain.linearRampToValueAtTime(0.5, t + 0.02);
-        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
-        osc.connect(env); env.connect(musicGain);
-        osc.start(t); osc.stop(t + dur + 0.05);
-        t += dur;
-      }
-      // Schedule next loop near the end of this one.
-      audio.musicTimer = setTimeout(() => scheduleLoop(t), (t - ctx.currentTime - 0.4) * 1000);
-    };
-    scheduleLoop(tStart);
-    audio.music = musicGain;
+    if (!ctx) return;
+    unlockAudio();
+    if (audio.schedulerOn) return;
+    if (!audio.musicGain) {
+      audio.musicGain = ctx.createGain();
+      audio.musicGain.gain.value = 0.4;
+      audio.musicGain.connect(audio.master);
+    }
+    audio.schedulerOn = true;
+    audio.melodyIdx = 0;
+    audio.nextNoteTime = ctx.currentTime + 0.1;
+    scheduler();
   }
 
   function stopMusic() {
-    if (audio.musicTimer) clearTimeout(audio.musicTimer);
-    if (audio.music) { try { audio.music.disconnect(); } catch(_){} audio.music = null; }
+    audio.schedulerOn = false;
+    if (audio.schedTimer) { clearTimeout(audio.schedTimer); audio.schedTimer = null; }
   }
 
   function blip(midi, dur, type, vol) {
     const ctx = ensureAudio();
     if (!ctx) return;
+    unlockAudio();
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
@@ -485,7 +519,7 @@
 
   function setMuted(m) {
     audio.muted = m;
-    if (audio.master) audio.master.gain.value = m ? 0 : 0.6;
+    if (audio.master) audio.master.gain.value = m ? 0 : 0.7;
     muteBtn.textContent = m ? '🔇' : '🔊';
   }
   muteBtn.addEventListener('click', () => setMuted(!audio.muted));
@@ -687,8 +721,7 @@
     state.lastFrame = 0;
     state.spawnTimer = 0;
     setPlayerX(state.stageRect.width / 2);
-    ensureAudio();
-    if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+    unlockAudio();
     startMusic();
     requestAnimationFrame(frame);
   };

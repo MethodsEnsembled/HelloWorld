@@ -161,6 +161,38 @@
     cursor: pointer;
   }
   .modal button:active { transform: scale(0.96); }
+  .modal button:disabled {
+    background: #d8c8e8;
+    color: #8a7aa0;
+    cursor: not-allowed;
+  }
+  .picker {
+    display: flex; justify-content: center; gap: 8px;
+    margin: 6px 0 16px;
+    flex-wrap: wrap;
+  }
+  .pick {
+    background: #f6efff;
+    border: 3px solid transparent;
+    border-radius: 14px;
+    padding: 6px 4px 4px;
+    cursor: pointer;
+    width: 78px;
+    transition: transform 0.1s, border-color 0.1s, background 0.1s;
+  }
+  .pick:active { transform: scale(0.96); }
+  .pick.selected {
+    border-color: var(--accent);
+    background: #ffe9f5;
+    box-shadow: 0 0 0 3px rgba(255,111,181,0.18);
+  }
+  .pick svg { display: block; margin: 0 auto; }
+  .pick .pname {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text);
+    margin-top: 2px;
+  }
 
   /* Catch feedback */
   .pop {
@@ -237,7 +269,8 @@
     <div class="modal">
       <h2 id="modalTitle">Unicorn Catch</h2>
       <p id="modalText">Hold and slide to move. Catch the matching princesses!</p>
-      <button id="modalBtn">Start</button>
+      <div class="picker" id="picker"></div>
+      <button id="modalBtn" disabled>Start</button>
     </div>
   </div>
 
@@ -386,15 +419,42 @@
     modalText.textContent = text;
     modalBtn.textContent = btn;
     overlay.classList.remove('hidden');
+    renderPicker();
   }
   function hideOverlay() { overlay.classList.add('hidden'); }
 
+  // ---------------- Character picker ----------------
+  const pickerEl = document.getElementById('picker');
+  let selectedChar = null;
+
+  function renderPicker() {
+    pickerEl.innerHTML = '';
+    selectedChar = null;
+    modalBtn.disabled = true;
+    for (const c of CHARACTERS) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'pick';
+      card.dataset.id = c.id;
+      card.innerHTML = characterSVG(c, 60) + `<div class="pname">${c.name}</div>`;
+      card.addEventListener('click', () => selectChar(c, card));
+      pickerEl.appendChild(card);
+    }
+  }
+  function selectChar(c, card) {
+    selectedChar = c;
+    setPlayerCharacter(c);
+    pickerEl.querySelectorAll('.pick').forEach(el => el.classList.remove('selected'));
+    card.classList.add('selected');
+    modalBtn.disabled = false;
+  }
+
   function startGame() {
+    if (!selectedChar) return;
     state.score = 0; state.lives = 3; state.playing = true;
     scoreEl.textContent = state.score;
     livesEl.textContent = '💖💖💖';
-    const pick = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
-    setPlayerCharacter(pick);
+    setPlayerCharacter(selectedChar);
     hideOverlay();
   }
 
@@ -727,9 +787,8 @@
   };
 
   modalBtn.addEventListener('click', () => startGame());
-  setPlayerCharacter(CHARACTERS[0]);
   measureStage();
-  showOverlay('Unicorn Catch', 'Hold and slide to move. Catch the matching princess!', 'Start');
+  showOverlay('Unicorn Catch', 'Pick your princess, then catch the matches!', 'Start');
 })();
 </script>
 </body>

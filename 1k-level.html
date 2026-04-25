@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1024">
+<title>1K Level</title>
+<style>
+  :root {
+    --bg: #0d1024;
+    --panel: rgba(255,255,255,0.08);
+    --text: #e8ecff;
+    --accent: #ff5277;
+    --accent-2: #ffd166;
+    --good: #5fd97a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    overflow: hidden;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    background: radial-gradient(ellipse at top, #1d1850 0%, var(--bg) 60%, #050818 100%);
+  }
+  body {
+    display: flex; flex-direction: column; align-items: stretch;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100vh;
+  }
+
+  header {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+  }
+  .back {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .back:active { background: var(--accent); color: white; }
+  .stats {
+    flex: 1;
+    display: flex; justify-content: space-around; align-items: center;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .stat b { color: var(--accent-2); margin-left: 4px; }
+
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  /* Overlay (splash + game over) */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(5, 8, 24, 0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: linear-gradient(180deg, #1d1850 0%, #0d1024 100%);
+    border: 2px solid var(--accent);
+    border-radius: 18px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 88%;
+    width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h2 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .modal p { margin: 0 0 14px; font-size: 13px; opacity: 0.85; }
+
+  .diff-row {
+    display: flex; justify-content: center; gap: 8px;
+    margin: 6px 0 16px;
+  }
+  .diff {
+    flex: 1;
+    background: var(--panel);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 10px 6px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.08s, border-color 0.1s, background 0.1s;
+  }
+  .diff:active { transform: scale(0.96); }
+  .diff.selected {
+    border-color: var(--accent);
+    background: rgba(255, 82, 119, 0.15);
+    box-shadow: 0 0 0 3px rgba(255, 82, 119, 0.2);
+  }
+  .diff small {
+    display: block;
+    font-size: 10px;
+    opacity: 0.7;
+    font-weight: 600;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+
+  .modal .primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #0d1024;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  .modal .primary:active { transform: scale(0.96); }
+  .modal .primary:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html" aria-label="Back to home">←</a>
+    <div class="stats">
+      <span class="stat">LVL<b id="level">1</b></span>
+      <span class="stat">SCORE<b id="score">0</b></span>
+      <span class="stat">BALLS<b id="balls">10</b></span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">1K LEVEL</h2>
+      <p id="modalText">Tap a fresh ball to launch. Tap a moving ball to stop, then flick. Smash the bricks. Don't let the ball land on the platform.</p>
+      <div class="diff-row" id="diffRow">
+        <button class="diff" data-diff="E">EASY<small>tiny platform</small></button>
+        <button class="diff" data-diff="M">MED<small>medium</small></button>
+        <button class="diff" data-diff="H">HARD<small>wide platform</small></button>
+      </div>
+      <button class="primary" id="modalBtn" disabled>Start</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalBtn = document.getElementById('modalBtn');
+  const diffRow = document.getElementById('diffRow');
+  const levelEl = document.getElementById('level');
+  const scoreEl = document.getElementById('score');
+  const ballsEl = document.getElementById('balls');
+
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+  function fitCanvas() {
+    const r = stage.getBoundingClientRect();
+    canvas.width  = Math.floor(r.width  * dpr);
+    canvas.height = Math.floor(r.height * dpr);
+    canvas.style.width  = r.width  + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', fitCanvas);
+
+  const state = {
+    diff: null,        // 'E' | 'M' | 'H'
+    level: 1,
+    score: 0,
+    ballsLeft: 10,
+    playing: false,
+  };
+
+  function showOverlay(title, text, btnLabel) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalBtn.textContent = btnLabel;
+    overlay.classList.remove('hidden');
+  }
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
+  // Difficulty selection
+  diffRow.querySelectorAll('.diff').forEach(btn => {
+    btn.addEventListener('click', () => {
+      diffRow.querySelectorAll('.diff').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.diff = btn.dataset.diff;
+      modalBtn.disabled = false;
+    });
+  });
+
+  function startGame() {
+    if (!state.diff) return;
+    state.level = 1;
+    state.score = 0;
+    state.ballsLeft = 10;
+    state.playing = true;
+    levelEl.textContent = state.level;
+    scoreEl.textContent = state.score;
+    ballsEl.textContent = state.ballsLeft;
+    hideOverlay();
+    // Future commits: reset bricks, spawn ball, kick off RAF loop.
+  }
+
+  modalBtn.addEventListener('click', startGame);
+
+  // Initial paint so the canvas isn't blank under the splash.
+  fitCanvas();
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+  showOverlay('1K LEVEL', 'Pick difficulty: tiny / medium / wide platform at the bottom.', 'Start');
+})();
+</script>
+</body>
+</html>

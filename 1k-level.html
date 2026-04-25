@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1024">
+<title>1K Level</title>
+<style>
+  :root {
+    --bg: #0d1024;
+    --panel: rgba(255,255,255,0.08);
+    --text: #e8ecff;
+    --accent: #ff5277;
+    --accent-2: #ffd166;
+    --good: #5fd97a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    overflow: hidden;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    background: radial-gradient(ellipse at top, #1d1850 0%, var(--bg) 60%, #050818 100%);
+  }
+  body {
+    display: flex; flex-direction: column; align-items: stretch;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100vh;
+  }
+
+  header {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+  }
+  .back {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .back:active { background: var(--accent); color: white; }
+  .stats {
+    flex: 1;
+    display: flex; justify-content: space-around; align-items: center;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  .stat b { color: var(--accent-2); margin-left: 4px; }
+
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  /* Overlay (splash + game over) */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(5, 8, 24, 0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: linear-gradient(180deg, #1d1850 0%, #0d1024 100%);
+    border: 2px solid var(--accent);
+    border-radius: 18px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 88%;
+    width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h2 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .modal p { margin: 0 0 14px; font-size: 13px; opacity: 0.85; }
+
+  .diff-row {
+    display: flex; justify-content: center; gap: 8px;
+    margin: 6px 0 16px;
+  }
+  .diff {
+    flex: 1;
+    background: var(--panel);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: var(--text);
+    padding: 10px 6px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.08s, border-color 0.1s, background 0.1s;
+  }
+  .diff:active { transform: scale(0.96); }
+  .diff.selected {
+    border-color: var(--accent);
+    background: rgba(255, 82, 119, 0.15);
+    box-shadow: 0 0 0 3px rgba(255, 82, 119, 0.2);
+  }
+  .diff small {
+    display: block;
+    font-size: 10px;
+    opacity: 0.7;
+    font-weight: 600;
+    margin-top: 2px;
+    letter-spacing: 0;
+  }
+
+  .modal .primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #0d1024;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+  .modal .primary:active { transform: scale(0.96); }
+  .modal .primary:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html" aria-label="Back to home">←</a>
+    <div class="stats">
+      <span class="stat">LVL<b id="level">1</b></span>
+      <span class="stat">SCORE<b id="score">0</b></span>
+      <span class="stat">BALLS<b id="balls">10</b></span>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">1K LEVEL</h2>
+      <p id="modalText">Tap a fresh ball to launch. Tap a moving ball to stop, then flick. Smash the bricks. Don't let the ball land on the platform.</p>
+      <div class="diff-row" id="diffRow">
+        <button class="diff" data-diff="E">EASY<small>tiny platform</small></button>
+        <button class="diff" data-diff="M">MED<small>medium</small></button>
+        <button class="diff" data-diff="H">HARD<small>wide platform</small></button>
+      </div>
+      <button class="primary" id="modalBtn" disabled>Start</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalBtn = document.getElementById('modalBtn');
+  const diffRow = document.getElementById('diffRow');
+  const levelEl = document.getElementById('level');
+  const scoreEl = document.getElementById('score');
+  const ballsEl = document.getElementById('balls');
+
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+  function fitCanvas() {
+    const r = stage.getBoundingClientRect();
+    canvas.width  = Math.floor(r.width  * dpr);
+    canvas.height = Math.floor(r.height * dpr);
+    canvas.style.width  = r.width  + 'px';
+    canvas.style.height = r.height + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    state.field.w = r.width;
+    state.field.h = r.height;
+    if (state.bricks.length) buildBricks(state.level);
+    if (state.playing || state.bricks.length) render();
+  }
+  window.addEventListener('resize', fitCanvas);
+
+  const state = {
+    diff: null,        // 'E' | 'M' | 'H'
+    level: 1,
+    score: 0,
+    ballsLeft: 10,
+    playing: false,
+    bricks: [],        // { x, y, w, h, value, color }
+    field: { w: 0, h: 0 },
+    ball: null,        // { x, y, vx, vy, r, value, launched }
+    lastFrame: 0,
+    particles: [],     // { x, y, vx, vy, color, life, ttl, size }
+    stars: [],         // background twinkles
+  };
+
+  // ---------------- Audio ----------------
+  const audio = {
+    ctx: null, master: null, musicGain: null,
+    muted: false, schedulerOn: false,
+    nextNoteTime: 0, melodyIdx: 0, schedTimer: null,
+  };
+  function ensureAudio() {
+    if (audio.ctx) return audio.ctx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audio.ctx = new Ctx();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = audio.muted ? 0 : 0.6;
+    audio.master.connect(audio.ctx.destination);
+    return audio.ctx;
+  }
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+  const _unlockOnce = () => {
+    unlockAudio();
+    document.removeEventListener('touchstart', _unlockOnce, true);
+    document.removeEventListener('mousedown', _unlockOnce, true);
+  };
+  document.addEventListener('touchstart', _unlockOnce, true);
+  document.addEventListener('mousedown', _unlockOnce, true);
+
+  const midi2hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  // Cosmic / arcade-y minor pad melody.
+  const MELODY = [
+    [60, 0.30], [67, 0.30], [72, 0.30], [70, 0.30],
+    [65, 0.30], [72, 0.30], [70, 0.60],
+    [60, 0.30], [67, 0.30], [72, 0.30], [70, 0.30],
+    [63, 0.30], [70, 0.30], [67, 0.60],
+  ];
+  function scheduleNote(midi, dur, t) {
+    const c = audio.ctx;
+    const osc = c.createOscillator();
+    const env = c.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = midi2hz(midi);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.5, t + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.musicGain);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  function scheduler() {
+    if (!audio.schedulerOn || !audio.ctx) return;
+    const lookahead = 0.2;
+    while (audio.nextNoteTime < audio.ctx.currentTime + lookahead) {
+      const [midi, dur] = MELODY[audio.melodyIdx % MELODY.length];
+      scheduleNote(midi, dur, audio.nextNoteTime);
+      audio.nextNoteTime += dur;
+      audio.melodyIdx++;
+    }
+    audio.schedTimer = setTimeout(scheduler, 50);
+  }
+  function startMusic() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    unlockAudio();
+    if (audio.schedulerOn) return;
+    if (!audio.musicGain) {
+      audio.musicGain = ctx.createGain();
+      audio.musicGain.gain.value = 0.32;
+      audio.musicGain.connect(audio.master);
+    }
+    audio.schedulerOn = true;
+    audio.melodyIdx = 0;
+    audio.nextNoteTime = ctx.currentTime + 0.1;
+    scheduler();
+  }
+  function stopMusic() {
+    audio.schedulerOn = false;
+    if (audio.schedTimer) { clearTimeout(audio.schedTimer); audio.schedTimer = null; }
+  }
+
+  function blip(midi, dur, type, vol) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    unlockAudio();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(midi2hz(midi), t);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(vol || 0.4, t + 0.005);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.master);
+    osc.start(t); osc.stop(t + dur + 0.02);
+  }
+  function playHit()     { blip(78 + Math.random() * 4, 0.06, 'square',   0.18); }
+  function playShatter() {
+    blip(72, 0.18, 'triangle', 0.5);
+    setTimeout(() => blip(79, 0.18, 'triangle', 0.5), 70);
+    setTimeout(() => blip(84, 0.22, 'triangle', 0.5), 140);
+  }
+  function playStrike() {
+    blip(60, 0.16, 'sawtooth', 0.4);
+    setTimeout(() => blip(48, 0.30, 'sawtooth', 0.35), 100);
+  }
+
+  // ---------------- Particles ----------------
+  function spawnParticles(x, y, color, count, speed) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = speed * (0.4 + Math.random() * 0.9);
+      state.particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        color,
+        life: 0,
+        ttl: 0.5 + Math.random() * 0.4,
+        size: 2 + Math.random() * 3,
+      });
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const p = state.particles[i];
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.96; p.vy *= 0.96;
+      if (p.life >= p.ttl) state.particles.splice(i, 1);
+    }
+  }
+  function drawParticles() {
+    for (const p of state.particles) {
+      const alpha = 1 - p.life / p.ttl;
+      ctx.globalAlpha = Math.max(0, alpha);
+      if (p.isText) {
+        ctx.font = `800 ${p.size}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0d1024';
+        ctx.fillText(p.text, p.x + 1, p.y + 1);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x, p.y);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------------- Background stars ----------------
+  function buildStars() {
+    state.stars.length = 0;
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      state.stars.push({
+        x: Math.random() * state.field.w,
+        y: Math.random() * state.field.h,
+        r: 0.6 + Math.random() * 1.6,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.5 + Math.random() * 1.5,
+      });
+    }
+  }
+  function drawStars() {
+    const t = performance.now() / 1000;
+    for (const s of state.stars) {
+      const a = 0.25 + (Math.sin(t * s.speed + s.phase) + 1) * 0.25;
+      ctx.fillStyle = `rgba(255, 245, 230, ${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ---------------- Ball ----------------
+  const BALL_R = 14;
+  const LAUNCH_SPEED = 360;   // px/s for the first launch
+
+  function spawnBall() {
+    // Place in the lower play area, away from bricks. Random within an inset.
+    const W = state.field.w, H = state.field.h;
+    const topMargin = H * 0.55;
+    const bottomMargin = H * 0.85;
+    state.ball = {
+      x: BALL_R + 16 + Math.random() * (W - BALL_R * 2 - 32),
+      y: topMargin + Math.random() * (bottomMargin - topMargin),
+      vx: 0, vy: 0,
+      r: BALL_R,
+      value: 1,
+      launched: false,
+    };
+  }
+
+  function launchBall() {
+    if (!state.ball || state.ball.launched) return;
+    // Random direction biased upward (toward bricks).
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI * 0.7);
+    state.ball.vx = Math.cos(angle) * LAUNCH_SPEED;
+    state.ball.vy = Math.sin(angle) * LAUNCH_SPEED;
+    state.ball.launched = true;
+  }
+
+  // Grow range expands slowly with level (~3..15 at L1, scales up).
+  function ballGrowRoll() {
+    const lo = 3 + Math.floor((state.level - 1) * 0.5);
+    const hi = 15 + (state.level - 1) * 2;
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+
+  // Circle-vs-AABB collision response. Returns {collided, nx, ny} where
+  // (nx, ny) is the surface normal we should reflect against, or null.
+  function circleVsBrick(b, brick) {
+    const cx = Math.max(brick.x, Math.min(b.x, brick.x + brick.w));
+    const cy = Math.max(brick.y, Math.min(b.y, brick.y + brick.h));
+    const dx = b.x - cx, dy = b.y - cy;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > b.r * b.r) return null;
+    // Penetration vector: from closest point to ball center. If the ball
+    // center is inside the AABB (distSq == 0), pick the smallest axis.
+    let nx = 0, ny = 0;
+    if (distSq === 0) {
+      const overlapL = b.x - brick.x;
+      const overlapR = (brick.x + brick.w) - b.x;
+      const overlapT = b.y - brick.y;
+      const overlapB = (brick.y + brick.h) - b.y;
+      const m = Math.min(overlapL, overlapR, overlapT, overlapB);
+      if (m === overlapL) nx = -1;
+      else if (m === overlapR) nx = 1;
+      else if (m === overlapT) ny = -1;
+      else ny = 1;
+    } else {
+      const d = Math.sqrt(distSq) || 1;
+      nx = dx / d; ny = dy / d;
+    }
+    // Resolve penetration: push ball out along normal.
+    const dist = Math.sqrt(distSq);
+    const push = b.r - dist + 0.5;
+    b.x += nx * push;
+    b.y += ny * push;
+    return { nx, ny };
+  }
+
+  function reflect(b, n) {
+    // v' = v - 2 (v . n) n
+    const dot = b.vx * n.nx + b.vy * n.ny;
+    b.vx -= 2 * dot * n.nx;
+    b.vy -= 2 * dot * n.ny;
+  }
+
+  function handleBrickCollisions() {
+    const b = state.ball;
+    if (!b || !b.launched) return;
+    // Resolve up to one brick per frame to avoid double-bounces if the
+    // ball overlaps multiple cells. Pick the brick with deepest penetration.
+    let best = null, bestDepth = -1;
+    for (const brick of state.bricks) {
+      if (brick.value <= 0) continue;
+      const cx = Math.max(brick.x, Math.min(b.x, brick.x + brick.w));
+      const cy = Math.max(brick.y, Math.min(b.y, brick.y + brick.h));
+      const dx = b.x - cx, dy = b.y - cy;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > b.r * b.r) continue;
+      const depth = b.r - Math.sqrt(distSq);
+      if (depth > bestDepth) { best = brick; bestDepth = depth; }
+    }
+    if (!best) return;
+    const n = circleVsBrick(b, best);
+    if (!n) return;
+    reflect(b, n);
+    // Apply damage: brick loses ball.value; ball grows by random amount.
+    const dmg = Math.min(best.value, b.value);
+    best.value -= dmg;
+    state.score += dmg;
+    scoreEl.textContent = state.score;
+    // Small hit spark wherever the ball touched the brick.
+    const hitX = b.x - n.nx * b.r;
+    const hitY = b.y - n.ny * b.r;
+    spawnParticles(hitX, hitY, best.color, 6, 180);
+    playHit();
+    if (best.value <= 0) {
+      best.value = 0;
+      onBrickDestroyed(best);
+    }
+    b.value += ballGrowRoll();
+  }
+
+  // The "big step reward" on destruction. Tuned so destroying a brick
+  // adds ~10% of the brick's max value to the ball, which compounds
+  // through the row stack and makes each kill feel like a meaningful
+  // power spike.
+  const DESTROY_BALL_FRAC = 0.10;
+
+  function onBrickDestroyed(brick) {
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    // Big shatter burst at the brick's center.
+    spawnParticles(cx, cy, brick.color, 22, 260);
+    playShatter();
+    // Destruction reward: power-spike the ball and score-bonus the player.
+    const bonus = Math.round(brick.max * DESTROY_BALL_FRAC);
+    if (state.ball) state.ball.value += bonus;
+    state.score += brick.max; // extra score on top of damage already counted
+    scoreEl.textContent = state.score;
+    spawnTextPop(cx, cy, `+${fmt(brick.max)}`, '#ffd166');
+    spawnTextPop(cx, cy + 18, `BALL +${fmt(bonus)}`, '#a3e635');
+    // If everything's dead, level up.
+    if (state.bricks.every(br => br.value <= 0)) {
+      levelUp();
+    }
+  }
+
+  // Floating "+X" pop, animated upward and faded out via the particle list.
+  function spawnTextPop(x, y, text, color) {
+    state.particles.push({
+      isText: true, text, color,
+      x, y, vx: 0, vy: -60,
+      life: 0, ttl: 0.9, size: 16,
+    });
+  }
+
+  function levelUp() {
+    state.level += 1;
+    levelEl.textContent = state.level;
+    // Refill balls so the run can keep going.
+    state.ballsLeft = 10;
+    ballsEl.textContent = state.ballsLeft;
+    buildBricks(state.level);
+    spawnBall();
+  }
+
+  // Difficulty -> bottom-platform width (fraction of field width).
+  // Easy = tiny target, Hard = wide target.
+  const PLATFORM_FRAC = { E: 0.18, M: 0.40, H: 0.70 };
+  const PLATFORM_H = 14;
+
+  function platformRect() {
+    const W = state.field.w, H = state.field.h;
+    const frac = PLATFORM_FRAC[state.diff] || 0.4;
+    const w = W * frac;
+    return { x: (W - w) / 2, y: H - PLATFORM_H, w, h: PLATFORM_H };
+  }
+
+  function loseBall() {
+    const b = state.ball;
+    if (b) spawnParticles(b.x, b.y, '#ff5277', 16, 280);
+    playStrike();
+    state.ballsLeft -= 1;
+    ballsEl.textContent = state.ballsLeft;
+    if (state.ballsLeft <= 0) return gameOver();
+    spawnBall();
+  }
+
+  function gameOver() {
+    state.playing = false;
+    stopMusic();
+    showOverlay('GAME OVER', `Score: ${state.score}  •  Level: ${state.level}`, 'Play again');
+  }
+
+  function updateBall(dt) {
+    const b = state.ball;
+    if (!b || !b.launched) return;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    // Side walls and ceiling: standard bounces.
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
+    if (b.x + b.r > state.field.w) { b.x = state.field.w - b.r; b.vx = -Math.abs(b.vx); }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
+    // Bottom: anywhere along the floor that ISN'T inside the danger platform
+    // is a regular bouncy wall. The danger platform itself destroys the ball.
+    if (b.y + b.r > state.field.h) {
+      const plat = platformRect();
+      if (b.x >= plat.x && b.x <= plat.x + plat.w) {
+        loseBall();
+        return;
+      }
+      b.y = state.field.h - b.r;
+      b.vy = -Math.abs(b.vy);
+    }
+    handleBrickCollisions();
+  }
+
+  function drawPlatform() {
+    const p = platformRect();
+    ctx.save();
+    // Hatched warning stripes
+    ctx.fillStyle = '#3a0a14';
+    roundRect(ctx, p.x, p.y, p.w, p.h, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ff5277';
+    ctx.lineWidth = 3;
+    roundRect(ctx, p.x + 1.5, p.y + 1.5, p.w - 3, p.h - 3, 3);
+    ctx.stroke();
+    // Diagonal danger stripes
+    ctx.beginPath();
+    ctx.rect(p.x, p.y, p.w, p.h);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255, 82, 119, 0.55)';
+    ctx.lineWidth = 2;
+    for (let x = p.x - p.h; x < p.x + p.w; x += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x, p.y);
+      ctx.lineTo(x + p.h, p.y + p.h);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawBall() {
+    const b = state.ball;
+    if (!b) return;
+    ctx.save();
+    // Soft glow
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Inner highlight
+    const grd = ctx.createRadialGradient(b.x - b.r * 0.4, b.y - b.r * 0.4, 1, b.x, b.y, b.r);
+    grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grd.addColorStop(1, 'rgba(255,209,102,0.3)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    // Value label floating above the ball
+    const label = String(b.value);
+    const fontSize = 14;
+    ctx.font = `800 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const labelY = b.y - b.r - 4;
+    const tw = ctx.measureText(label).width + 10;
+    const th = fontSize + 4;
+    ctx.fillStyle = 'rgba(13, 16, 36, 0.85)';
+    roundRect(ctx, b.x - tw / 2, labelY - th, tw, th, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffd166';
+    ctx.fillText(label, b.x, labelY - 2);
+    // Pulse if not yet launched: hint that it's tappable.
+    if (!b.launched) {
+      const pulse = (Math.sin(performance.now() / 200) + 1) / 2;
+      ctx.strokeStyle = `rgba(255, 209, 102, ${0.25 + pulse * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r + 6 + pulse * 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------------- Bricks ----------------
+  // Build a pyramid: wider+higher-value bricks at top, narrowing as we go.
+  // Layout adapts to canvas width so it works on any phone.
+  function buildBricks(level) {
+    const W = state.field.w;
+    const H = state.field.h;
+    state.bricks.length = 0;
+
+    // Per-level scaling: gentle so level 10+ stays reachable. The ball
+    // grows quickly thanks to the destruction bonus, so a milder brick
+    // ramp keeps clears feeling possible without being trivial.
+    const valueScale = Math.pow(1.15, level - 1);
+    // Descending base values, 6 rows. Values shown on the photo: 150K / 120K / 90K / 60K / 30K, plus a tiny 30K cap.
+    const rowSpec = [
+      { v: 150000, frac: 0.92 },
+      { v: 120000, frac: 0.84 },
+      { v:  90000, frac: 0.72 },
+      { v:  60000, frac: 0.58 },
+      { v:  30000, frac: 0.46 },
+      { v:  15000, frac: 0.34 },
+    ];
+
+    // Reserve top 55% of the field for bricks; leave the rest for ball play.
+    const top = H * 0.04;
+    const brickH = Math.max(22, Math.min(34, H * 0.05));
+    const gap = 6;
+
+    const colors = ['#ff5277', '#ff8a3d', '#ffd166', '#a3e635', '#5fd4ff', '#a06cff'];
+
+    rowSpec.forEach((row, i) => {
+      const w = W * row.frac;
+      const x = (W - w) / 2;
+      const y = top + i * (brickH + gap);
+      state.bricks.push({
+        x, y, w, h: brickH,
+        value: Math.round(row.v * valueScale),
+        max: Math.round(row.v * valueScale),
+        color: colors[i % colors.length],
+      });
+    });
+  }
+
+  function fmt(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
+    if (n >= 1000)      return (n / 1000).toFixed(n >= 10_000 ? 0 : 1) + 'K';
+    return Math.max(0, n) | 0;
+  }
+
+  function drawBricks() {
+    for (const b of state.bricks) {
+      if (b.value <= 0) continue;
+      // Fill: gradient that fades as the brick takes damage.
+      const damage = 1 - b.value / b.max;
+      const r = 6;
+      ctx.save();
+      // Soft outer glow so they pop against the dark sky.
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = b.color;
+      roundRect(ctx, b.x, b.y, b.w, b.h, r);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Damage scrim
+      if (damage > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${0.45 * damage})`;
+        roundRect(ctx, b.x, b.y, b.w, b.h, r);
+        ctx.fill();
+      }
+      // Border
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      roundRect(ctx, b.x + 0.75, b.y + 0.75, b.w - 1.5, b.h - 1.5, r - 1);
+      ctx.stroke();
+      // Value label
+      ctx.fillStyle = '#0d1024';
+      const fontSize = Math.max(13, Math.min(18, b.h * 0.55));
+      ctx.font = `800 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(fmt(b.value), b.x + b.w / 2, b.y + b.h / 2 + 1);
+      ctx.restore();
+    }
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y,     x + w, y + h, r);
+    c.arcTo(x + w, y + h, x,     y + h, r);
+    c.arcTo(x,     y + h, x,     y,     r);
+    c.arcTo(x,     y,     x + w, y,     r);
+    c.closePath();
+  }
+
+  // Render the whole frame. Future commits add the danger platform.
+  function render() {
+    const W = state.field.w, H = state.field.h;
+    ctx.clearRect(0, 0, W, H);
+    // Background field outline
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    ctx.fillRect(0, 0, W, H);
+    drawStars();
+    drawBricks();
+    drawPlatform();
+    drawParticles();
+    drawBall();
+    drawAim();
+  }
+
+  // ---------------- Game loop ----------------
+  function frame(t) {
+    if (!state.playing) return;
+    if (!state.lastFrame) state.lastFrame = t;
+    const dt = Math.min(0.05, (t - state.lastFrame) / 1000);
+    state.lastFrame = t;
+    updateBall(dt);
+    updateParticles(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------- Input ----------------
+  // Three states for the ball:
+  //   - !launched (fresh, stationary, pulsing) -> tap launches in random
+  //     upward-biased direction.
+  //   - launched and moving -> tap on the ball freezes it (vx=vy=0); ball
+  //     enters "aiming" mode.
+  //   - aiming (frozen) -> drag from the ball and release to flick. The
+  //     drag vector sets direction and speed; release without dragging
+  //     keeps it frozen so the player can re-aim.
+  let aiming = false;
+  let aimStart = null;
+  let aimNow = null;
+
+  function localPoint(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+  function pointInBall(p) {
+    const b = state.ball;
+    if (!b) return false;
+    const dx = p.x - b.x, dy = p.y - b.y;
+    return dx * dx + dy * dy <= (b.r + 18) * (b.r + 18);
+  }
+
+  function onPointerDown(p) {
+    if (!state.playing || !state.ball) return;
+    const b = state.ball;
+    if (!b.launched) {
+      if (pointInBall(p)) launchBall();
+      return;
+    }
+    // Moving or already-aiming ball: tap on the ball stops/starts aim.
+    if (pointInBall(p)) {
+      b.vx = 0; b.vy = 0;
+      aiming = true;
+      aimStart = { x: b.x, y: b.y };
+      aimNow = { x: p.x, y: p.y };
+    }
+  }
+  function onPointerMove(p) {
+    if (!aiming) return;
+    aimNow = { x: p.x, y: p.y };
+  }
+  function onPointerUp(_p) {
+    if (!aiming) return;
+    aiming = false;
+    const b = state.ball;
+    if (!b || !aimStart || !aimNow) return;
+    // Flick: launch in the OPPOSITE direction of the drag (pull-back-and-release
+    // feels more natural than push). Drag length controls speed within bounds.
+    const dx = aimStart.x - aimNow.x;
+    const dy = aimStart.y - aimNow.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 8) {
+      // Too short — leave the ball stopped so the player can re-aim.
+      return;
+    }
+    const minSpeed = 220;
+    const maxSpeed = 620;
+    const speed = Math.min(maxSpeed, minSpeed + len * 2.4);
+    const nx = dx / len, ny = dy / len;
+    b.vx = nx * speed;
+    b.vy = ny * speed;
+    aimStart = null;
+    aimNow = null;
+  }
+
+  canvas.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    onPointerDown(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    const t = e.changedTouches[0];
+    onPointerMove(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    onPointerUp(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('mousedown', e => onPointerDown(localPoint(e.clientX, e.clientY)));
+  canvas.addEventListener('mousemove', e => onPointerMove(localPoint(e.clientX, e.clientY)));
+  canvas.addEventListener('mouseup',   e => onPointerUp(localPoint(e.clientX, e.clientY)));
+
+  function drawAim() {
+    if (!aiming || !aimStart || !aimNow) return;
+    const b = state.ball;
+    if (!b) return;
+    // Pull-back arrow: from drag-current toward the ball, extending past
+    // ball in the launch direction so the player can preview the path.
+    const dx = aimStart.x - aimNow.x;
+    const dy = aimStart.y - aimNow.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const nx = dx / len, ny = dy / len;
+    ctx.save();
+    // Pull-back line: ball -> finger
+    ctx.strokeStyle = 'rgba(255, 209, 102, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(aimNow.x, aimNow.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Aim arrow (launch direction): ball -> away
+    const arrowLen = Math.min(140, 40 + len * 1.4);
+    const tx = b.x + nx * arrowLen;
+    const ty = b.y + ny * arrowLen;
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // Arrow head
+    const ax = -ny, ay = nx;
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(tx + nx * 8, ty + ny * 8);
+    ctx.lineTo(tx + ax * 6, ty + ay * 6);
+    ctx.lineTo(tx - ax * 6, ty - ay * 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function showOverlay(title, text, btnLabel) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalBtn.textContent = btnLabel;
+    overlay.classList.remove('hidden');
+  }
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
+  // Difficulty selection
+  diffRow.querySelectorAll('.diff').forEach(btn => {
+    btn.addEventListener('click', () => {
+      diffRow.querySelectorAll('.diff').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      state.diff = btn.dataset.diff;
+      modalBtn.disabled = false;
+    });
+  });
+
+  function startGame() {
+    if (!state.diff) return;
+    state.level = 1;
+    state.score = 0;
+    state.ballsLeft = 10;
+    state.playing = true;
+    state.lastFrame = 0;
+    levelEl.textContent = state.level;
+    scoreEl.textContent = state.score;
+    ballsEl.textContent = state.ballsLeft;
+    fitCanvas();
+    buildBricks(state.level);
+    buildStars();
+    spawnBall();
+    state.particles.length = 0;
+    hideOverlay();
+    startMusic();
+    requestAnimationFrame(frame);
+  }
+
+  modalBtn.addEventListener('click', startGame);
+
+  // Initial paint with a preview brick stack so the splash has scenery behind it.
+  fitCanvas();
+  buildBricks(1);
+  render();
+
+  showOverlay('1K LEVEL', 'Pick difficulty: tiny / medium / wide platform at the bottom.', 'Start');
+})();
+</script>
+</body>
+</html>

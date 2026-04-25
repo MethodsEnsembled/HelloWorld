@@ -120,6 +120,26 @@
     font-size: 18px;
     letter-spacing: -2px;
   }
+  .onek-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #1d1850, #0d1024);
+    padding: 6px 5px 5px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    position: relative;
+  }
+  .onek-brick {
+    height: 6px;
+    background: linear-gradient(135deg, #ff5277, #ffd166);
+    border-radius: 2px;
+  }
+  .onek-ball {
+    width: 8px; height: 8px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 6px white;
+    margin-top: auto;
+  }
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -180,6 +200,22 @@
       <div class="card-info">
         <h2>Unicorn Catch</h2>
         <p>Princesses on unicorns fall from the sky. Hold and slide to catch the ones that match!</p>
+        <span class="badge">PLAY</span>
+      </div>
+    </a>
+
+    <a class="game-card" href="1k-level.html">
+      <div class="card-art">
+        <div class="onek-art">
+          <div class="onek-brick" style="width:80%"></div>
+          <div class="onek-brick" style="width:60%"></div>
+          <div class="onek-brick" style="width:40%"></div>
+          <div class="onek-ball"></div>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>1K Level</h2>
+        <p>Bouncing ball with a number; smash the giant bricks until they hit zero. Don't let the ball land on the danger platform.</p>
         <span class="badge">PLAY</span>
       </div>
     </a>

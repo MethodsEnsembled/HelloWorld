@@ -148,6 +148,22 @@
     font-size: 30px;
     box-shadow: inset 0 -4px 0 rgba(0,0,0,0.06);
   }
+  .shelf-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #f3d9b3, #c79a64);
+    padding: 5px 4px;
+    display: flex; flex-direction: column; gap: 3px;
+    box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
+  }
+  .shelf-art .row {
+    background: #b07a45;
+    border-radius: 2px;
+    flex: 1;
+    display: flex; align-items: center; justify-content: space-around;
+    box-shadow: inset 0 -2px 0 #7a4d24;
+    font-size: 11px; line-height: 1;
+  }
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -235,6 +251,21 @@
       <div class="card-info">
         <h2>Making Dessert</h2>
         <p>Memorize the recipe, then tap the steps in order. Mess it up and you get a pile of suspicious goop.</p>
+        <span class="badge">PLAY</span>
+      </div>
+    </a>
+
+    <a class="game-card" href="shelf-organization.html">
+      <div class="card-art">
+        <div class="shelf-art">
+          <div class="row">🥫🍪🥤</div>
+          <div class="row">☕🥫🍪</div>
+          <div class="row">🥤☕🥫</div>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Shelf Organization</h2>
+        <p>Slide pantry items into empty spots. Three in a row clears the shelf — beat the timer before it gets cluttered.</p>
         <span class="badge">PLAY</span>
       </div>
     </a>

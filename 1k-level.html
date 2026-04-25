@@ -402,7 +402,7 @@
   const BALL_R = 14;
   const LAUNCH_SPEED = 360;   // px/s for the first launch
 
-  function spawnBall() {
+  function spawnBall(initialValue) {
     // Place in the lower play area, away from bricks. Random within an inset.
     const W = state.field.w, H = state.field.h;
     const topMargin = H * 0.55;
@@ -412,7 +412,7 @@
       y: topMargin + Math.random() * (bottomMargin - topMargin),
       vx: 0, vy: 0,
       r: BALL_R,
-      value: 1,
+      value: Math.max(1, initialValue | 0) || 1,
       launched: false,
     };
   }
@@ -578,7 +578,11 @@
     state.ballsLeft -= 1;
     ballsEl.textContent = state.ballsLeft;
     if (state.ballsLeft <= 0) return gameOver();
-    spawnBall();
+    // Easy and Medium preserve the ball's current power so a single
+    // mistake doesn't tank a deep run. Hard resets to 1 — that's the
+    // whole point of Hard.
+    const carry = (state.diff === 'H') ? 1 : (b ? b.value : 1);
+    spawnBall(carry);
   }
 
   function gameOver() {

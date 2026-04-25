@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffd6e7">
+<title>Making Dessert</title>
+<style>
+  :root {
+    --bg: #ffe9f1;
+    --bg2: #fff4d6;
+    --panel: #ffffff;
+    --ink: #4a2548;
+    --ink-soft: #8b6485;
+    --accent: #ff5e9c;
+    --accent2: #ffb84d;
+    --good: #6bd968;
+    --bad: #b8a08a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    min-height: 100vh;
+  }
+  .top-bar {
+    width: 100%; max-width: 520px;
+    padding: 12px 4px; display: flex; align-items: center; gap: 12px;
+  }
+  .back {
+    color: var(--ink); text-decoration: none; font-size: 14px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(74,37,72,0.1);
+  }
+  .back:active { background: rgba(255,255,255,1); }
+  .top-bar h1 {
+    margin: 0; flex: 1; text-align: center; font-size: 16px;
+    letter-spacing: 2px; font-weight: 800; color: var(--ink-soft);
+  }
+  .top-bar .spacer { width: 56px; }
+
+  main {
+    width: 100%; max-width: 520px; flex: 1;
+    display: flex; flex-direction: column;
+    padding: 8px 4px 24px;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    text-align: center;
+    width: 100%;
+  }
+  .screen.active { display: flex; }
+
+  /* ---- Title screen ---- */
+  .title-hero {
+    margin: 24px 0 8px;
+    display: flex; gap: 8px; justify-content: center;
+    font-size: 56px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.06));
+  }
+  .title-hero span {
+    display: inline-block;
+    animation: wobble 2.4s ease-in-out infinite;
+  }
+  .title-hero span:nth-child(2) { animation-delay: 0.2s; }
+  .title-hero span:nth-child(3) { animation-delay: 0.4s; }
+  .title-hero span:nth-child(4) { animation-delay: 0.6s; }
+  @keyframes wobble {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-8px) rotate(3deg); }
+  }
+  .title-name {
+    margin: 20px 0 6px;
+    font-size: clamp(30px, 8vw, 42px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #ff5e9c, #ffb84d);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .title-sub {
+    margin: 0 24px 28px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 340px;
+  }
+  .big-btn {
+    appearance: none; border: none; cursor: pointer;
+    padding: 18px 40px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: white;
+    background: linear-gradient(135deg, #ff5e9c, #ff8a3d);
+    box-shadow: 0 6px 0 #c83a73, 0 12px 24px rgba(200,58,115,0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .big-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #c83a73, 0 6px 12px rgba(200,58,115,0.3);
+  }
+  .big-btn.secondary {
+    background: linear-gradient(135deg, #b6a3d6, #8b6485);
+    box-shadow: 0 6px 0 #5e4060, 0 12px 24px rgba(94,64,96,0.3);
+  }
+  .big-btn.secondary:active {
+    box-shadow: 0 2px 0 #5e4060, 0 6px 12px rgba(94,64,96,0.3);
+  }
+
+  /* ---- Recipe / step cards (shared) ---- */
+  .recipe-header {
+    margin: 8px 0 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .dessert-target {
+    font-size: 80px; line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.06));
+  }
+  .recipe-title {
+    margin: 0; font-size: 22px; font-weight: 800; color: var(--ink);
+  }
+  .recipe-caption {
+    margin: 4px 0 0; font-size: 13px; color: var(--ink-soft);
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  .step-list {
+    list-style: none;
+    margin: 18px 0 14px;
+    padding: 0;
+    width: 100%;
+    max-width: 360px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .step-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 0 rgba(74,37,72,0.08);
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s, opacity 0.2s;
+  }
+  .step-card .num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff5e9c, #ffb84d);
+    color: white;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .step-card .emoji {
+    font-size: 30px; line-height: 1;
+  }
+  .step-card .label {
+    flex: 1; text-align: left; font-size: 15px; font-weight: 600;
+  }
+  .step-card.appear {
+    animation: pop 0.35s cubic-bezier(.5,1.6,.4,1);
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .countdown {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin: 6px 0 14px;
+    letter-spacing: 1px;
+  }
+  .countdown b {
+    color: var(--accent);
+    font-size: 18px;
+  }
+
+  /* ---- Tap phase ---- */
+  .progress-row {
+    display: flex; gap: 8px; margin: 14px 0 6px;
+  }
+  .progress-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(74,37,72,0.15);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .progress-dot.done {
+    background: var(--accent);
+    transform: scale(1.2);
+  }
+
+  .tap-prompt {
+    margin: 4px 0 8px;
+    font-size: 13px; letter-spacing: 1px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .tap-prompt b { color: var(--ink); font-size: 16px; letter-spacing: 0; text-transform: none; }
+
+  .tap-grid {
+    margin: 8px 0 12px;
+    width: 100%;
+    max-width: 360px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .tap-btn {
+    appearance: none; cursor: pointer;
+    background: var(--panel);
+    border: 2px solid transparent;
+    border-radius: 18px;
+    padding: 16px 10px 14px;
+    box-shadow: 0 5px 0 rgba(74,37,72,0.1);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: transform 0.08s, box-shadow 0.08s, opacity 0.25s, background 0.2s;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .tap-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 rgba(74,37,72,0.1);
+  }
+  .tap-btn .emoji {
+    font-size: 38px; line-height: 1;
+  }
+  .tap-btn .label {
+    font-size: 13px; font-weight: 700; line-height: 1.2;
+    text-align: center;
+  }
+  .tap-btn.tapped {
+    opacity: 0.35;
+    pointer-events: none;
+    background: rgba(255,255,255,0.55);
+    box-shadow: 0 2px 0 rgba(74,37,72,0.05);
+  }
+  .tap-btn.flash {
+    animation: flash 0.4s ease-out;
+  }
+  @keyframes flash {
+    0%   { background: var(--panel); }
+    35%  { background: #ffe49b; transform: scale(1.04) translateY(0); }
+    100% { background: var(--panel); }
+  }
+
+  /* ---- Ending screen ---- */
+  .ending-stage {
+    position: relative;
+    width: 280px; height: 280px;
+    margin: 12px auto 8px;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .ending-stage::before {
+    /* counter / floor */
+    content: ""; position: absolute; left: -8px; right: -8px; bottom: 0;
+    height: 14px;
+    background: linear-gradient(180deg, #d8a472, #a87142);
+    border-radius: 6px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+  }
+  /* Child head: round, peachy, with hair, eyes, mouth, cheeks */
+  .child {
+    position: relative;
+    width: 200px; height: 220px;
+    margin-bottom: -10px;
+  }
+  .child .head {
+    position: absolute; left: 20px; top: 18px;
+    width: 160px; height: 170px;
+    background: radial-gradient(ellipse at 50% 35%, #ffe1c4 0%, #fcc89a 100%);
+    border-radius: 50% 50% 46% 46% / 55% 55% 45% 45%;
+    box-shadow: inset -10px -14px 0 rgba(0,0,0,0.06);
+  }
+  .child .hair {
+    position: absolute; left: 12px; top: 8px;
+    width: 176px; height: 80px;
+    background: #6b3a1f;
+    border-radius: 50% 50% 30% 30% / 80% 80% 20% 20%;
+    box-shadow: inset -8px -4px 0 rgba(0,0,0,0.15);
+  }
+  .child .hair::after {
+    content: ""; position: absolute; right: 16px; top: -10px;
+    width: 22px; height: 26px;
+    background: #6b3a1f;
+    border-radius: 60% 40% 60% 40%;
+    transform: rotate(20deg);
+  }
+  .child .ear {
+    position: absolute; top: 92px;
+    width: 18px; height: 26px;
+    background: #fcc89a;
+    border-radius: 50%;
+  }
+  .child .ear.l { left: 14px; }
+  .child .ear.r { right: 14px; }
+  .child .cheek {
+    position: absolute; top: 122px;
+    width: 24px; height: 16px;
+    border-radius: 50%;
+    opacity: 0.7;
+  }
+  .child .cheek.l { left: 38px; }
+  .child .cheek.r { right: 38px; }
+  .child .eye {
+    position: absolute; top: 96px;
+    width: 14px; height: 14px;
+    background: #2d1a18;
+    border-radius: 50%;
+  }
+  .child .eye.l { left: 60px; }
+  .child .eye.r { right: 60px; }
+  .child .mouth {
+    position: absolute; left: 50%; top: 142px;
+    transform: translateX(-50%);
+    width: 50px; height: 22px;
+  }
+  .child .tear {
+    position: absolute; top: 110px;
+    width: 8px; height: 14px;
+    background: linear-gradient(180deg, #6cd5ff, #2aa8ff);
+    border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+    opacity: 0;
+  }
+  .child .tear.l { left: 64px; }
+  .child .tear.r { right: 64px; }
+
+  /* Happy variant */
+  .child.happy .cheek { background: #ff7ea8; }
+  .child.happy .eye {
+    height: 4px; border-radius: 4px;
+    top: 104px;
+    transform: rotate(0);
+    background: transparent;
+    border-top: 4px solid #2d1a18;
+    width: 22px;
+  }
+  .child.happy .eye.l { left: 54px; }
+  .child.happy .eye.r { right: 54px; }
+  .child.happy .mouth {
+    background: #c8324c;
+    border-radius: 0 0 30px 30px / 0 0 24px 24px;
+    box-shadow: inset 0 -6px 0 #ff5276;
+    overflow: hidden;
+  }
+  .child.happy .mouth::after {
+    /* tongue */
+    content: ""; position: absolute; left: 50%; bottom: -4px;
+    transform: translateX(-50%);
+    width: 26px; height: 12px;
+    background: #ff8aa3;
+    border-radius: 50%;
+  }
+  .child.happy {
+    animation: happyBounce 0.9s ease-in-out infinite;
+  }
+  @keyframes happyBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+
+  /* Sad variant */
+  .child.sad .cheek { background: #b6c8e0; }
+  .child.sad .eye {
+    height: 10px; width: 10px;
+    border-radius: 50% 50% 0 0;
+  }
+  .child.sad .eye.l { top: 100px; left: 62px; }
+  .child.sad .eye.r { top: 100px; right: 62px; }
+  .child.sad .mouth {
+    width: 38px; height: 18px;
+    border: 4px solid #2d1a18;
+    border-color: transparent transparent #2d1a18 #2d1a18;
+    border-radius: 0 0 0 36px;
+    background: transparent;
+    transform: translateX(-50%) rotate(-8deg);
+    top: 152px;
+  }
+  .child.sad .tear { opacity: 1; animation: tearDrop 1.6s ease-in infinite; }
+  .child.sad .tear.r { animation-delay: 0.4s; }
+  @keyframes tearDrop {
+    0% { transform: translateY(0); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translateY(60px); opacity: 0; }
+  }
+
+  /* Big dessert in the happy ending - placed in front of child */
+  .feast-dessert {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 110px;
+    line-height: 1;
+    filter: drop-shadow(0 8px 0 rgba(0,0,0,0.08));
+    animation: feast 1.4s ease-in-out infinite;
+    z-index: 2;
+  }
+  @keyframes feast {
+    0%, 100% { transform: translateX(-50%) rotate(-6deg) scale(1); }
+    50%      { transform: translateX(-50%) rotate(6deg) scale(1.05); }
+  }
+  .sparkle {
+    position: absolute;
+    font-size: 22px;
+    pointer-events: none;
+    animation: spark 1.6s linear infinite;
+  }
+  .sparkle.s1 { top: 30px; left: 20px; }
+  .sparkle.s2 { top: 50px; right: 16px; animation-delay: 0.4s; }
+  .sparkle.s3 { top: 110px; left: -4px; animation-delay: 0.8s; }
+  .sparkle.s4 { top: 90px; right: -8px; animation-delay: 1.2s; }
+  @keyframes spark {
+    0%, 100% { transform: scale(0.6) rotate(0); opacity: 0.4; }
+    50%      { transform: scale(1.2) rotate(180deg); opacity: 1; }
+  }
+
+  /* Goop blob - the suspicious dessert */
+  .goop {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px; height: 76px;
+    z-index: 2;
+  }
+  .goop .blob {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 30%, #b6e063 0%, transparent 35%),
+      radial-gradient(ellipse at 70% 60%, #8b6f3d 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 70%, #6e5230 0%, #3f2e1a 100%);
+    border-radius: 60% 40% 55% 45% / 70% 60% 40% 30%;
+    box-shadow: 0 10px 0 rgba(0,0,0,0.12), inset 0 -8px 0 rgba(0,0,0,0.2);
+    animation: wobbly 2.2s ease-in-out infinite;
+  }
+  @keyframes wobbly {
+    0%, 100% { border-radius: 60% 40% 55% 45% / 70% 60% 40% 30%; transform: rotate(-2deg); }
+    50%      { border-radius: 50% 50% 60% 40% / 60% 70% 30% 40%; transform: rotate(2deg); }
+  }
+  .goop .bubble {
+    position: absolute;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
+    animation: pop2 2.8s ease-in-out infinite;
+  }
+  .goop .bubble.b1 { width: 12px; height: 12px; top: 6px; left: 30px; }
+  .goop .bubble.b2 { width: 9px; height: 9px; top: 18px; left: 70px; animation-delay: 0.7s; }
+  .goop .bubble.b3 { width: 7px; height: 7px; top: 12px; left: 100px; animation-delay: 1.2s; }
+  @keyframes pop2 {
+    0%, 70% { transform: scale(1); opacity: 0.8; }
+    80%     { transform: scale(1.4); opacity: 0.4; }
+    81%, 100% { transform: scale(0); opacity: 0; }
+  }
+  .goop .stuff {
+    position: absolute;
+    font-size: 26px;
+    line-height: 1;
+  }
+  .goop .stuff.f1 { top: -6px; left: 12px; transform: rotate(-30deg); }
+  .goop .stuff.f2 { top: -14px; right: 18px; transform: rotate(20deg); }
+  .fly {
+    position: absolute;
+    font-size: 22px;
+    animation: flyAround 3s linear infinite;
+  }
+  .fly.f1 { top: 10px; left: 30px; }
+  .fly.f2 { top: 40px; right: 24px; animation-delay: 1s; animation-duration: 3.6s; }
+  @keyframes flyAround {
+    0%   { transform: translate(0,0) rotate(0); }
+    25%  { transform: translate(20px,-10px) rotate(20deg); }
+    50%  { transform: translate(0,-20px) rotate(-10deg); }
+    75%  { transform: translate(-20px,-6px) rotate(15deg); }
+    100% { transform: translate(0,0) rotate(0); }
+  }
+
+  .ending-caption {
+    margin: 10px 24px 4px;
+    font-size: clamp(28px, 8vw, 38px);
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+  .ending-caption.win  { color: #2e9d3f; }
+  .ending-caption.lose { color: #8b6f3d; }
+  .ending-sub {
+    margin: 0 24px 22px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 320px;
+  }
+  .ending-actions {
+    display: flex; flex-direction: column; gap: 12px;
+    align-items: center;
+  }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a class="back" href="index.html">‹ Arcade</a>
+    <h1>MAKING DESSERT</h1>
+    <span class="spacer"></span>
+  </div>
+
+  <main>
+    <section id="screen-title" class="screen active">
+      <div class="title-hero">
+        <span>🍰</span><span>🍪</span><span>🍩</span><span>🍨</span>
+      </div>
+      <h2 class="title-name">Making Dessert</h2>
+      <p class="title-sub">A grumpy little kid is hungry. Memorize the recipe, then tap the steps in order. Get it right and they're happy. Mess it up... well, you'll see.</p>
+      <button class="big-btn" id="btn-start">START COOKING</button>
+    </section>
+
+    <section id="screen-memorize" class="screen">
+      <div class="recipe-header">
+        <div class="dessert-target" id="mem-emoji">🍰</div>
+        <h2 class="recipe-title" id="mem-name">Recipe</h2>
+        <p class="recipe-caption">Memorize the order!</p>
+      </div>
+      <ol class="step-list" id="mem-steps"></ol>
+      <p class="countdown" id="mem-countdown">Starts in <b>3</b></p>
+      <button class="big-btn" id="btn-cook">I'M READY!</button>
+    </section>
+
+    <section id="screen-tap" class="screen">
+      <div class="recipe-header">
+        <div class="dessert-target" id="tap-emoji">🍰</div>
+        <h2 class="recipe-title" id="tap-name">Recipe</h2>
+      </div>
+      <div class="progress-row" id="tap-progress"></div>
+      <p class="tap-prompt">Tap the steps in order!</p>
+      <div class="tap-grid" id="tap-grid"></div>
+    </section>
+
+    <section id="screen-ending" class="screen">
+      <div class="ending-stage" id="ending-stage"></div>
+      <h2 class="ending-caption" id="ending-caption">YUM!</h2>
+      <p class="ending-sub" id="ending-sub"></p>
+      <div class="ending-actions">
+        <button class="big-btn" id="btn-again">MAKE ANOTHER</button>
+        <button class="big-btn secondary" id="btn-quit">BACK TO ARCADE</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+  // ---- Recipe data ----
+  // Each recipe: name, final emoji, 3-5 steps with verb + emoji.
+  const RECIPES = [
+    {
+      name: "Ice Cream Sundae",
+      emoji: "🍨",
+      steps: [
+        { label: "Scoop ice cream", emoji: "🍦" },
+        { label: "Drizzle chocolate", emoji: "🍫" },
+        { label: "Top with whipped cream", emoji: "☁️" },
+        { label: "Add a cherry", emoji: "🍒" },
+      ],
+    },
+    {
+      name: "Chocolate Chip Cookies",
+      emoji: "🍪",
+      steps: [
+        { label: "Mix the flour", emoji: "🌾" },
+        { label: "Crack an egg", emoji: "🥚" },
+        { label: "Stir in chocolate chips", emoji: "🍫" },
+        { label: "Bake in the oven", emoji: "🔥" },
+      ],
+    },
+    {
+      name: "Strawberry Cake",
+      emoji: "🍰",
+      steps: [
+        { label: "Whisk the batter", emoji: "🥣" },
+        { label: "Pour into the pan", emoji: "🍳" },
+        { label: "Bake until fluffy", emoji: "🔥" },
+        { label: "Frost with cream", emoji: "🥛" },
+        { label: "Top with strawberries", emoji: "🍓" },
+      ],
+    },
+    {
+      name: "Glazed Donut",
+      emoji: "🍩",
+      steps: [
+        { label: "Roll the dough", emoji: "🥖" },
+        { label: "Cut a ring", emoji: "⭕" },
+        { label: "Fry in hot oil", emoji: "🔥" },
+        { label: "Dip in glaze", emoji: "✨" },
+      ],
+    },
+    {
+      name: "Frosted Cupcake",
+      emoji: "🧁",
+      steps: [
+        { label: "Mix the batter", emoji: "🥣" },
+        { label: "Pour in the liner", emoji: "🧻" },
+        { label: "Bake them up", emoji: "🔥" },
+        { label: "Pipe the frosting", emoji: "🍦" },
+        { label: "Add sprinkles", emoji: "🌈" },
+      ],
+    },
+    {
+      name: "Fluffy Pancakes",
+      emoji: "🥞",
+      steps: [
+        { label: "Whisk the batter", emoji: "🥣" },
+        { label: "Pour on the griddle", emoji: "🍳" },
+        { label: "Flip when bubbly", emoji: "🔁" },
+        { label: "Add a pat of butter", emoji: "🧈" },
+        { label: "Drizzle with syrup", emoji: "🍯" },
+      ],
+    },
+  ];
+
+  // ---- State ----
+  const state = {
+    recipe: null,
+    taps: [],   // sequence of step indices the player tapped
+  };
+
+  function pickRecipe() {
+    // Avoid replaying the same recipe twice in a row when possible.
+    let pool = RECIPES;
+    if (state.recipe && RECIPES.length > 1) {
+      pool = RECIPES.filter(r => r.name !== state.recipe.name);
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ---- Screen router ----
+  const screens = {
+    title: document.getElementById('screen-title'),
+    memorize: document.getElementById('screen-memorize'),
+    tap: document.getElementById('screen-tap'),
+    ending: document.getElementById('screen-ending'),
+  };
+  function show(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  // ---- Round flow ----
+  const MEMORIZE_SECONDS = 6;
+  let memorizeTimer = null;
+
+  function startRound() {
+    state.recipe = pickRecipe();
+    state.taps = [];
+    show('memorize');
+    renderMemorize();
+  }
+
+  function renderMemorize() {
+    const r = state.recipe;
+    document.getElementById('mem-emoji').textContent = r.emoji;
+    document.getElementById('mem-name').textContent = r.name;
+
+    const list = document.getElementById('mem-steps');
+    list.innerHTML = '';
+    r.steps.forEach((step, i) => {
+      const li = document.createElement('li');
+      li.className = 'step-card';
+      li.innerHTML = `
+        <div class="num">${i + 1}</div>
+        <div class="emoji">${step.emoji}</div>
+        <div class="label">${step.label}</div>
+      `;
+      // stagger the pop-in
+      setTimeout(() => li.classList.add('appear'), i * 120);
+      list.appendChild(li);
+    });
+
+    // Countdown auto-advances; player can also tap "I'm ready!" to skip.
+    const totalDelay = r.steps.length * 120 + 200;
+    let remaining = MEMORIZE_SECONDS;
+    const cdEl = document.getElementById('mem-countdown');
+    cdEl.innerHTML = `Starts in <b>${remaining}</b>`;
+    clearTimeout(memorizeTimer);
+    memorizeTimer = setTimeout(function tick() {
+      remaining -= 1;
+      if (remaining <= 0) {
+        beginTapPhase();
+        return;
+      }
+      cdEl.innerHTML = `Starts in <b>${remaining}</b>`;
+      memorizeTimer = setTimeout(tick, 1000);
+    }, 1000 + totalDelay);
+  }
+
+  function beginTapPhase() {
+    clearTimeout(memorizeTimer);
+    memorizeTimer = null;
+    show('tap');
+    renderTap();
+  }
+
+  function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function renderTap() {
+    const r = state.recipe;
+    document.getElementById('tap-emoji').textContent = r.emoji;
+    document.getElementById('tap-name').textContent = r.name;
+
+    const progress = document.getElementById('tap-progress');
+    progress.innerHTML = '';
+    r.steps.forEach(() => {
+      const d = document.createElement('div');
+      d.className = 'progress-dot';
+      progress.appendChild(d);
+    });
+
+    const grid = document.getElementById('tap-grid');
+    grid.innerHTML = '';
+
+    // Shuffle the visual order, but each button still references its true
+    // step index in the recipe so we can score by tap sequence. Re-shuffle
+    // a few times if the random order is the recipe order (would be a freebie).
+    let finalOrder = shuffled(r.steps.map((_, i) => i));
+    for (let tries = 0; tries < 5 && r.steps.length > 1
+        && finalOrder.every((idx, i) => idx === i); tries++) {
+      finalOrder = shuffled(finalOrder);
+    }
+
+    finalOrder.forEach(stepIndex => {
+      const step = r.steps[stepIndex];
+      const btn = document.createElement('button');
+      btn.className = 'tap-btn';
+      btn.dataset.stepIndex = stepIndex;
+      btn.setAttribute('aria-label', step.label);
+      btn.innerHTML = `
+        <span class="emoji" aria-hidden="true">${step.emoji}</span>
+        <span class="label">${step.label}</span>
+      `;
+      btn.addEventListener('click', () => onTap(btn, stepIndex));
+      grid.appendChild(btn);
+    });
+  }
+
+  function onTap(btn, stepIndex) {
+    if (btn.classList.contains('tapped')) return;
+    btn.classList.add('tapped', 'flash');
+    state.taps.push(stepIndex);
+
+    // Update progress row.
+    const dots = document.querySelectorAll('#tap-progress .progress-dot');
+    const dot = dots[state.taps.length - 1];
+    if (dot) dot.classList.add('done');
+
+    if (state.taps.length === state.recipe.steps.length) {
+      // Brief pause so the last tap feels "completed".
+      setTimeout(finishRound, 450);
+    }
+  }
+
+  function finishRound() {
+    const correct = state.taps.every((stepIndex, i) => stepIndex === i);
+    show('ending');
+    renderEnding(correct);
+  }
+
+  function childMarkup(mood) {
+    return `
+      <div class="child ${mood}">
+        <div class="hair"></div>
+        <div class="head"></div>
+        <div class="ear l"></div>
+        <div class="ear r"></div>
+        <div class="cheek l"></div>
+        <div class="cheek r"></div>
+        <div class="eye l"></div>
+        <div class="eye r"></div>
+        <div class="tear l"></div>
+        <div class="tear r"></div>
+        <div class="mouth"></div>
+      </div>
+    `;
+  }
+
+  const WIN_LINES = [
+    "yummy yummy in my tummy!",
+    "best ${name} ever, more please!",
+    "mmmm, ${name}!",
+    "you are the BEST chef!",
+  ];
+  const LOSE_LINES = [
+    "ewww... what IS that?",
+    "this is supposed to be ${name}?!",
+    "i am NOT eating that.",
+    "is it... moving?",
+  ];
+  function pickLine(arr, recipeName) {
+    const tpl = arr[Math.floor(Math.random() * arr.length)];
+    return tpl.replace('${name}', recipeName);
+  }
+
+  function renderEnding(success) {
+    const r = state.recipe;
+    const stage = document.getElementById('ending-stage');
+    const caption = document.getElementById('ending-caption');
+    const sub = document.getElementById('ending-sub');
+
+    if (success) {
+      stage.innerHTML = `
+        ${childMarkup('happy')}
+        <span class="sparkle s1">✨</span>
+        <span class="sparkle s2">✨</span>
+        <span class="sparkle s3">⭐</span>
+        <span class="sparkle s4">✨</span>
+        <div class="feast-dessert">${r.emoji}</div>
+      `;
+      caption.textContent = 'YUM!';
+      caption.className = 'ending-caption win';
+      sub.textContent = `"${pickLine(WIN_LINES, r.name)}"`;
+    } else {
+      stage.innerHTML = `
+        ${childMarkup('sad')}
+        <div class="goop">
+          <div class="blob"></div>
+          <div class="bubble b1"></div>
+          <div class="bubble b2"></div>
+          <div class="bubble b3"></div>
+          <div class="stuff f1">🍒</div>
+          <div class="stuff f2">🦴</div>
+        </div>
+        <span class="fly f1">🪰</span>
+        <span class="fly f2">🪰</span>
+      `;
+      caption.textContent = 'EWWW...';
+      caption.className = 'ending-caption lose';
+      sub.textContent = `"${pickLine(LOSE_LINES, r.name)}"`;
+    }
+  }
+
+  document.getElementById('btn-again').addEventListener('click', startRound);
+  document.getElementById('btn-quit').addEventListener('click', () => {
+    show('title');
+  });
+
+  document.getElementById('btn-start').addEventListener('click', startRound);
+  document.getElementById('btn-cook').addEventListener('click', beginTapPhase);
+
+  show('title');
+</script>
+</body>
+</html>

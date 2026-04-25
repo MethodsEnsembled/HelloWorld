@@ -426,13 +426,13 @@
     state.ball.launched = true;
   }
 
-  // Tuned so each brick takes ~5 hits at L1, ~20 at L10 and ~90 at L20
-  // (per-brick averages, not totals). Per-hit grow is small relative
-  // to brick value so even L1 bricks aren't one-shot, and ramps DOWN
-  // at 0.80x per level so the ball falls behind the 1.15x brick
-  // scale and high levels become a real grind.
+  // Tuned so every brick is roughly the same difficulty — per-brick
+  // hits are governed only by ball.value vs brick.value, with no
+  // brick-of-the-day reward that lets a kill snowball the next brick.
+  // Per-hit grow ramps DOWN at 0.85x per level, so it falls behind the
+  // 1.15x brick scale at high levels and the run becomes a real grind.
   function ballGrowRoll() {
-    const baseAvg = 1500 * Math.pow(0.80, state.level - 1);
+    const baseAvg = 900 * Math.pow(0.85, state.level - 1);
     const lo = Math.max(1, Math.round(baseAvg * 0.4));
     const hi = Math.max(lo + 1, Math.round(baseAvg * 1.6));
     return lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -515,11 +515,12 @@
     b.value += ballGrowRoll();
   }
 
-  // Destruction bonus: tiny fraction of brick.max so a kill is a small
-  // power bump but doesn't dominate the per-hit grow. With the smaller
-  // grow values, anything bigger here would erase the per-brick effort
-  // and let the ball power through subsequent bricks too easily.
-  const DESTROY_BALL_FRAC = 0.005;
+  // No brick-value-based ball reward. A scaled bonus made bigger
+  // bricks more valuable to destroy, which let the ball snowball:
+  // after the first kill the ball was strong enough to one-shot the
+  // remaining row regardless of size. Per-hit grow alone now drives
+  // ball power, so every brick is rewarded the same way.
+  const DESTROY_BALL_FRAC = 0;
 
   function onBrickDestroyed(brick) {
     const cx = brick.x + brick.w / 2;
@@ -527,13 +528,13 @@
     // Big shatter burst at the brick's center.
     spawnParticles(cx, cy, brick.color, 22, 260);
     playShatter();
-    // Destruction reward: power-spike the ball and score-bonus the player.
-    const bonus = Math.round(brick.max * DESTROY_BALL_FRAC);
-    if (state.ball) state.ball.value += bonus;
-    state.score += brick.max; // extra score on top of damage already counted
+    // Score bonus only — ball power is no longer brick-value-rewarded.
+    if (DESTROY_BALL_FRAC > 0 && state.ball) {
+      state.ball.value += Math.round(brick.max * DESTROY_BALL_FRAC);
+    }
+    state.score += brick.max;
     scoreEl.textContent = state.score;
     spawnTextPop(cx, cy, `+${fmt(brick.max)}`, '#ffd166');
-    spawnTextPop(cx, cy + 18, `BALL +${fmt(bonus)}`, '#a3e635');
     // If everything's dead, level up.
     if (state.bricks.every(br => br.value <= 0)) {
       levelUp();

@@ -172,6 +172,137 @@
     filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15));
   }
 
+  /* ---- Game screen ---- */
+  .hud {
+    width: 100%; max-width: 460px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 4px auto 10px;
+  }
+  .hud-tile {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 8px 6px;
+    box-shadow: 0 3px 0 rgba(58,36,18,0.12);
+    text-align: center;
+  }
+  .hud-tile .lbl {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .hud-tile .val {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .hud-tile.timer .val { color: var(--accent); }
+  .hud-tile.timer.warn .val {
+    color: var(--bad);
+    animation: pulseWarn 0.6s ease-in-out infinite;
+  }
+  @keyframes pulseWarn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .shelf-stack {
+    width: 100%;
+    max-width: 460px;
+    margin: 4px auto 12px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+    padding: 8px 6px 12px;
+    background: linear-gradient(180deg, #d9b888 0%, #c79a64 100%);
+    border: 2px solid var(--wood-edge);
+    border-radius: 10px;
+    box-shadow: 0 8px 0 rgba(58,36,18,0.2), inset 0 -10px 0 rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .shelf-stack::before {
+    /* left wall */
+    content: ""; position: absolute; left: -2px; top: -2px; bottom: -2px;
+    width: 6px;
+    background: linear-gradient(180deg, #8a5a30, #5a3614);
+    border-radius: 8px 0 0 8px;
+  }
+  .shelf-stack::after {
+    /* right wall */
+    content: ""; position: absolute; right: -2px; top: -2px; bottom: -2px;
+    width: 6px;
+    background: linear-gradient(180deg, #8a5a30, #5a3614);
+    border-radius: 0 8px 8px 0;
+  }
+
+  .shelf {
+    --cols: 6;
+    position: relative;
+    background: linear-gradient(180deg, #b07a45 0%, #97623a 100%);
+    border-radius: 5px;
+    padding: 6px 4px 8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -4px 0 var(--wood-dark),
+      0 4px 0 rgba(58,36,18,0.25);
+  }
+  .shelf-row {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: 3px;
+  }
+  .cell {
+    aspect-ratio: 1 / 1;
+    background: rgba(0,0,0,0.18);
+    border-radius: 4px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: visible;
+  }
+  .item {
+    position: absolute;
+    inset: 4%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(20px, 6.4vw, 30px);
+    line-height: 1;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
+    border-radius: 6px;
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.1));
+    transition: transform 0.18s, opacity 0.2s;
+  }
+  .item.back {
+    inset: 12% 18% 18% 6%;
+    opacity: 0.55;
+    filter: brightness(0.85) blur(0.3px);
+    transform: scale(0.78);
+    z-index: 0;
+  }
+  .item.front { z-index: 1; }
+
+  /* high (unreachable) shelves get a dim look + lock badge */
+  .shelf.high { opacity: 0.95; }
+  .shelf.high .cell { background: rgba(0,0,0,0.32); }
+  .shelf.high::after {
+    content: "TOO HIGH";
+    position: absolute;
+    top: -10px; right: 8px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+  }
+
   footer {
     margin-top: auto;
     padding: 10px 16px;
@@ -218,9 +349,14 @@
       <p class="record">BEST LEVEL <b id="record-display">—</b></p>
     </section>
 
-    <!-- Game screen (built in later steps) -->
+    <!-- Game screen -->
     <section id="screen-game" class="screen">
-      <p style="color: var(--ink-soft);">Game board coming next step…</p>
+      <div class="hud">
+        <div class="hud-tile"><span class="lbl">Level</span><span class="val" id="hud-level">1</span></div>
+        <div class="hud-tile timer" id="hud-timer-tile"><span class="lbl">Time</span><span class="val" id="hud-timer">--</span></div>
+        <div class="hud-tile"><span class="lbl">Items</span><span class="val" id="hud-items">0</span></div>
+      </div>
+      <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
     </section>
 
     <!-- Result screen (built in later steps) -->
@@ -259,12 +395,129 @@
   }
   refreshRecord();
 
+  // ---- Item catalog ----
+  // Items unlock progressively; baseline 4, plus one new every 5 levels.
+  const ITEM_CATALOG = [
+    { id: 'can',    e: '🥫' },
+    { id: 'cookie', e: '🍪' },
+    { id: 'bottle', e: '🥤' },
+    { id: 'mug',    e: '☕' },
+    { id: 'choc',   e: '🍫' },
+    { id: 'bread',  e: '🍞' },
+    { id: 'corn',   e: '🍿' },
+    { id: 'salt',   e: '🧂' },
+    { id: 'bowl',   e: '🥣' },
+    { id: 'honey',  e: '🍯' },
+    { id: 'cheese', e: '🧀' },
+    { id: 'tea',    e: '🍵' },
+  ];
+  function itemsForLevel(level) {
+    const count = Math.min(ITEM_CATALOG.length, 4 + Math.floor((level - 1) / 5));
+    return ITEM_CATALOG.slice(0, count);
+  }
+  function itemById(id) {
+    return ITEM_CATALOG.find(it => it.id === id);
+  }
+
+  // ---- Board model ----
+  // board.shelves: array of shelves, each shelf has cols and an array of cells.
+  // cell = { front: itemId|null, back: itemId|null }
+  // A shelf can be marked .high (unreachable). Some cells can hold a back item.
+  function makeBoard(level) {
+    const items = itemsForLevel(level);
+    const cols = 6;
+    const rowsTotal = 4;
+    // First shelf is "too high" starting at level 3, otherwise all reachable.
+    const highIdx = level >= 3 ? 0 : -1;
+
+    // Density: how full the shelves are (out of 1).
+    const density = Math.min(0.85, 0.55 + level * 0.012);
+    // Depth: chance any given cell has a back item too.
+    const depthChance = level >= 4 ? Math.min(0.32, 0.06 + (level - 4) * 0.015) : 0;
+
+    const shelves = [];
+    for (let r = 0; r < rowsTotal; r++) {
+      const cells = [];
+      const isHigh = r === highIdx;
+      for (let c = 0; c < cols; c++) {
+        let front = null, back = null;
+        if (Math.random() < density) {
+          front = items[Math.floor(Math.random() * items.length)].id;
+          if (!isHigh && Math.random() < depthChance) {
+            back = items[Math.floor(Math.random() * items.length)].id;
+          }
+        }
+        cells.push({ front, back });
+      }
+      shelves.push({ cols, cells, high: isHigh });
+    }
+    return { shelves, level, items };
+  }
+
+  // ---- Renderer ----
+  const stackEl = document.getElementById('shelf-stack');
+  const hudLevel = document.getElementById('hud-level');
+  const hudItems = document.getElementById('hud-items');
+
+  function countItems(board) {
+    let n = 0;
+    for (const sh of board.shelves)
+      for (const c of sh.cells) {
+        if (c.front) n++;
+        if (c.back) n++;
+      }
+    return n;
+  }
+
+  function renderBoard(board) {
+    stackEl.innerHTML = '';
+    board.shelves.forEach((shelf, ri) => {
+      const shelfEl = document.createElement('div');
+      shelfEl.className = 'shelf' + (shelf.high ? ' high' : '');
+      shelfEl.style.setProperty('--cols', shelf.cols);
+      const row = document.createElement('div');
+      row.className = 'shelf-row';
+      shelf.cells.forEach((cell, ci) => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'cell';
+        cellEl.dataset.row = ri;
+        cellEl.dataset.col = ci;
+        if (cell.back) {
+          const back = document.createElement('div');
+          back.className = 'item back';
+          back.textContent = itemById(cell.back).e;
+          cellEl.appendChild(back);
+        }
+        if (cell.front) {
+          const front = document.createElement('div');
+          front.className = 'item front';
+          front.textContent = itemById(cell.front).e;
+          cellEl.appendChild(front);
+        }
+        row.appendChild(cellEl);
+      });
+      shelfEl.appendChild(row);
+      stackEl.appendChild(shelfEl);
+    });
+    hudLevel.textContent = board.level;
+    hudItems.textContent = countItems(board);
+  }
+
+  // Game state.
+  let state = null;
+
+  function startLevel(level) {
+    state = { board: makeBoard(level) };
+    renderBoard(state.board);
+  }
+
   document.getElementById('btn-start').addEventListener('click', () => {
     show('game');
+    startLevel(1);
   });
 
   // Expose helpers for later steps.
-  window.__shelf = { show, loadBest, saveBest, refreshRecord };
+  window.__shelf = { show, loadBest, saveBest, refreshRecord, startLevel, get state() { return state; }, renderBoard };
 })();
 </script>
 </body>

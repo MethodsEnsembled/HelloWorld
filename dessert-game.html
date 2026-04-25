@@ -191,6 +191,74 @@
     color: var(--accent);
     font-size: 18px;
   }
+
+  /* ---- Tap phase ---- */
+  .progress-row {
+    display: flex; gap: 8px; margin: 14px 0 6px;
+  }
+  .progress-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: rgba(74,37,72,0.15);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .progress-dot.done {
+    background: var(--accent);
+    transform: scale(1.2);
+  }
+
+  .tap-prompt {
+    margin: 4px 0 8px;
+    font-size: 13px; letter-spacing: 1px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .tap-prompt b { color: var(--ink); font-size: 16px; letter-spacing: 0; text-transform: none; }
+
+  .tap-grid {
+    margin: 8px 0 12px;
+    width: 100%;
+    max-width: 360px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  .tap-btn {
+    appearance: none; cursor: pointer;
+    background: var(--panel);
+    border: 2px solid transparent;
+    border-radius: 18px;
+    padding: 16px 10px 14px;
+    box-shadow: 0 5px 0 rgba(74,37,72,0.1);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: transform 0.08s, box-shadow 0.08s, opacity 0.25s, background 0.2s;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .tap-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 rgba(74,37,72,0.1);
+  }
+  .tap-btn .emoji {
+    font-size: 38px; line-height: 1;
+  }
+  .tap-btn .label {
+    font-size: 13px; font-weight: 700; line-height: 1.2;
+    text-align: center;
+  }
+  .tap-btn.tapped {
+    opacity: 0.35;
+    pointer-events: none;
+    background: rgba(255,255,255,0.55);
+    box-shadow: 0 2px 0 rgba(74,37,72,0.05);
+  }
+  .tap-btn.flash {
+    animation: flash 0.4s ease-out;
+  }
+  @keyframes flash {
+    0%   { background: var(--panel); }
+    35%  { background: #ffe49b; transform: scale(1.04) translateY(0); }
+    100% { background: var(--panel); }
+  }
 </style>
 </head>
 <body>
@@ -222,7 +290,13 @@
     </section>
 
     <section id="screen-tap" class="screen">
-      <p>Tap screen placeholder.</p>
+      <div class="recipe-header">
+        <div class="dessert-target" id="tap-emoji">🍰</div>
+        <h2 class="recipe-title" id="tap-name">Recipe</h2>
+      </div>
+      <div class="progress-row" id="tap-progress"></div>
+      <p class="tap-prompt">Tap the steps in order!</p>
+      <div class="tap-grid" id="tap-grid"></div>
     </section>
 
     <section id="screen-ending" class="screen">
@@ -378,7 +452,83 @@
     clearTimeout(memorizeTimer);
     memorizeTimer = null;
     show('tap');
-    // renderTap() comes in step 4
+    renderTap();
+  }
+
+  function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function renderTap() {
+    const r = state.recipe;
+    document.getElementById('tap-emoji').textContent = r.emoji;
+    document.getElementById('tap-name').textContent = r.name;
+
+    const progress = document.getElementById('tap-progress');
+    progress.innerHTML = '';
+    r.steps.forEach(() => {
+      const d = document.createElement('div');
+      d.className = 'progress-dot';
+      progress.appendChild(d);
+    });
+
+    const grid = document.getElementById('tap-grid');
+    grid.innerHTML = '';
+
+    // Shuffle the visual order, but each button still references its true
+    // step index in the recipe so we can score by tap sequence.
+    const order = shuffled(r.steps.map((_, i) => i));
+    // Re-shuffle once if the random order happens to match the recipe order;
+    // that would be a freebie.
+    const isIdentity = order.every((idx, i) => idx === i);
+    const finalOrder = isIdentity && r.steps.length > 1 ? shuffled(order) : order;
+
+    finalOrder.forEach(stepIndex => {
+      const step = r.steps[stepIndex];
+      const btn = document.createElement('button');
+      btn.className = 'tap-btn';
+      btn.dataset.stepIndex = stepIndex;
+      btn.innerHTML = `
+        <span class="emoji">${step.emoji}</span>
+        <span class="label">${step.label}</span>
+      `;
+      btn.addEventListener('click', () => onTap(btn, stepIndex));
+      grid.appendChild(btn);
+    });
+  }
+
+  function onTap(btn, stepIndex) {
+    if (btn.classList.contains('tapped')) return;
+    btn.classList.add('tapped', 'flash');
+    state.taps.push(stepIndex);
+
+    // Update progress row.
+    const dots = document.querySelectorAll('#tap-progress .progress-dot');
+    const dot = dots[state.taps.length - 1];
+    if (dot) dot.classList.add('done');
+
+    if (state.taps.length === state.recipe.steps.length) {
+      // Brief pause so the last tap feels "completed".
+      setTimeout(finishRound, 450);
+    }
+  }
+
+  function finishRound() {
+    const correct = state.taps.every((stepIndex, i) => stepIndex === i);
+    show('ending');
+    renderEnding(correct);
+  }
+
+  function renderEnding(success) {
+    // placeholder until step 5 fills this in
+    screens.ending.textContent = success
+      ? 'You made: ' + state.recipe.name + ' ' + state.recipe.emoji
+      : 'Goop! :(';
   }
 
   document.getElementById('btn-start').addEventListener('click', startRound);

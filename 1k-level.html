@@ -214,7 +214,96 @@
     playing: false,
     bricks: [],        // { x, y, w, h, value, color }
     field: { w: 0, h: 0 },
+    ball: null,        // { x, y, vx, vy, r, value, launched }
+    lastFrame: 0,
   };
+
+  // ---------------- Ball ----------------
+  const BALL_R = 14;
+  const LAUNCH_SPEED = 360;   // px/s for the first launch
+
+  function spawnBall() {
+    // Place in the lower play area, away from bricks. Random within an inset.
+    const W = state.field.w, H = state.field.h;
+    const topMargin = H * 0.55;
+    const bottomMargin = H * 0.85;
+    state.ball = {
+      x: BALL_R + 16 + Math.random() * (W - BALL_R * 2 - 32),
+      y: topMargin + Math.random() * (bottomMargin - topMargin),
+      vx: 0, vy: 0,
+      r: BALL_R,
+      value: 1,
+      launched: false,
+    };
+  }
+
+  function launchBall() {
+    if (!state.ball || state.ball.launched) return;
+    // Random direction biased upward (toward bricks).
+    const angle = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI * 0.7);
+    state.ball.vx = Math.cos(angle) * LAUNCH_SPEED;
+    state.ball.vy = Math.sin(angle) * LAUNCH_SPEED;
+    state.ball.launched = true;
+  }
+
+  function updateBall(dt) {
+    const b = state.ball;
+    if (!b || !b.launched) return;
+    b.x += b.vx * dt;
+    b.y += b.vy * dt;
+    // Wall bounces: left, right, top. Bottom is handled later (danger zone).
+    if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
+    if (b.x + b.r > state.field.w) { b.x = state.field.w - b.r; b.vx = -Math.abs(b.vx); }
+    if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
+    // Bottom (will be replaced with danger-platform logic in a later commit):
+    if (b.y + b.r > state.field.h) { b.y = state.field.h - b.r; b.vy = -Math.abs(b.vy); }
+  }
+
+  function drawBall() {
+    const b = state.ball;
+    if (!b) return;
+    ctx.save();
+    // Soft glow
+    ctx.shadowColor = '#ffd166';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Inner highlight
+    const grd = ctx.createRadialGradient(b.x - b.r * 0.4, b.y - b.r * 0.4, 1, b.x, b.y, b.r);
+    grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grd.addColorStop(1, 'rgba(255,209,102,0.3)');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+    // Value label floating above the ball
+    const label = String(b.value);
+    const fontSize = 14;
+    ctx.font = `800 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const labelY = b.y - b.r - 4;
+    const tw = ctx.measureText(label).width + 10;
+    const th = fontSize + 4;
+    ctx.fillStyle = 'rgba(13, 16, 36, 0.85)';
+    roundRect(ctx, b.x - tw / 2, labelY - th, tw, th, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffd166';
+    ctx.fillText(label, b.x, labelY - 2);
+    // Pulse if not yet launched: hint that it's tappable.
+    if (!b.launched) {
+      const pulse = (Math.sin(performance.now() / 200) + 1) / 2;
+      ctx.strokeStyle = `rgba(255, 209, 102, ${0.25 + pulse * 0.5})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r + 6 + pulse * 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 
   // ---------------- Bricks ----------------
   // Build a pyramid: wider+higher-value bricks at top, narrowing as we go.
@@ -309,7 +398,7 @@
     c.closePath();
   }
 
-  // Render the whole frame. Future commits add ball + danger platform.
+  // Render the whole frame. Future commits add the danger platform.
   function render() {
     const W = state.field.w, H = state.field.h;
     ctx.clearRect(0, 0, W, H);
@@ -317,7 +406,48 @@
     ctx.fillStyle = 'rgba(255,255,255,0.02)';
     ctx.fillRect(0, 0, W, H);
     drawBricks();
+    drawBall();
   }
+
+  // ---------------- Game loop ----------------
+  function frame(t) {
+    if (!state.playing) return;
+    if (!state.lastFrame) state.lastFrame = t;
+    const dt = Math.min(0.05, (t - state.lastFrame) / 1000);
+    state.lastFrame = t;
+    updateBall(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------------- Input ----------------
+  function localPoint(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return { x: clientX - r.left, y: clientY - r.top };
+  }
+  function pointInBall(p) {
+    const b = state.ball;
+    if (!b) return false;
+    const dx = p.x - b.x, dy = p.y - b.y;
+    // Generous hit radius for fingers.
+    return dx * dx + dy * dy <= (b.r + 14) * (b.r + 14);
+  }
+
+  function onTap(p) {
+    if (!state.playing) return;
+    if (!state.ball) return;
+    if (!state.ball.launched && pointInBall(p)) {
+      launchBall();
+    }
+  }
+
+  canvas.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    onTap(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('mousedown', e => {
+    onTap(localPoint(e.clientX, e.clientY));
+  });
 
   function showOverlay(title, text, btnLabel) {
     modalTitle.textContent = title;
@@ -343,14 +473,15 @@
     state.score = 0;
     state.ballsLeft = 10;
     state.playing = true;
+    state.lastFrame = 0;
     levelEl.textContent = state.level;
     scoreEl.textContent = state.score;
     ballsEl.textContent = state.ballsLeft;
     fitCanvas();
     buildBricks(state.level);
-    render();
+    spawnBall();
     hideOverlay();
-    // Future commits: spawn ball + kick off RAF physics loop.
+    requestAnimationFrame(frame);
   }
 
   modalBtn.addEventListener('click', startGame);

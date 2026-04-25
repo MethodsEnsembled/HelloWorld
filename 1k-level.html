@@ -199,6 +199,10 @@
     canvas.style.width  = r.width  + 'px';
     canvas.style.height = r.height + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    state.field.w = r.width;
+    state.field.h = r.height;
+    if (state.bricks.length) buildBricks(state.level);
+    if (state.playing || state.bricks.length) render();
   }
   window.addEventListener('resize', fitCanvas);
 
@@ -208,7 +212,112 @@
     score: 0,
     ballsLeft: 10,
     playing: false,
+    bricks: [],        // { x, y, w, h, value, color }
+    field: { w: 0, h: 0 },
   };
+
+  // ---------------- Bricks ----------------
+  // Build a pyramid: wider+higher-value bricks at top, narrowing as we go.
+  // Layout adapts to canvas width so it works on any phone.
+  function buildBricks(level) {
+    const W = state.field.w;
+    const H = state.field.h;
+    state.bricks.length = 0;
+
+    // Per-level scaling: base values grow; row count grows slowly.
+    const valueScale = Math.pow(1.35, level - 1);
+    // Descending base values, 6 rows. Values shown on the photo: 150K / 120K / 90K / 60K / 30K, plus a tiny 30K cap.
+    const rowSpec = [
+      { v: 150000, frac: 0.92 },
+      { v: 120000, frac: 0.84 },
+      { v:  90000, frac: 0.72 },
+      { v:  60000, frac: 0.58 },
+      { v:  30000, frac: 0.46 },
+      { v:  15000, frac: 0.34 },
+    ];
+
+    // Reserve top 55% of the field for bricks; leave the rest for ball play.
+    const top = H * 0.04;
+    const brickH = Math.max(22, Math.min(34, H * 0.05));
+    const gap = 6;
+
+    const colors = ['#ff5277', '#ff8a3d', '#ffd166', '#a3e635', '#5fd4ff', '#a06cff'];
+
+    rowSpec.forEach((row, i) => {
+      const w = W * row.frac;
+      const x = (W - w) / 2;
+      const y = top + i * (brickH + gap);
+      state.bricks.push({
+        x, y, w, h: brickH,
+        value: Math.round(row.v * valueScale),
+        max: Math.round(row.v * valueScale),
+        color: colors[i % colors.length],
+      });
+    });
+  }
+
+  function fmt(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
+    if (n >= 1000)      return (n / 1000).toFixed(n >= 10_000 ? 0 : 1) + 'K';
+    return Math.max(0, n) | 0;
+  }
+
+  function drawBricks() {
+    for (const b of state.bricks) {
+      if (b.value <= 0) continue;
+      // Fill: gradient that fades as the brick takes damage.
+      const damage = 1 - b.value / b.max;
+      const r = 6;
+      ctx.save();
+      // Soft outer glow so they pop against the dark sky.
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = b.color;
+      roundRect(ctx, b.x, b.y, b.w, b.h, r);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // Damage scrim
+      if (damage > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${0.45 * damage})`;
+        roundRect(ctx, b.x, b.y, b.w, b.h, r);
+        ctx.fill();
+      }
+      // Border
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      roundRect(ctx, b.x + 0.75, b.y + 0.75, b.w - 1.5, b.h - 1.5, r - 1);
+      ctx.stroke();
+      // Value label
+      ctx.fillStyle = '#0d1024';
+      const fontSize = Math.max(13, Math.min(18, b.h * 0.55));
+      ctx.font = `800 ${fontSize}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(fmt(b.value), b.x + b.w / 2, b.y + b.h / 2 + 1);
+      ctx.restore();
+    }
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.arcTo(x + w, y,     x + w, y + h, r);
+    c.arcTo(x + w, y + h, x,     y + h, r);
+    c.arcTo(x,     y + h, x,     y,     r);
+    c.arcTo(x,     y,     x + w, y,     r);
+    c.closePath();
+  }
+
+  // Render the whole frame. Future commits add ball + danger platform.
+  function render() {
+    const W = state.field.w, H = state.field.h;
+    ctx.clearRect(0, 0, W, H);
+    // Background field outline
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    ctx.fillRect(0, 0, W, H);
+    drawBricks();
+  }
 
   function showOverlay(title, text, btnLabel) {
     modalTitle.textContent = title;
@@ -237,16 +346,19 @@
     levelEl.textContent = state.level;
     scoreEl.textContent = state.score;
     ballsEl.textContent = state.ballsLeft;
+    fitCanvas();
+    buildBricks(state.level);
+    render();
     hideOverlay();
-    // Future commits: reset bricks, spawn ball, kick off RAF loop.
+    // Future commits: spawn ball + kick off RAF physics loop.
   }
 
   modalBtn.addEventListener('click', startGame);
 
-  // Initial paint so the canvas isn't blank under the splash.
+  // Initial paint with a preview brick stack so the splash has scenery behind it.
   fitCanvas();
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
-  ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  buildBricks(1);
+  render();
 
   showOverlay('1K LEVEL', 'Pick difficulty: tiny / medium / wide platform at the bottom.', 'Start');
 })();

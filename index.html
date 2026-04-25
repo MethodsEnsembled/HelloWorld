@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1033">
+<title>Diamond 2048</title>
+<style>
+  :root {
+    --bg: #1a1033;
+    --panel: #2a1a4a;
+    --cell: rgba(255,255,255,0.05);
+    --text: #f6f3ff;
+    --accent: #ffd166;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, var(--bg) 60%, #0a0520 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100vh;
+  }
+  header {
+    width: 100%; max-width: 520px;
+    padding: 14px 18px 6px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  h1 {
+    margin: 0; font-size: clamp(18px, 4.5vw, 26px);
+    letter-spacing: 2px; font-weight: 800;
+    background: linear-gradient(135deg, #ffd166, #ef476f, #06d6a0);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stats { display: flex; gap: 8px; }
+  .stat {
+    background: var(--panel); border-radius: 10px;
+    padding: 6px 12px; font-size: 11px; text-align: center;
+    min-width: 56px; line-height: 1.2;
+    opacity: 0.95;
+  }
+  .stat b { display: block; font-size: 16px; color: var(--accent); }
+
+  /* The play area is a square that holds the rotated diamond board plus
+     four corner arrow buttons. */
+  .play {
+    flex: 1;
+    width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px;
+    touch-action: none;
+  }
+  .stage {
+    position: relative;
+    width: min(92vmin, 460px);
+    height: min(92vmin, 460px);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .board {
+    /* Square rotated 45° => its on-screen diagonal = side. We want the
+       diamond to fit inside the stage, so side = stageSize / sqrt(2). */
+    width: 70.7%;
+    height: 70.7%;
+    transform: rotate(45deg);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 5px;
+    padding: 5px;
+    background: var(--panel);
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+  }
+  .cell {
+    background: var(--cell);
+    border-radius: 5px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile {
+    position: absolute; inset: 0;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.35);
+    animation: pop 0.16s ease-out;
+  }
+  /* Only the number is counter-rotated, so the tile shape itself
+     remains a diamond matching the cell. */
+  .tile span {
+    display: inline-block;
+    transform: rotate(-45deg);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+  @keyframes pop {
+    0%   { transform: scale(0.4); }
+    70%  { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+  .tile span { font-size: clamp(11px, 3.0vmin, 18px); }
+  .tile.d3 span { font-size: clamp(13px, 3.5vmin, 22px); }
+  .tile.d2 span { font-size: clamp(16px, 4.2vmin, 28px); }
+  .tile.d1 span { font-size: clamp(20px, 5vmin, 32px); }
+
+  /* Hot -> cool palette. Reaching 2 is gold. */
+  .v2048 { background: linear-gradient(135deg, #8b0000, #ff2e4d); color: #fff; }
+  .v1024 { background: linear-gradient(135deg, #b8390e, #ff6b35); color: #fff; }
+  .v512  { background: linear-gradient(135deg, #c77800, #ff9f1c); color: #fff; }
+  .v256  { background: linear-gradient(135deg, #9a8200, #ffd23f); color: #222; }
+  .v128  { background: linear-gradient(135deg, #5a8f00, #a8dc00); color: #222; }
+  .v64   { background: linear-gradient(135deg, #007f3f, #06d6a0); color: #fff; }
+  .v32   { background: linear-gradient(135deg, #007c8f, #00b7d4); color: #fff; }
+  .v16   { background: linear-gradient(135deg, #0b3d91, #118ab2); color: #fff; }
+  .v8    { background: linear-gradient(135deg, #3a0ca3, #7209b7); color: #fff; }
+  .v4    { background: linear-gradient(135deg, #6a1b9a, #c77dff); color: #fff; }
+  .v2    {
+    background: linear-gradient(135deg, #ffd700, #fff3a0); color: #222;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4), 0 0 24px #ffd70088;
+  }
+
+  /* Four corner arrow buttons positioned at the diamond's tips. */
+  .arrow {
+    position: absolute;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.1s, transform 0.1s;
+  }
+  .arrow:active { background: var(--accent); color: #1a1033; transform: scale(0.92); }
+  .arrow.ne { top: 8%;     right: 8%; }
+  .arrow.nw { top: 8%;     left: 8%; }
+  .arrow.se { bottom: 8%;  right: 8%; }
+  .arrow.sw { bottom: 8%;  left: 8%; }
+
+  footer {
+    width: 100%; max-width: 520px;
+    padding: 8px 18px 16px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .help {
+    font-size: 12px; opacity: 0.7; text-align: center; line-height: 1.4;
+  }
+  button.primary {
+    background: var(--accent); color: #1a1033;
+    border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  button.primary:active { transform: scale(0.97); }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(10, 5, 30, 0.85);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 24px 28px;
+    text-align: center;
+    max-width: 300px;
+  }
+  .modal h2 { margin: 0 0 10px; color: var(--accent); }
+  .modal p { margin: 0 0 16px; opacity: 0.85; font-size: 14px; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>DIAMOND 2048</h1>
+    <div class="stats">
+      <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="stat">BEST<b id="best">0</b></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <button class="arrow nw" data-dir="left"  aria-label="Up-left">↖</button>
+      <button class="arrow ne" data-dir="up"    aria-label="Up-right">↗</button>
+      <button class="arrow sw" data-dir="down"  aria-label="Down-left">↙</button>
+      <button class="arrow se" data-dir="right" aria-label="Down-right">↘</button>
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="help">
+      Swipe diagonally or tap the corner arrows. Matching tiles merge and <b>halve</b>. Reach <b>2</b> to win.
+    </div>
+    <button class="primary" id="newGame">New Game</button>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Game Over</h2>
+      <p id="modalText">No more moves.</p>
+      <button class="primary" id="modalBtn">Play Again</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const SIZE = 4;
+  const START_VALUE = 2048;
+  const WIN_VALUE = 2;
+
+  let board, score, best, won, over;
+
+  const boardEl = document.getElementById('board');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+
+  best = parseInt(localStorage.getItem('d2048_best') || '0', 10);
+
+  function newGame() {
+    board = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+    score = 0;
+    won = false;
+    over = false;
+    spawn(); spawn();
+    render();
+    overlay.classList.remove('show');
+  }
+
+  function spawn() {
+    const empty = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] === 0) empty.push([r, c]);
+    if (!empty.length) return;
+    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    board[r][c] = Math.random() < 0.9 ? START_VALUE : START_VALUE / 2;
+  }
+
+  function slideRow(row) {
+    const nz = row.filter(v => v !== 0);
+    const out = [];
+    let gained = 0;
+    let i = 0;
+    while (i < nz.length) {
+      if (i + 1 < nz.length && nz[i] === nz[i+1] && nz[i] > WIN_VALUE) {
+        const merged = nz[i] / 2;
+        out.push(merged);
+        gained += nz[i];
+        if (merged === WIN_VALUE) won = true;
+        i += 2;
+      } else {
+        out.push(nz[i]);
+        i++;
+      }
+    }
+    while (out.length < SIZE) out.push(0);
+    return { row: out, gained };
+  }
+
+  const transpose = m => m[0].map((_, c) => m.map(r => r[c]));
+  const reverseRows = m => m.map(r => [...r].reverse());
+  function boardsEqual(a, b) {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (a[r][c] !== b[r][c]) return false;
+    return true;
+  }
+
+  function move(dir) {
+    if (over) return;
+    let b = board.map(r => [...r]);
+    if (dir === 'right') b = reverseRows(b);
+    else if (dir === 'up') b = transpose(b);
+    else if (dir === 'down') b = reverseRows(transpose(b));
+
+    let gained = 0;
+    b = b.map(row => {
+      const { row: nr, gained: g } = slideRow(row);
+      gained += g;
+      return nr;
+    });
+
+    if (dir === 'right') b = reverseRows(b);
+    else if (dir === 'up') b = transpose(b);
+    else if (dir === 'down') b = transpose(reverseRows(b));
+
+    if (boardsEqual(board, b)) return;
+    board = b;
+    score += gained;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('d2048_best', String(best));
+    }
+    spawn();
+    render();
+    if (won) {
+      showModal('You reached 2!', 'Tiny gold tile achieved. Keep playing or start over.');
+      won = false;
+      return;
+    }
+    if (!anyMovesLeft()) {
+      over = true;
+      showModal('Game Over', 'No more diagonal merges. Score: ' + score);
+    }
+  }
+
+  function anyMovesLeft() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] === 0) return true;
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        const v = board[r][c];
+        if (v <= WIN_VALUE) continue;
+        if (c+1 < SIZE && board[r][c+1] === v) return true;
+        if (r+1 < SIZE && board[r+1][c] === v) return true;
+      }
+    return false;
+  }
+
+  function digitClass(v) {
+    const n = String(v).length;
+    return 'd' + Math.max(1, Math.min(4, 5 - n));
+  }
+
+  function render() {
+    boardEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const v = board[r][c];
+        if (v > 0) {
+          const tile = document.createElement('div');
+          tile.className = `tile v${v} ${digitClass(v)}`;
+          const span = document.createElement('span');
+          span.textContent = v;
+          tile.appendChild(span);
+          cell.appendChild(tile);
+        }
+        boardEl.appendChild(cell);
+      }
+    }
+    scoreEl.textContent = score;
+    bestEl.textContent = best;
+  }
+
+  function showModal(title, text) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    overlay.classList.add('show');
+  }
+
+  // ---------- Input ----------
+  // The board is rotated 45° clockwise, so each grid axis points to a
+  // screen diagonal:
+  //   grid 'up'    (row--) -> screen NE
+  //   grid 'right' (col++) -> screen SE
+  //   grid 'down'  (row++) -> screen SW
+  //   grid 'left'  (col--) -> screen NW
+  // Snap any swipe to the nearest of those 4 screen diagonals.
+  const DIAGONALS = [
+    { angle: -135, dir: 'left'  }, // NW
+    { angle:  -45, dir: 'up'    }, // NE
+    { angle:   45, dir: 'right' }, // SE
+    { angle:  135, dir: 'down'  }, // SW
+  ];
+
+  function handleSwipe(dx, dy) {
+    const dist = Math.hypot(dx, dy);
+    if (dist < 24) return;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    let best = DIAGONALS[0], bestDiff = 999;
+    for (const d of DIAGONALS) {
+      let diff = Math.abs(((angle - d.angle + 540) % 360) - 180);
+      if (diff < bestDiff) { bestDiff = diff; best = d; }
+    }
+    move(best.dir);
+  }
+
+  // Listen on the whole document so the user has a generous swipe area.
+  let touchStart = null;
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('button')) return;
+    const t = e.changedTouches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    handleSwipe(t.clientX - touchStart.x, t.clientY - touchStart.y);
+    touchStart = null;
+  }, { passive: true });
+
+  // Mouse drag for desktop testing.
+  let mouseStart = null;
+  document.addEventListener('mousedown', e => {
+    if (e.target.closest('button')) return;
+    mouseStart = { x: e.clientX, y: e.clientY };
+  });
+  document.addEventListener('mouseup', e => {
+    if (!mouseStart) return;
+    handleSwipe(e.clientX - mouseStart.x, e.clientY - mouseStart.y);
+    mouseStart = null;
+  });
+
+  // Keyboard: arrows and WASD map naturally to the 4 diagonals.
+  window.addEventListener('keydown', e => {
+    const k = e.key;
+    if (k === 'ArrowUp'    || k === 'w' || k === 'W') { move('up');    e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { move('right'); e.preventDefault(); }
+    else if (k === 'ArrowDown'  || k === 's' || k === 'S') { move('down');  e.preventDefault(); }
+    else if (k === 'ArrowLeft'  || k === 'a' || k === 'A') { move('left');  e.preventDefault(); }
+    else if (k === 'n' || k === 'N') newGame();
+  });
+
+  // Corner arrow buttons.
+  document.querySelectorAll('.arrow').forEach(btn => {
+    btn.addEventListener('click', () => move(btn.dataset.dir));
+  });
+
+  document.getElementById('newGame').addEventListener('click', newGame);
+  document.getElementById('modalBtn').addEventListener('click', newGame);
+
+  newGame();
+})();
+</script>
+</body>
+</html>

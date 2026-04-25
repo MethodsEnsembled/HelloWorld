@@ -426,13 +426,13 @@
     state.ball.launched = true;
   }
 
-  // Tuned so every brick is roughly the same difficulty — per-brick
-  // hits are governed only by ball.value vs brick.value, with no
-  // brick-of-the-day reward that lets a kill snowball the next brick.
-  // Per-hit grow ramps DOWN at 0.85x per level, so it falls behind the
-  // 1.15x brick scale at high levels and the run becomes a real grind.
+  // Per-hit grow scales 1.75x per level — slower than the 2.5x brick
+  // scale, so per-brick hits drift up as you climb (L1 ~6, L20 ~95).
+  // The ball's preserved value carries between levels so the player
+  // feels the power they earned, but the steeper brick growth keeps
+  // each level meaningfully harder than the last.
   function ballGrowRoll() {
-    const baseAvg = 900 * Math.pow(0.85, state.level - 1);
+    const baseAvg = 900 * Math.pow(1.75, state.level - 1);
     const lo = Math.max(1, Math.round(baseAvg * 0.4));
     const hi = Math.max(lo + 1, Math.round(baseAvg * 1.6));
     return lo + Math.floor(Math.random() * (hi - lo + 1));
@@ -557,7 +557,11 @@
     state.ballsLeft = 10;
     ballsEl.textContent = state.ballsLeft;
     buildBricks(state.level);
-    spawnBall();
+    // Preserve the power earned in the previous level — this is the
+    // whole point of climbing. Brick scaling outpaces ball growth so
+    // each new level still adds challenge.
+    const carry = state.ball ? state.ball.value : 1;
+    spawnBall(carry);
   }
 
   // Difficulty -> bottom-platform width (fraction of field width).
@@ -695,10 +699,11 @@
     const H = state.field.h;
     state.bricks.length = 0;
 
-    // Per-level scaling: gentle so level 10+ stays reachable. The ball
-    // grows quickly thanks to the destruction bonus, so a milder brick
-    // ramp keeps clears feeling possible without being trivial.
-    const valueScale = Math.pow(1.15, level - 1);
+    // Per-level scaling: aggressive 2.5x so the run rapidly climbs
+    // from K -> M -> B -> T territory while the ball power (also
+    // scaling fast) keeps per-brick hits roughly comparable. By L11
+    // the top brick is in the billions; by L20 in the trillions.
+    const valueScale = Math.pow(2.5, level - 1);
     // Descending base values, 6 rows. Values shown on the photo: 150K / 120K / 90K / 60K / 30K, plus a tiny 30K cap.
     const rowSpec = [
       { v: 150000, frac: 0.92 },
@@ -730,8 +735,11 @@
   }
 
   function fmt(n) {
-    if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
-    if (n >= 1000)      return (n / 1000).toFixed(n >= 10_000 ? 0 : 1) + 'K';
+    if (n >= 1e15) return (n / 1e15).toFixed(n >= 1e16 ? 0 : 1) + 'Q';
+    if (n >= 1e12) return (n / 1e12).toFixed(n >= 1e13 ? 0 : 1) + 'T';
+    if (n >= 1e9)  return (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B';
+    if (n >= 1e6)  return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M';
+    if (n >= 1e3)  return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K';
     return Math.max(0, n) | 0;
   }
 

@@ -197,10 +197,10 @@
 
   <div class="play" id="play">
     <div class="stage" id="stage">
-      <button class="arrow nw" data-dir="up"    aria-label="Up-left">↖</button>
-      <button class="arrow ne" data-dir="right" aria-label="Up-right">↗</button>
-      <button class="arrow sw" data-dir="left"  aria-label="Down-left">↙</button>
-      <button class="arrow se" data-dir="down"  aria-label="Down-right">↘</button>
+      <button class="arrow nw" data-dir="left"  aria-label="Up-left">↖</button>
+      <button class="arrow ne" data-dir="up"    aria-label="Up-right">↗</button>
+      <button class="arrow sw" data-dir="down"  aria-label="Down-left">↙</button>
+      <button class="arrow se" data-dir="right" aria-label="Down-right">↘</button>
       <div class="board" id="board"></div>
     </div>
   </div>
@@ -373,17 +373,18 @@
   }
 
   // ---------- Input ----------
-  // Snap any swipe to the nearest of the 4 screen-diagonals.
-  // Screen y is positive downward, so:
-  //   NW (-135°) -> grid 'up'
-  //   NE  (-45°) -> grid 'right'
-  //   SE   (45°) -> grid 'down'
-  //   SW  (135°) -> grid 'left'
+  // The board is rotated 45° clockwise, so each grid axis points to a
+  // screen diagonal:
+  //   grid 'up'    (row--) -> screen NE
+  //   grid 'right' (col++) -> screen SE
+  //   grid 'down'  (row++) -> screen SW
+  //   grid 'left'  (col--) -> screen NW
+  // Snap any swipe to the nearest of those 4 screen diagonals.
   const DIAGONALS = [
-    { angle: -135, dir: 'up' },
-    { angle:  -45, dir: 'right' },
-    { angle:   45, dir: 'down' },
-    { angle:  135, dir: 'left' },
+    { angle: -135, dir: 'left'  }, // NW
+    { angle:  -45, dir: 'up'    }, // NE
+    { angle:   45, dir: 'right' }, // SE
+    { angle:  135, dir: 'down'  }, // SW
   ];
 
   function handleSwipe(dx, dy) {

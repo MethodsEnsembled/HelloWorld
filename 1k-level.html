@@ -324,18 +324,77 @@
     b.value += ballGrowRoll();
   }
 
+  // Difficulty -> bottom-platform width (fraction of field width).
+  // Easy = tiny target, Hard = wide target.
+  const PLATFORM_FRAC = { E: 0.18, M: 0.40, H: 0.70 };
+  const PLATFORM_H = 14;
+
+  function platformRect() {
+    const W = state.field.w, H = state.field.h;
+    const frac = PLATFORM_FRAC[state.diff] || 0.4;
+    const w = W * frac;
+    return { x: (W - w) / 2, y: H - PLATFORM_H, w, h: PLATFORM_H };
+  }
+
+  function loseBall() {
+    state.ballsLeft -= 1;
+    ballsEl.textContent = state.ballsLeft;
+    if (state.ballsLeft <= 0) return gameOver();
+    spawnBall();
+  }
+
+  function gameOver() {
+    state.playing = false;
+    showOverlay('GAME OVER', `Score: ${state.score}  •  Level: ${state.level}`, 'Play again');
+  }
+
   function updateBall(dt) {
     const b = state.ball;
     if (!b || !b.launched) return;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
-    // Wall bounces: left, right, top. Bottom is the placeholder bounce
-    // until the danger platform commit lands.
+    // Side walls and ceiling: standard bounces.
     if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
     if (b.x + b.r > state.field.w) { b.x = state.field.w - b.r; b.vx = -Math.abs(b.vx); }
     if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
-    if (b.y + b.r > state.field.h) { b.y = state.field.h - b.r; b.vy = -Math.abs(b.vy); }
+    // Bottom: anywhere along the floor that ISN'T inside the danger platform
+    // is a regular bouncy wall. The danger platform itself destroys the ball.
+    if (b.y + b.r > state.field.h) {
+      const plat = platformRect();
+      if (b.x >= plat.x && b.x <= plat.x + plat.w) {
+        loseBall();
+        return;
+      }
+      b.y = state.field.h - b.r;
+      b.vy = -Math.abs(b.vy);
+    }
     handleBrickCollisions();
+  }
+
+  function drawPlatform() {
+    const p = platformRect();
+    ctx.save();
+    // Hatched warning stripes
+    ctx.fillStyle = '#3a0a14';
+    roundRect(ctx, p.x, p.y, p.w, p.h, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ff5277';
+    ctx.lineWidth = 3;
+    roundRect(ctx, p.x + 1.5, p.y + 1.5, p.w - 3, p.h - 3, 3);
+    ctx.stroke();
+    // Diagonal danger stripes
+    ctx.beginPath();
+    ctx.rect(p.x, p.y, p.w, p.h);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(255, 82, 119, 0.55)';
+    ctx.lineWidth = 2;
+    for (let x = p.x - p.h; x < p.x + p.w; x += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x, p.y);
+      ctx.lineTo(x + p.h, p.y + p.h);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function drawBall() {
@@ -485,6 +544,7 @@
     ctx.fillStyle = 'rgba(255,255,255,0.02)';
     ctx.fillRect(0, 0, W, H);
     drawBricks();
+    drawPlatform();
     drawBall();
     drawAim();
   }

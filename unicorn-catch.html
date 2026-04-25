@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffb6e1">
+<title>Unicorn Catch</title>
+<style>
+  :root {
+    --sky-top: #ffd6f5;
+    --sky-mid: #c9b3ff;
+    --sky-bot: #a3d8ff;
+    --grass: #7ed957;
+    --panel: rgba(255,255,255,0.6);
+    --text: #4a2871;
+    --accent: #ff6fb5;
+    --gold: #ffd166;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    overflow: hidden;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Comic Sans MS", sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bot) 100%);
+  }
+
+  header {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    display: flex; align-items: center; gap: 8px;
+    z-index: 5;
+  }
+  .back, .mute {
+    background: var(--panel);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .back:active, .mute:active { background: var(--accent); color: white; }
+  .stats {
+    flex: 1;
+    display: flex; justify-content: space-around; align-items: center;
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: 2px solid white;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .stats .lives { letter-spacing: 2px; }
+
+  /* Stage = play area between header and ground */
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Ground strip at bottom */
+  .ground {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 18%;
+    background: linear-gradient(180deg, #b8e986 0%, var(--grass) 100%);
+    border-top: 4px solid #5fb83a;
+    z-index: 1;
+  }
+
+  /* Player anchored above the ground */
+  .player {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 130px; height: 100px;
+    z-index: 3;
+    transition: transform 0.05s linear;
+    pointer-events: none;
+  }
+  .player .label {
+    position: absolute;
+    bottom: -14px; left: 50%; transform: translateX(-50%);
+    background: white;
+    border: 2px solid var(--accent);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--accent);
+  }
+
+  /* Falling entities */
+  .faller {
+    position: absolute;
+    width: 90px; height: 70px;
+    z-index: 2;
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  /* Banner showing what to catch */
+  .target-banner {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    background: var(--panel);
+    border: 2px solid white;
+    border-radius: 999px;
+    padding: 4px 10px 4px 6px;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 4;
+    white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .target-banner svg { display: block; }
+
+  /* Splash / game-over overlay */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(74, 40, 113, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: white;
+    border: 4px solid var(--accent);
+    border-radius: 24px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 86%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 24px; }
+  .modal p { margin: 0 0 14px; font-size: 14px; }
+  .modal button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .modal button:active { transform: scale(0.96); }
+
+  /* Catch feedback */
+  .pop {
+    position: absolute;
+    pointer-events: none;
+    font-size: 26px;
+    font-weight: 800;
+    z-index: 6;
+    animation: popUp 0.7s ease-out forwards;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+  @keyframes popUp {
+    0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: translate(-50%, -60px) scale(1.3); opacity: 0; }
+  }
+  .sparkle {
+    position: absolute;
+    width: 14px; height: 14px;
+    pointer-events: none;
+    z-index: 6;
+    animation: sparkleOut 0.7s ease-out forwards;
+  }
+  @keyframes sparkleOut {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    50%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(1.3); opacity: 0; }
+  }
+  .player.happy { animation: bounce 0.4s ease-out; }
+  .player.sad   { animation: shake 0.4s ease-out; }
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    40% { transform: translateX(-50%) translateY(-12px); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(-50%) rotate(0); }
+    20% { transform: translateX(-50%) rotate(-6deg); }
+    60% { transform: translateX(-50%) rotate(6deg); }
+  }
+
+  /* Decorative clouds (CSS-only) */
+  .cloud {
+    position: absolute;
+    background: rgba(255,255,255,0.7);
+    border-radius: 999px;
+    filter: blur(0.3px);
+    z-index: 0;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html" aria-label="Back to home">←</a>
+    <div class="stats">
+      <span>⭐ <span id="score">0</span></span>
+      <span class="lives" id="lives">💖💖💖</span>
+    </div>
+    <button class="mute" id="muteBtn" aria-label="Mute">🔊</button>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="cloud" style="top:10%; left:10%; width:60px; height:22px;"></div>
+    <div class="cloud" style="top:24%; right:8%; width:80px; height:28px;"></div>
+    <div class="cloud" style="top:42%; left:30%; width:50px; height:20px;"></div>
+    <div class="target-banner"><span id="targetMini"></span>Catch: <span id="targetName">…</span></div>
+    <div class="ground"></div>
+    <div class="player" id="player">
+      <div class="label" id="playerLabel">me</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Unicorn Catch</h2>
+      <p id="modalText">Hold and slide to move. Catch the matching princesses!</p>
+      <button id="modalBtn">Start</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------------- Characters ----------------
+  // Three princess+unicorn pairs. Each has distinctive colors so a 4-yo
+  // can recognize them at a glance.
+  const CHARACTERS = [
+    {
+      id: 'elsa', name: 'Elsa',
+      princess: { skin: '#fce0c2', hair: '#e8eef7', dress: '#9ad8ee', accent: '#5aa9d6', style: 'sideBraid' },
+      unicorn:  { body: '#ffffff', mane: '#a5d8ff', tail: '#a5d8ff', horn: '#ffd166' }
+    },
+    {
+      id: 'anna', name: 'Anna',
+      princess: { skin: '#fce0c2', hair: '#c87a4d', dress: '#3a8a7a', accent: '#d62c5b', style: 'twinBraids' },
+      unicorn:  { body: '#ffd9ec', mane: '#a06cd5', tail: '#a06cd5', horn: '#ffd166' }
+    },
+    {
+      id: 'rapunzel', name: 'Rapunzel',
+      princess: { skin: '#fce0c2', hair: '#f4d35e', dress: '#9b6bb0', accent: '#5aa75a', style: 'longFlow' },
+      unicorn:  { body: '#fff3a0', mane: '#ff6fb5', tail: '#ff6fb5', horn: '#ffd166' }
+    }
+  ];
+
+  // Build an SVG markup for a character, side-view: unicorn (facing right)
+  // with a princess sitting on its back. Size is the rendered width in px.
+  function characterSVG(char, sizePx) {
+    const { princess: p, unicorn: u } = char;
+    let hair = '';
+    if (p.style === 'sideBraid') {
+      // long braid hanging down on the right side
+      hair = `
+        <path d="M 18 8 Q 30 4 38 12 Q 36 18 30 18 L 18 18 Z" fill="${p.hair}"/>
+        <path d="M 32 16 Q 38 24 36 34 Q 34 38 32 36 Q 33 28 30 22 Z" fill="${p.hair}" stroke="${p.accent}" stroke-width="0.4"/>
+      `;
+    } else if (p.style === 'twinBraids') {
+      hair = `
+        <path d="M 16 8 Q 28 2 38 10 Q 38 16 32 18 L 18 18 Z" fill="${p.hair}"/>
+        <path d="M 14 14 Q 12 22 14 28 Q 16 26 17 22 Z" fill="${p.hair}"/>
+        <path d="M 38 14 Q 40 22 38 28 Q 36 26 35 22 Z" fill="${p.hair}"/>
+      `;
+    } else { // longFlow (Rapunzel)
+      hair = `
+        <path d="M 16 8 Q 28 2 38 10 Q 38 16 32 18 L 18 18 Z" fill="${p.hair}"/>
+        <path d="M 14 16 Q 8 30 14 44 Q 20 36 18 24 Z" fill="${p.hair}"/>
+        <path d="M 38 16 Q 44 30 38 44 Q 32 36 34 24 Z" fill="${p.hair}"/>
+      `;
+    }
+    return `
+<svg viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx * 100/120}">
+  <!-- Tail -->
+  <path d="M 28 60 Q 8 56 12 86" stroke="${u.tail}" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- Body -->
+  <ellipse cx="60" cy="62" rx="32" ry="14" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <!-- Legs -->
+  <rect x="34" y="72" width="6" height="16" rx="2" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <rect x="46" y="72" width="6" height="16" rx="2" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <rect x="64" y="72" width="6" height="16" rx="2" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <rect x="76" y="72" width="6" height="16" rx="2" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <!-- Hooves -->
+  <rect x="34" y="86" width="6" height="3" rx="1" fill="#6a4a2a"/>
+  <rect x="46" y="86" width="6" height="3" rx="1" fill="#6a4a2a"/>
+  <rect x="64" y="86" width="6" height="3" rx="1" fill="#6a4a2a"/>
+  <rect x="76" y="86" width="6" height="3" rx="1" fill="#6a4a2a"/>
+  <!-- Neck -->
+  <path d="M 82 56 L 90 44 L 96 46 L 88 60 Z" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <!-- Head -->
+  <ellipse cx="96" cy="44" rx="12" ry="9" fill="${u.body}" stroke="#dcd0e8" stroke-width="1"/>
+  <!-- Mane -->
+  <path d="M 86 38 Q 80 30 76 40 Q 72 32 68 42 Q 62 34 58 44" stroke="${u.mane}" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <!-- Horn -->
+  <polygon points="98,18 94,36 102,36" fill="${u.horn}" stroke="#c89d36" stroke-width="0.6"/>
+  <line x1="96" y1="22" x2="100" y2="32" stroke="#c89d36" stroke-width="0.6"/>
+  <!-- Eye -->
+  <circle cx="100" cy="44" r="1.6" fill="#1b1230"/>
+  <circle cx="100.6" cy="43.4" r="0.5" fill="white"/>
+  <!-- Smile -->
+  <path d="M 102 50 Q 105 52 107 49" stroke="#1b1230" stroke-width="0.8" fill="none"/>
+
+  <!-- Princess on back -->
+  <g transform="translate(36, 8)">
+    ${hair}
+    <!-- Face -->
+    <circle cx="28" cy="20" r="9" fill="${p.skin}"/>
+    <!-- Crown -->
+    <path d="M 21 12 L 24 7 L 27 12 L 30 7 L 33 12 L 33 14 L 21 14 Z" fill="${u.horn}" stroke="#c89d36" stroke-width="0.4"/>
+    <circle cx="24" cy="9" r="0.8" fill="#ff6fb5"/>
+    <circle cx="30" cy="9" r="0.8" fill="#5aa9d6"/>
+    <!-- Front hair fringe -->
+    <path d="M 19 17 Q 28 11 37 17" stroke="${p.hair}" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <!-- Eyes -->
+    <circle cx="25" cy="20" r="1.1" fill="#1b1230"/>
+    <circle cx="31" cy="20" r="1.1" fill="#1b1230"/>
+    <circle cx="25.3" cy="19.7" r="0.4" fill="white"/>
+    <circle cx="31.3" cy="19.7" r="0.4" fill="white"/>
+    <!-- Smile -->
+    <path d="M 25 24 Q 28 26 31 24" stroke="#9b3060" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    <!-- Cheeks -->
+    <circle cx="22" cy="23" r="1.2" fill="#ffb6c8" opacity="0.7"/>
+    <circle cx="34" cy="23" r="1.2" fill="#ffb6c8" opacity="0.7"/>
+    <!-- Body / dress (sitting position) -->
+    <path d="M 18 28 Q 28 36 38 28 L 36 44 L 20 44 Z" fill="${p.dress}" stroke="${p.accent}" stroke-width="1"/>
+    <!-- Arms -->
+    <path d="M 20 30 Q 14 36 18 42" stroke="${p.skin}" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M 36 30 Q 42 36 38 42" stroke="${p.skin}" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>`;
+  }
+
+  // ---------------- DOM refs ----------------
+  const stage = document.getElementById('stage');
+  const player = document.getElementById('player');
+  const playerLabel = document.getElementById('playerLabel');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalBtn = document.getElementById('modalBtn');
+  const targetNameEl = document.getElementById('targetName');
+
+  let state = {
+    score: 0, lives: 3, playing: false, target: null,
+    entities: [],            // {el, char, x, y, vy}
+    spawnTimer: 0,
+    spawnInterval: 1500,     // ms between spawns
+    fallSpeed: 110,          // px / sec
+    lastFrame: 0,
+    stageRect: null,
+  };
+
+  function setPlayerCharacter(char) {
+    state.target = char;
+    targetNameEl.textContent = char.name;
+    playerLabel.textContent = char.name;
+    // Insert SVG before the label so the label sits at the bottom of the player.
+    player.innerHTML = characterSVG(char, 130) + player.querySelector('.label').outerHTML;
+    const mini = document.getElementById('targetMini');
+    if (mini) mini.innerHTML = characterSVG(char, 32);
+  }
+
+  function showOverlay(title, text, btn) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+  }
+  function hideOverlay() { overlay.classList.add('hidden'); }
+
+  function startGame() {
+    state.score = 0; state.lives = 3; state.playing = true;
+    scoreEl.textContent = state.score;
+    livesEl.textContent = '💖💖💖';
+    const pick = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    setPlayerCharacter(pick);
+    hideOverlay();
+  }
+
+  // ---------------- Audio ----------------
+  // Lazy AudioContext (created on first user gesture).
+  const audio = { ctx: null, master: null, music: null, muted: false };
+  const muteBtn = document.getElementById('muteBtn');
+
+  function ensureAudio() {
+    if (audio.ctx) return audio.ctx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audio.ctx = new Ctx();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = audio.muted ? 0 : 0.6;
+    audio.master.connect(audio.ctx.destination);
+    return audio.ctx;
+  }
+
+  // A small twinkly C-major melody, looping. Each step is a single note.
+  // Notes are MIDI numbers; duration in seconds.
+  const MELODY = [
+    [72, 0.25], [76, 0.25], [79, 0.25], [76, 0.25],
+    [74, 0.25], [77, 0.25], [81, 0.50],
+    [72, 0.25], [76, 0.25], [79, 0.25], [76, 0.25],
+    [71, 0.25], [74, 0.25], [72, 0.50],
+  ];
+  const midi2hz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  function startMusic() {
+    const ctx = ensureAudio();
+    if (!ctx || audio.music) return;
+    const musicGain = ctx.createGain();
+    musicGain.gain.value = 0.18;
+    musicGain.connect(audio.master);
+
+    let tStart = ctx.currentTime + 0.05;
+    const scheduleLoop = (when) => {
+      let t = when;
+      for (const [midi, dur] of MELODY) {
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = midi2hz(midi);
+        env.gain.setValueAtTime(0, t);
+        env.gain.linearRampToValueAtTime(0.5, t + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(env); env.connect(musicGain);
+        osc.start(t); osc.stop(t + dur + 0.05);
+        t += dur;
+      }
+      // Schedule next loop near the end of this one.
+      audio.musicTimer = setTimeout(() => scheduleLoop(t), (t - ctx.currentTime - 0.4) * 1000);
+    };
+    scheduleLoop(tStart);
+    audio.music = musicGain;
+  }
+
+  function stopMusic() {
+    if (audio.musicTimer) clearTimeout(audio.musicTimer);
+    if (audio.music) { try { audio.music.disconnect(); } catch(_){} audio.music = null; }
+  }
+
+  function blip(midi, dur, type, vol) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(midi2hz(midi), t);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(vol || 0.4, t + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.master);
+    osc.start(t); osc.stop(t + dur + 0.02);
+  }
+
+  function playMatch() {
+    blip(72, 0.12, 'triangle', 0.5);
+    setTimeout(() => blip(76, 0.12, 'triangle', 0.5), 90);
+    setTimeout(() => blip(79, 0.18, 'triangle', 0.5), 180);
+  }
+  function playMiss() {
+    blip(60, 0.18, 'sawtooth', 0.4);
+    setTimeout(() => blip(56, 0.30, 'sawtooth', 0.35), 110);
+  }
+
+  function setMuted(m) {
+    audio.muted = m;
+    if (audio.master) audio.master.gain.value = m ? 0 : 0.6;
+    muteBtn.textContent = m ? '🔇' : '🔊';
+  }
+  muteBtn.addEventListener('click', () => setMuted(!audio.muted));
+
+  // ---------------- Player movement ----------------
+  let playerX = null;       // px from stage left, center of player
+  const PLAYER_W = 130;
+
+  function setPlayerX(px) {
+    if (!state.stageRect) return;
+    const half = PLAYER_W / 2;
+    const min = half + 4;
+    const max = state.stageRect.width - half - 4;
+    playerX = Math.max(min, Math.min(max, px));
+    player.style.left = playerX + 'px';
+    // Keep transform empty so .happy / .sad animations can apply.
+  }
+
+  function pointerMove(clientX) {
+    if (!state.stageRect) return;
+    const local = clientX - state.stageRect.left;
+    setPlayerX(local);
+  }
+
+  let dragging = false;
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('a,button')) return;
+    dragging = true;
+    pointerMove(e.changedTouches[0].clientX);
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    pointerMove(e.changedTouches[0].clientX);
+  }, { passive: true });
+  document.addEventListener('touchend', () => { dragging = false; });
+  document.addEventListener('mousedown', e => {
+    if (e.target.closest('a,button')) return;
+    dragging = true;
+    pointerMove(e.clientX);
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    pointerMove(e.clientX);
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+
+  // ---------------- Collision / catch ----------------
+  function playerHitbox() {
+    // Player visual is anchored at bottom:12% with width PLAYER_W and ~100px tall.
+    // Build a hitbox in stage-local coords near the top of the unicorn (where the
+    // princess sits) so the catch happens when fallers reach the player's head.
+    const stageH = state.stageRect.height;
+    const bottom = stageH * 0.88; // approx player visual bottom
+    const top = bottom - 80;
+    return {
+      left: playerX - PLAYER_W / 2 + 10,
+      right: playerX + PLAYER_W / 2 - 10,
+      top, bottom,
+    };
+  }
+
+  function rectsOverlap(a, e) {
+    const ex1 = e.x, ex2 = e.x + FALLER_W;
+    const ey1 = e.y, ey2 = e.y + FALLER_H;
+    return !(ex2 < a.left || ex1 > a.right || ey2 < a.top || ey1 > a.bottom);
+  }
+
+  function spawnPop(text, color, x, y) {
+    const el = document.createElement('div');
+    el.className = 'pop';
+    el.textContent = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.color = color;
+    stage.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+  }
+
+  function spawnSparkles(x, y) {
+    const colors = ['#ffd166', '#ff6fb5', '#9ad8ee', '#a06cd5', '#7ed957'];
+    for (let i = 0; i < 8; i++) {
+      const el = document.createElement('div');
+      el.className = 'sparkle';
+      const angle = (i / 8) * Math.PI * 2;
+      el.style.setProperty('--dx', Math.cos(angle) * 50 + 'px');
+      el.style.setProperty('--dy', Math.sin(angle) * 50 + 'px');
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.background = colors[i % colors.length];
+      el.style.borderRadius = '50%';
+      el.style.boxShadow = '0 0 8px ' + colors[i % colors.length];
+      stage.appendChild(el);
+      setTimeout(() => el.remove(), 800);
+    }
+  }
+
+  function flashPlayer(cls) {
+    player.classList.remove('happy', 'sad');
+    void player.offsetWidth; // restart animation
+    player.classList.add(cls);
+    setTimeout(() => player.classList.remove(cls), 450);
+  }
+
+  function onCatch(entity, isMatch) {
+    const cx = entity.x + FALLER_W / 2;
+    const cy = entity.y + FALLER_H / 2;
+    entity.el.remove();
+    state.entities.splice(state.entities.indexOf(entity), 1);
+    if (isMatch) {
+      state.score += 1;
+      scoreEl.textContent = state.score;
+      spawnPop('+1 ✨', '#ff6fb5', cx, cy);
+      spawnSparkles(cx, cy);
+      flashPlayer('happy');
+      playMatch();
+    } else {
+      state.lives -= 1;
+      livesEl.textContent = '💖'.repeat(Math.max(0, state.lives)) + '🖤'.repeat(3 - Math.max(0, state.lives));
+      spawnPop('😢', '#5a3a8a', cx, cy);
+      flashPlayer('sad');
+      playMiss();
+      if (state.lives <= 0) gameOver();
+    }
+  }
+
+  function gameOver() {
+    state.playing = false;
+    clearEntities();
+    stopMusic();
+    showOverlay('Oh no!', `You caught ${state.score} matching ${state.score === 1 ? 'friend' : 'friends'}.`, 'Play again');
+  }
+
+  // ---------------- Spawning + physics ----------------
+  const FALLER_W = 90;
+  const FALLER_H = 70;
+
+  function measureStage() { state.stageRect = stage.getBoundingClientRect(); }
+  window.addEventListener('resize', measureStage);
+
+  function spawnFaller() {
+    const char = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    const el = document.createElement('div');
+    el.className = 'faller';
+    el.innerHTML = characterSVG(char, FALLER_W);
+    const stageW = state.stageRect.width;
+    const x = Math.max(0, Math.min(stageW - FALLER_W, Math.random() * (stageW - FALLER_W)));
+    const y = -FALLER_H - 10;
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    stage.appendChild(el);
+    state.entities.push({ el, char, x, y, vy: state.fallSpeed });
+  }
+
+  function updateEntities(dt) {
+    const stageH = state.stageRect.height;
+    const hb = playerHitbox();
+    for (let i = state.entities.length - 1; i >= 0; i--) {
+      const e = state.entities[i];
+      e.y += e.vy * dt;
+      e.el.style.transform = `translate3d(${e.x}px, ${e.y}px, 0)`;
+      if (rectsOverlap(hb, e)) {
+        onCatch(e, e.char.id === state.target.id);
+        continue;
+      }
+      if (e.y > stageH + 20) {
+        e.el.remove();
+        state.entities.splice(i, 1);
+      }
+    }
+  }
+
+  function frame(t) {
+    if (!state.playing) return;
+    if (!state.lastFrame) state.lastFrame = t;
+    const dt = Math.min(0.05, (t - state.lastFrame) / 1000);
+    state.lastFrame = t;
+    state.spawnTimer += dt * 1000;
+    if (state.spawnTimer >= state.spawnInterval) {
+      state.spawnTimer = 0;
+      spawnFaller();
+    }
+    // Difficulty ramp: every 8 catches the spawn interval shrinks a bit.
+    state.spawnInterval = Math.max(650, 1500 - state.score * 35);
+    state.fallSpeed = 110 + state.score * 4;
+    updateEntities(dt);
+    requestAnimationFrame(frame);
+  }
+
+  function clearEntities() {
+    for (const e of state.entities) e.el.remove();
+    state.entities = [];
+  }
+
+  // Patch startGame to kick off the loop and audio.
+  const _startGame = startGame;
+  startGame = function () {
+    _startGame();
+    measureStage();
+    clearEntities();
+    state.lastFrame = 0;
+    state.spawnTimer = 0;
+    setPlayerX(state.stageRect.width / 2);
+    ensureAudio();
+    if (audio.ctx && audio.ctx.state === 'suspended') audio.ctx.resume();
+    startMusic();
+    requestAnimationFrame(frame);
+  };
+
+  modalBtn.addEventListener('click', () => startGame());
+  setPlayerCharacter(CHARACTERS[0]);
+  measureStage();
+  showOverlay('Unicorn Catch', 'Hold and slide to move. Catch the matching princess!', 'Start');
+})();
+</script>
+</body>
+</html>

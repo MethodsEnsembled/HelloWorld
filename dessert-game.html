@@ -267,6 +267,14 @@
     margin: 12px auto 8px;
     display: flex; align-items: flex-end; justify-content: center;
   }
+  .ending-stage::before {
+    /* counter / floor */
+    content: ""; position: absolute; left: -8px; right: -8px; bottom: 0;
+    height: 14px;
+    background: linear-gradient(180deg, #d8a472, #a87142);
+    border-radius: 6px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.08);
+  }
   /* Child head: round, peachy, with hair, eyes, mouth, cheeks */
   .child {
     position: relative;
@@ -426,10 +434,10 @@
   /* Goop blob - the suspicious dessert */
   .goop {
     position: absolute;
-    bottom: 8px;
+    bottom: 6px;
     left: 50%;
     transform: translateX(-50%);
-    width: 150px; height: 100px;
+    width: 150px; height: 76px;
     z-index: 2;
   }
   .goop .blob {
@@ -453,9 +461,9 @@
     box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
     animation: pop2 2.8s ease-in-out infinite;
   }
-  .goop .bubble.b1 { width: 14px; height: 14px; top: 8px; left: 30px; }
-  .goop .bubble.b2 { width: 10px; height: 10px; top: 24px; left: 70px; animation-delay: 0.7s; }
-  .goop .bubble.b3 { width: 8px;  height: 8px;  top: 16px; left: 100px; animation-delay: 1.2s; }
+  .goop .bubble.b1 { width: 12px; height: 12px; top: 6px; left: 30px; }
+  .goop .bubble.b2 { width: 9px; height: 9px; top: 18px; left: 70px; animation-delay: 0.7s; }
+  .goop .bubble.b3 { width: 7px; height: 7px; top: 12px; left: 100px; animation-delay: 1.2s; }
   @keyframes pop2 {
     0%, 70% { transform: scale(1); opacity: 0.8; }
     80%     { transform: scale(1.4); opacity: 0.4; }
@@ -685,7 +693,7 @@
     let remaining = MEMORIZE_SECONDS;
     const cdEl = document.getElementById('mem-countdown');
     cdEl.innerHTML = `Starts in <b>${remaining}</b>`;
-    clearInterval(memorizeTimer);
+    clearTimeout(memorizeTimer);
     memorizeTimer = setTimeout(function tick() {
       remaining -= 1;
       if (remaining <= 0) {
@@ -730,20 +738,22 @@
     grid.innerHTML = '';
 
     // Shuffle the visual order, but each button still references its true
-    // step index in the recipe so we can score by tap sequence.
-    const order = shuffled(r.steps.map((_, i) => i));
-    // Re-shuffle once if the random order happens to match the recipe order;
-    // that would be a freebie.
-    const isIdentity = order.every((idx, i) => idx === i);
-    const finalOrder = isIdentity && r.steps.length > 1 ? shuffled(order) : order;
+    // step index in the recipe so we can score by tap sequence. Re-shuffle
+    // a few times if the random order is the recipe order (would be a freebie).
+    let finalOrder = shuffled(r.steps.map((_, i) => i));
+    for (let tries = 0; tries < 5 && r.steps.length > 1
+        && finalOrder.every((idx, i) => idx === i); tries++) {
+      finalOrder = shuffled(finalOrder);
+    }
 
     finalOrder.forEach(stepIndex => {
       const step = r.steps[stepIndex];
       const btn = document.createElement('button');
       btn.className = 'tap-btn';
       btn.dataset.stepIndex = stepIndex;
+      btn.setAttribute('aria-label', step.label);
       btn.innerHTML = `
-        <span class="emoji">${step.emoji}</span>
+        <span class="emoji" aria-hidden="true">${step.emoji}</span>
         <span class="label">${step.label}</span>
       `;
       btn.addEventListener('click', () => onTap(btn, stepIndex));

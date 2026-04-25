@@ -246,17 +246,96 @@
     state.ball.launched = true;
   }
 
+  // Grow range expands slowly with level (~3..15 at L1, scales up).
+  function ballGrowRoll() {
+    const lo = 3 + Math.floor((state.level - 1) * 0.5);
+    const hi = 15 + (state.level - 1) * 2;
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
+  }
+
+  // Circle-vs-AABB collision response. Returns {collided, nx, ny} where
+  // (nx, ny) is the surface normal we should reflect against, or null.
+  function circleVsBrick(b, brick) {
+    const cx = Math.max(brick.x, Math.min(b.x, brick.x + brick.w));
+    const cy = Math.max(brick.y, Math.min(b.y, brick.y + brick.h));
+    const dx = b.x - cx, dy = b.y - cy;
+    const distSq = dx * dx + dy * dy;
+    if (distSq > b.r * b.r) return null;
+    // Penetration vector: from closest point to ball center. If the ball
+    // center is inside the AABB (distSq == 0), pick the smallest axis.
+    let nx = 0, ny = 0;
+    if (distSq === 0) {
+      const overlapL = b.x - brick.x;
+      const overlapR = (brick.x + brick.w) - b.x;
+      const overlapT = b.y - brick.y;
+      const overlapB = (brick.y + brick.h) - b.y;
+      const m = Math.min(overlapL, overlapR, overlapT, overlapB);
+      if (m === overlapL) nx = -1;
+      else if (m === overlapR) nx = 1;
+      else if (m === overlapT) ny = -1;
+      else ny = 1;
+    } else {
+      const d = Math.sqrt(distSq) || 1;
+      nx = dx / d; ny = dy / d;
+    }
+    // Resolve penetration: push ball out along normal.
+    const dist = Math.sqrt(distSq);
+    const push = b.r - dist + 0.5;
+    b.x += nx * push;
+    b.y += ny * push;
+    return { nx, ny };
+  }
+
+  function reflect(b, n) {
+    // v' = v - 2 (v . n) n
+    const dot = b.vx * n.nx + b.vy * n.ny;
+    b.vx -= 2 * dot * n.nx;
+    b.vy -= 2 * dot * n.ny;
+  }
+
+  function handleBrickCollisions() {
+    const b = state.ball;
+    if (!b || !b.launched) return;
+    // Resolve up to one brick per frame to avoid double-bounces if the
+    // ball overlaps multiple cells. Pick the brick with deepest penetration.
+    let best = null, bestDepth = -1;
+    for (const brick of state.bricks) {
+      if (brick.value <= 0) continue;
+      const cx = Math.max(brick.x, Math.min(b.x, brick.x + brick.w));
+      const cy = Math.max(brick.y, Math.min(b.y, brick.y + brick.h));
+      const dx = b.x - cx, dy = b.y - cy;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > b.r * b.r) continue;
+      const depth = b.r - Math.sqrt(distSq);
+      if (depth > bestDepth) { best = brick; bestDepth = depth; }
+    }
+    if (!best) return;
+    const n = circleVsBrick(b, best);
+    if (!n) return;
+    reflect(b, n);
+    // Apply damage: brick loses ball.value; ball grows by random amount.
+    const dmg = Math.min(best.value, b.value);
+    best.value -= dmg;
+    state.score += dmg;
+    scoreEl.textContent = state.score;
+    if (best.value <= 0) {
+      best.value = 0;
+    }
+    b.value += ballGrowRoll();
+  }
+
   function updateBall(dt) {
     const b = state.ball;
     if (!b || !b.launched) return;
     b.x += b.vx * dt;
     b.y += b.vy * dt;
-    // Wall bounces: left, right, top. Bottom is handled later (danger zone).
+    // Wall bounces: left, right, top. Bottom is the placeholder bounce
+    // until the danger platform commit lands.
     if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
     if (b.x + b.r > state.field.w) { b.x = state.field.w - b.r; b.vx = -Math.abs(b.vx); }
     if (b.y - b.r < 0) { b.y = b.r; b.vy = Math.abs(b.vy); }
-    // Bottom (will be replaced with danger-platform logic in a later commit):
     if (b.y + b.r > state.field.h) { b.y = state.field.h - b.r; b.vy = -Math.abs(b.vy); }
+    handleBrickCollisions();
   }
 
   function drawBall() {

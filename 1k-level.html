@@ -320,8 +320,26 @@
     scoreEl.textContent = state.score;
     if (best.value <= 0) {
       best.value = 0;
+      onBrickDestroyed(best);
     }
     b.value += ballGrowRoll();
+  }
+
+  function onBrickDestroyed(_brick) {
+    // If everything's dead, level up.
+    if (state.bricks.every(br => br.value <= 0)) {
+      levelUp();
+    }
+  }
+
+  function levelUp() {
+    state.level += 1;
+    levelEl.textContent = state.level;
+    // Refill balls so the run can keep going.
+    state.ballsLeft = 10;
+    ballsEl.textContent = state.ballsLeft;
+    buildBricks(state.level);
+    spawnBall();
   }
 
   // Difficulty -> bottom-platform width (fraction of field width).

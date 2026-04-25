@@ -354,11 +354,21 @@
   function drawParticles() {
     for (const p of state.particles) {
       const alpha = 1 - p.life / p.ttl;
-      ctx.fillStyle = p.color;
       ctx.globalAlpha = Math.max(0, alpha);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
+      if (p.isText) {
+        ctx.font = `800 ${p.size}px -apple-system, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#0d1024';
+        ctx.fillText(p.text, p.x + 1, p.y + 1);
+        ctx.fillStyle = p.color;
+        ctx.fillText(p.text, p.x, p.y);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -500,14 +510,38 @@
     b.value += ballGrowRoll();
   }
 
+  // The "big step reward" on destruction. Tuned so destroying a brick
+  // adds ~10% of the brick's max value to the ball, which compounds
+  // through the row stack and makes each kill feel like a meaningful
+  // power spike.
+  const DESTROY_BALL_FRAC = 0.10;
+
   function onBrickDestroyed(brick) {
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
     // Big shatter burst at the brick's center.
-    spawnParticles(brick.x + brick.w / 2, brick.y + brick.h / 2, brick.color, 22, 260);
+    spawnParticles(cx, cy, brick.color, 22, 260);
     playShatter();
+    // Destruction reward: power-spike the ball and score-bonus the player.
+    const bonus = Math.round(brick.max * DESTROY_BALL_FRAC);
+    if (state.ball) state.ball.value += bonus;
+    state.score += brick.max; // extra score on top of damage already counted
+    scoreEl.textContent = state.score;
+    spawnTextPop(cx, cy, `+${fmt(brick.max)}`, '#ffd166');
+    spawnTextPop(cx, cy + 18, `BALL +${fmt(bonus)}`, '#a3e635');
     // If everything's dead, level up.
     if (state.bricks.every(br => br.value <= 0)) {
       levelUp();
     }
+  }
+
+  // Floating "+X" pop, animated upward and faded out via the particle list.
+  function spawnTextPop(x, y, text, color) {
+    state.particles.push({
+      isText: true, text, color,
+      x, y, vx: 0, vy: -60,
+      life: 0, ttl: 0.9, size: 16,
+    });
   }
 
   function levelUp() {
@@ -651,8 +685,10 @@
     const H = state.field.h;
     state.bricks.length = 0;
 
-    // Per-level scaling: base values grow; row count grows slowly.
-    const valueScale = Math.pow(1.35, level - 1);
+    // Per-level scaling: gentle so level 10+ stays reachable. The ball
+    // grows quickly thanks to the destruction bonus, so a milder brick
+    // ramp keeps clears feeling possible without being trivial.
+    const valueScale = Math.pow(1.15, level - 1);
     // Descending base values, 6 rows. Values shown on the photo: 150K / 120K / 90K / 60K / 30K, plus a tiny 30K cap.
     const rowSpec = [
       { v: 150000, frac: 0.92 },

@@ -122,6 +122,75 @@
   .big-btn.secondary:active {
     box-shadow: 0 2px 0 #5e4060, 0 6px 12px rgba(94,64,96,0.3);
   }
+
+  /* ---- Recipe / step cards (shared) ---- */
+  .recipe-header {
+    margin: 8px 0 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .dessert-target {
+    font-size: 80px; line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.06));
+  }
+  .recipe-title {
+    margin: 0; font-size: 22px; font-weight: 800; color: var(--ink);
+  }
+  .recipe-caption {
+    margin: 4px 0 0; font-size: 13px; color: var(--ink-soft);
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  .step-list {
+    list-style: none;
+    margin: 18px 0 14px;
+    padding: 0;
+    width: 100%;
+    max-width: 360px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .step-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 0 rgba(74,37,72,0.08);
+    border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s, opacity 0.2s;
+  }
+  .step-card .num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff5e9c, #ffb84d);
+    color: white;
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .step-card .emoji {
+    font-size: 30px; line-height: 1;
+  }
+  .step-card .label {
+    flex: 1; text-align: left; font-size: 15px; font-weight: 600;
+  }
+  .step-card.appear {
+    animation: pop 0.35s cubic-bezier(.5,1.6,.4,1);
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .countdown {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin: 6px 0 14px;
+    letter-spacing: 1px;
+  }
+  .countdown b {
+    color: var(--accent);
+    font-size: 18px;
+  }
 </style>
 </head>
 <body>
@@ -142,7 +211,14 @@
     </section>
 
     <section id="screen-memorize" class="screen">
-      <p>Memorize screen placeholder.</p>
+      <div class="recipe-header">
+        <div class="dessert-target" id="mem-emoji">🍰</div>
+        <h2 class="recipe-title" id="mem-name">Recipe</h2>
+        <p class="recipe-caption">Memorize the order!</p>
+      </div>
+      <ol class="step-list" id="mem-steps"></ol>
+      <p class="countdown" id="mem-countdown">Starts in <b>3</b></p>
+      <button class="big-btn" id="btn-cook">I'M READY!</button>
     </section>
 
     <section id="screen-tap" class="screen">
@@ -250,19 +326,63 @@
     screens[name].classList.add('active');
   }
 
-  // ---- Round flow (stubs to be filled in) ----
+  // ---- Round flow ----
+  const MEMORIZE_SECONDS = 6;
+  let memorizeTimer = null;
+
   function startRound() {
     state.recipe = pickRecipe();
     state.taps = [];
     show('memorize');
     renderMemorize();
   }
+
   function renderMemorize() {
-    // placeholder until step 3 fills this in
-    screens.memorize.textContent = 'Recipe: ' + state.recipe.name;
+    const r = state.recipe;
+    document.getElementById('mem-emoji').textContent = r.emoji;
+    document.getElementById('mem-name').textContent = r.name;
+
+    const list = document.getElementById('mem-steps');
+    list.innerHTML = '';
+    r.steps.forEach((step, i) => {
+      const li = document.createElement('li');
+      li.className = 'step-card';
+      li.innerHTML = `
+        <div class="num">${i + 1}</div>
+        <div class="emoji">${step.emoji}</div>
+        <div class="label">${step.label}</div>
+      `;
+      // stagger the pop-in
+      setTimeout(() => li.classList.add('appear'), i * 120);
+      list.appendChild(li);
+    });
+
+    // Countdown auto-advances; player can also tap "I'm ready!" to skip.
+    const totalDelay = r.steps.length * 120 + 200;
+    let remaining = MEMORIZE_SECONDS;
+    const cdEl = document.getElementById('mem-countdown');
+    cdEl.innerHTML = `Starts in <b>${remaining}</b>`;
+    clearInterval(memorizeTimer);
+    memorizeTimer = setTimeout(function tick() {
+      remaining -= 1;
+      if (remaining <= 0) {
+        beginTapPhase();
+        return;
+      }
+      cdEl.innerHTML = `Starts in <b>${remaining}</b>`;
+      memorizeTimer = setTimeout(tick, 1000);
+    }, 1000 + totalDelay);
+  }
+
+  function beginTapPhase() {
+    clearTimeout(memorizeTimer);
+    memorizeTimer = null;
+    show('tap');
+    // renderTap() comes in step 4
   }
 
   document.getElementById('btn-start').addEventListener('click', startRound);
+  document.getElementById('btn-cook').addEventListener('click', beginTapPhase);
 
   show('title');
 </script>

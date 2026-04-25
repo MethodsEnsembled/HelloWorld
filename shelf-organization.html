@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f3e0c2">
+<title>Shelf Organization</title>
+<style>
+  :root {
+    --bg: #f6e6cb;
+    --bg2: #e9cfa6;
+    --wood: #b07a45;
+    --wood-dark: #7a4d24;
+    --wood-edge: #5a3614;
+    --panel: #fffaf0;
+    --ink: #3a2412;
+    --ink-soft: #8a6a4d;
+    --accent: #e26b3b;
+    --accent2: #f0a23c;
+    --good: #4caf50;
+    --bad: #c93535;
+    --shadow: rgba(58,36,18,0.18);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: linear-gradient(170deg, var(--bg) 0%, var(--bg2) 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom);
+    min-height: 100vh;
+  }
+  .top-bar {
+    width: 100%; max-width: 520px;
+    padding: 12px 4px; display: flex; align-items: center; gap: 12px;
+  }
+  .back {
+    color: var(--ink); text-decoration: none; font-size: 14px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(58,36,18,0.12);
+    font-weight: 600;
+  }
+  .back:active { background: rgba(255,255,255,1); }
+  .top-bar h1 {
+    margin: 0; flex: 1; text-align: center; font-size: 14px;
+    letter-spacing: 2px; font-weight: 800; color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .top-bar .spacer { width: 56px; }
+
+  main {
+    width: 100%; max-width: 520px; flex: 1;
+    display: flex; flex-direction: column;
+    padding: 4px 4px 18px;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    text-align: center;
+    width: 100%;
+  }
+  .screen.active { display: flex; }
+
+  /* ---- Title screen ---- */
+  .title-hero {
+    margin: 16px 0 4px;
+    display: flex; gap: 6px; justify-content: center;
+    font-size: 52px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.08));
+  }
+  .title-hero span {
+    display: inline-block;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  .title-hero span:nth-child(2) { animation-delay: 0.18s; }
+  .title-hero span:nth-child(3) { animation-delay: 0.36s; }
+  .title-hero span:nth-child(4) { animation-delay: 0.54s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-6px) rotate(3deg); }
+  }
+  .title-name {
+    margin: 18px 0 6px;
+    font-size: clamp(28px, 8vw, 40px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #e26b3b, #f0a23c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .title-sub {
+    margin: 0 24px 24px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 340px;
+  }
+  .big-btn {
+    appearance: none; border: none; cursor: pointer;
+    padding: 16px 40px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: white;
+    background: linear-gradient(135deg, #e26b3b, #f0a23c);
+    box-shadow: 0 6px 0 #a04220, 0 12px 24px rgba(160,66,32,0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+    font-family: inherit;
+  }
+  .big-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #a04220, 0 6px 12px rgba(160,66,32,0.3);
+  }
+  .big-btn.secondary {
+    background: linear-gradient(135deg, #b89a78, #8a6a4d);
+    box-shadow: 0 6px 0 #5a4030, 0 12px 24px rgba(90,64,48,0.3);
+  }
+  .big-btn.secondary:active {
+    box-shadow: 0 2px 0 #5a4030, 0 6px 12px rgba(90,64,48,0.3);
+  }
+  .btn-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    margin-top: 8px;
+  }
+
+  .record {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+  }
+  .record b {
+    color: var(--accent);
+    font-size: 17px;
+    margin-left: 4px;
+  }
+
+  /* Mini decorative shelf preview on title */
+  .preview-shelf {
+    margin: 10px auto 18px;
+    width: 240px;
+    background: linear-gradient(180deg, #f3d9b3 0%, #e7c08a 100%);
+    border: 2px solid var(--wood-edge);
+    border-radius: 8px;
+    box-shadow: 0 6px 0 rgba(58,36,18,0.15), inset 0 -6px 0 rgba(0,0,0,0.06);
+    padding: 6px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .preview-row {
+    display: flex; align-items: center; justify-content: space-around;
+    background: var(--wood);
+    border-radius: 4px;
+    padding: 4px 6px;
+    box-shadow: inset 0 -3px 0 var(--wood-dark);
+  }
+  .preview-row .it {
+    font-size: 22px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15));
+  }
+
+  footer {
+    margin-top: auto;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a href="index.html" class="back">← BACK</a>
+    <h1>Shelf Organization</h1>
+    <div class="spacer"></div>
+  </div>
+
+  <main>
+    <!-- Title screen -->
+    <section id="screen-title" class="screen active">
+      <div class="title-hero">
+        <span>🥫</span><span>🍪</span><span>🥤</span><span>☕</span>
+      </div>
+      <h2 class="title-name">SHELF ORGANIZATION</h2>
+      <p class="title-sub">
+        Slide pantry items into empty spots. Three in a row clears the shelf.
+        Beat the timer. Levels get harder — deeper shelves, higher shelves,
+        and brand-new clutter.
+      </p>
+
+      <div class="preview-shelf" aria-hidden="true">
+        <div class="preview-row">
+          <div class="it">🥫</div><div class="it">🍪</div><div class="it">🥫</div>
+          <div class="it">🥤</div><div class="it">🍪</div>
+        </div>
+        <div class="preview-row">
+          <div class="it">☕</div><div class="it">🥤</div><div class="it">🍪</div>
+          <div class="it">☕</div><div class="it">🥫</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-start" class="big-btn">START</button>
+      </div>
+      <p class="record">BEST LEVEL <b id="record-display">—</b></p>
+    </section>
+
+    <!-- Game screen (built in later steps) -->
+    <section id="screen-game" class="screen">
+      <p style="color: var(--ink-soft);">Game board coming next step…</p>
+    </section>
+
+    <!-- Result screen (built in later steps) -->
+    <section id="screen-result" class="screen">
+      <p style="color: var(--ink-soft);">Result screen coming next step…</p>
+    </section>
+  </main>
+
+  <footer>Tap. Slide. Tidy.</footer>
+
+<script>
+(() => {
+  const RECORD_KEY = 'shelfOrg.bestLevel';
+
+  const screens = {
+    title: document.getElementById('screen-title'),
+    game: document.getElementById('screen-game'),
+    result: document.getElementById('screen-result'),
+  };
+  function show(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  function loadBest() {
+    const v = parseInt(localStorage.getItem(RECORD_KEY) || '0', 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+  function saveBest(level) {
+    const cur = loadBest();
+    if (level > cur) localStorage.setItem(RECORD_KEY, String(level));
+  }
+  function refreshRecord() {
+    const best = loadBest();
+    document.getElementById('record-display').textContent = best > 0 ? best : '—';
+  }
+  refreshRecord();
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    show('game');
+  });
+
+  // Expose helpers for later steps.
+  window.__shelf = { show, loadBest, saveBest, refreshRecord };
+})();
+</script>
+</body>
+</html>

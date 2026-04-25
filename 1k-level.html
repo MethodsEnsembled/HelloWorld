@@ -553,8 +553,9 @@
   function levelUp() {
     state.level += 1;
     levelEl.textContent = state.level;
-    // Refill balls so the run can keep going.
-    state.ballsLeft = 10;
+    // +3 ball reward per level cleared (not a refill). Keeps pressure
+    // on while still letting deep runs accumulate a stockpile.
+    state.ballsLeft += 3;
     ballsEl.textContent = state.ballsLeft;
     buildBricks(state.level);
     // Preserve the power earned in the previous level — this is the
@@ -838,7 +839,11 @@
     const b = state.ball;
     if (!b) return false;
     const dx = p.x - b.x, dy = p.y - b.y;
-    return dx * dx + dy * dy <= (b.r + 18) * (b.r + 18);
+    // Generous finger-friendly hit-box: roughly 3x the ball's visual
+    // radius so tapping near the ball is enough — exact aim is hard
+    // when the ball is mid-flight.
+    const hit = b.r * 3;
+    return dx * dx + dy * dy <= hit * hit;
   }
 
   function onPointerDown(p) {

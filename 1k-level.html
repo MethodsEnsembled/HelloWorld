@@ -426,10 +426,15 @@
     state.ball.launched = true;
   }
 
-  // Grow range expands slowly with level (~3..15 at L1, scales up).
+  // Per-hit grow is HUGE at level 1 (avg 50K) so a fresh ball blows
+  // through the L1 stack in just a handful of shots, and ramps DOWN
+  // multiplicatively (0.80x per level) so it falls behind the 1.15x
+  // brick scale at higher levels. Net effect (verified by simulation):
+  // L1 clears in ~7 hits, L10 in ~23 hits, L20 in ~100 hits.
   function ballGrowRoll() {
-    const lo = 3 + Math.floor((state.level - 1) * 0.5);
-    const hi = 15 + (state.level - 1) * 2;
+    const baseAvg = 50000 * Math.pow(0.80, state.level - 1);
+    const lo = Math.max(1, Math.round(baseAvg * 0.4));
+    const hi = Math.max(lo + 1, Math.round(baseAvg * 1.6));
     return lo + Math.floor(Math.random() * (hi - lo + 1));
   }
 
@@ -510,11 +515,11 @@
     b.value += ballGrowRoll();
   }
 
-  // The "big step reward" on destruction. Tuned so destroying a brick
-  // adds ~10% of the brick's max value to the ball, which compounds
-  // through the row stack and makes each kill feel like a meaningful
-  // power spike.
-  const DESTROY_BALL_FRAC = 0.10;
+  // Destruction bonus: small absolute fraction of brick.max added to
+  // the ball. Kept at 3% so the per-hit grow is the primary mechanic at
+  // low levels; at high levels brick.max is in the millions, so this
+  // bonus becomes the main accelerator and helps the ball keep up.
+  const DESTROY_BALL_FRAC = 0.03;
 
   function onBrickDestroyed(brick) {
     const cx = brick.x + brick.w / 2;

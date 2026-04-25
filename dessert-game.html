@@ -61,8 +61,67 @@
     align-items: center;
     flex: 1;
     text-align: center;
+    width: 100%;
   }
   .screen.active { display: flex; }
+
+  /* ---- Title screen ---- */
+  .title-hero {
+    margin: 24px 0 8px;
+    display: flex; gap: 8px; justify-content: center;
+    font-size: 56px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.06));
+  }
+  .title-hero span {
+    display: inline-block;
+    animation: wobble 2.4s ease-in-out infinite;
+  }
+  .title-hero span:nth-child(2) { animation-delay: 0.2s; }
+  .title-hero span:nth-child(3) { animation-delay: 0.4s; }
+  .title-hero span:nth-child(4) { animation-delay: 0.6s; }
+  @keyframes wobble {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-8px) rotate(3deg); }
+  }
+  .title-name {
+    margin: 20px 0 6px;
+    font-size: clamp(30px, 8vw, 42px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #ff5e9c, #ffb84d);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .title-sub {
+    margin: 0 24px 28px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 340px;
+  }
+  .big-btn {
+    appearance: none; border: none; cursor: pointer;
+    padding: 18px 40px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: white;
+    background: linear-gradient(135deg, #ff5e9c, #ff8a3d);
+    box-shadow: 0 6px 0 #c83a73, 0 12px 24px rgba(200,58,115,0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .big-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #c83a73, 0 6px 12px rgba(200,58,115,0.3);
+  }
+  .big-btn.secondary {
+    background: linear-gradient(135deg, #b6a3d6, #8b6485);
+    box-shadow: 0 6px 0 #5e4060, 0 12px 24px rgba(94,64,96,0.3);
+  }
+  .big-btn.secondary:active {
+    box-shadow: 0 2px 0 #5e4060, 0 6px 12px rgba(94,64,96,0.3);
+  }
 </style>
 </head>
 <body>
@@ -74,7 +133,12 @@
 
   <main>
     <section id="screen-title" class="screen active">
-      <p>Title screen placeholder.</p>
+      <div class="title-hero">
+        <span>🍰</span><span>🍪</span><span>🍩</span><span>🍨</span>
+      </div>
+      <h2 class="title-name">Making Dessert</h2>
+      <p class="title-sub">A grumpy little kid is hungry. Memorize the recipe, then tap the steps in order. Get it right and they're happy. Mess it up... well, you'll see.</p>
+      <button class="big-btn" id="btn-start">START COOKING</button>
     </section>
 
     <section id="screen-memorize" class="screen">
@@ -91,7 +155,90 @@
   </main>
 
 <script>
-  // Screen router
+  // ---- Recipe data ----
+  // Each recipe: name, final emoji, 3-5 steps with verb + emoji.
+  const RECIPES = [
+    {
+      name: "Ice Cream Sundae",
+      emoji: "🍨",
+      steps: [
+        { label: "Scoop ice cream", emoji: "🍦" },
+        { label: "Drizzle chocolate", emoji: "🍫" },
+        { label: "Top with whipped cream", emoji: "☁️" },
+        { label: "Add a cherry", emoji: "🍒" },
+      ],
+    },
+    {
+      name: "Chocolate Chip Cookies",
+      emoji: "🍪",
+      steps: [
+        { label: "Mix the flour", emoji: "🌾" },
+        { label: "Crack an egg", emoji: "🥚" },
+        { label: "Stir in chocolate chips", emoji: "🍫" },
+        { label: "Bake in the oven", emoji: "🔥" },
+      ],
+    },
+    {
+      name: "Strawberry Cake",
+      emoji: "🍰",
+      steps: [
+        { label: "Whisk the batter", emoji: "🥣" },
+        { label: "Pour into the pan", emoji: "🍳" },
+        { label: "Bake until fluffy", emoji: "🔥" },
+        { label: "Frost with cream", emoji: "🥛" },
+        { label: "Top with strawberries", emoji: "🍓" },
+      ],
+    },
+    {
+      name: "Glazed Donut",
+      emoji: "🍩",
+      steps: [
+        { label: "Roll the dough", emoji: "🥖" },
+        { label: "Cut a ring", emoji: "⭕" },
+        { label: "Fry in hot oil", emoji: "🔥" },
+        { label: "Dip in glaze", emoji: "✨" },
+      ],
+    },
+    {
+      name: "Frosted Cupcake",
+      emoji: "🧁",
+      steps: [
+        { label: "Mix the batter", emoji: "🥣" },
+        { label: "Pour in the liner", emoji: "🧻" },
+        { label: "Bake them up", emoji: "🔥" },
+        { label: "Pipe the frosting", emoji: "🍦" },
+        { label: "Add sprinkles", emoji: "🌈" },
+      ],
+    },
+    {
+      name: "Fluffy Pancakes",
+      emoji: "🥞",
+      steps: [
+        { label: "Whisk the batter", emoji: "🥣" },
+        { label: "Pour on the griddle", emoji: "🍳" },
+        { label: "Flip when bubbly", emoji: "🔁" },
+        { label: "Add a pat of butter", emoji: "🧈" },
+        { label: "Drizzle with syrup", emoji: "🍯" },
+      ],
+    },
+  ];
+
+  // ---- State ----
+  const state = {
+    recipe: null,
+    taps: [],   // sequence of step indices the player tapped
+  };
+
+  function pickRecipe() {
+    // Avoid replaying the same recipe twice in a row when possible.
+    let pool = RECIPES;
+    if (state.recipe && RECIPES.length > 1) {
+      pool = RECIPES.filter(r => r.name !== state.recipe.name);
+    }
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  // ---- Screen router ----
   const screens = {
     title: document.getElementById('screen-title'),
     memorize: document.getElementById('screen-memorize'),
@@ -102,7 +249,21 @@
     Object.values(screens).forEach(s => s.classList.remove('active'));
     screens[name].classList.add('active');
   }
-  // Start at title for now
+
+  // ---- Round flow (stubs to be filled in) ----
+  function startRound() {
+    state.recipe = pickRecipe();
+    state.taps = [];
+    show('memorize');
+    renderMemorize();
+  }
+  function renderMemorize() {
+    // placeholder until step 3 fills this in
+    screens.memorize.textContent = 'Recipe: ' + state.recipe.name;
+  }
+
+  document.getElementById('btn-start').addEventListener('click', startRound);
+
   show('title');
 </script>
 </body>

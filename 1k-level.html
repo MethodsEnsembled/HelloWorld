@@ -216,7 +216,177 @@
     field: { w: 0, h: 0 },
     ball: null,        // { x, y, vx, vy, r, value, launched }
     lastFrame: 0,
+    particles: [],     // { x, y, vx, vy, color, life, ttl, size }
+    stars: [],         // background twinkles
   };
+
+  // ---------------- Audio ----------------
+  const audio = {
+    ctx: null, master: null, musicGain: null,
+    muted: false, schedulerOn: false,
+    nextNoteTime: 0, melodyIdx: 0, schedTimer: null,
+  };
+  function ensureAudio() {
+    if (audio.ctx) return audio.ctx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    audio.ctx = new Ctx();
+    audio.master = audio.ctx.createGain();
+    audio.master.gain.value = audio.muted ? 0 : 0.6;
+    audio.master.connect(audio.ctx.destination);
+    return audio.ctx;
+  }
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+  const _unlockOnce = () => {
+    unlockAudio();
+    document.removeEventListener('touchstart', _unlockOnce, true);
+    document.removeEventListener('mousedown', _unlockOnce, true);
+  };
+  document.addEventListener('touchstart', _unlockOnce, true);
+  document.addEventListener('mousedown', _unlockOnce, true);
+
+  const midi2hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  // Cosmic / arcade-y minor pad melody.
+  const MELODY = [
+    [60, 0.30], [67, 0.30], [72, 0.30], [70, 0.30],
+    [65, 0.30], [72, 0.30], [70, 0.60],
+    [60, 0.30], [67, 0.30], [72, 0.30], [70, 0.30],
+    [63, 0.30], [70, 0.30], [67, 0.60],
+  ];
+  function scheduleNote(midi, dur, t) {
+    const c = audio.ctx;
+    const osc = c.createOscillator();
+    const env = c.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = midi2hz(midi);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.5, t + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.musicGain);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  function scheduler() {
+    if (!audio.schedulerOn || !audio.ctx) return;
+    const lookahead = 0.2;
+    while (audio.nextNoteTime < audio.ctx.currentTime + lookahead) {
+      const [midi, dur] = MELODY[audio.melodyIdx % MELODY.length];
+      scheduleNote(midi, dur, audio.nextNoteTime);
+      audio.nextNoteTime += dur;
+      audio.melodyIdx++;
+    }
+    audio.schedTimer = setTimeout(scheduler, 50);
+  }
+  function startMusic() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    unlockAudio();
+    if (audio.schedulerOn) return;
+    if (!audio.musicGain) {
+      audio.musicGain = ctx.createGain();
+      audio.musicGain.gain.value = 0.32;
+      audio.musicGain.connect(audio.master);
+    }
+    audio.schedulerOn = true;
+    audio.melodyIdx = 0;
+    audio.nextNoteTime = ctx.currentTime + 0.1;
+    scheduler();
+  }
+  function stopMusic() {
+    audio.schedulerOn = false;
+    if (audio.schedTimer) { clearTimeout(audio.schedTimer); audio.schedTimer = null; }
+  }
+
+  function blip(midi, dur, type, vol) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    unlockAudio();
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const env = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(midi2hz(midi), t);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(vol || 0.4, t + 0.005);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(audio.master);
+    osc.start(t); osc.stop(t + dur + 0.02);
+  }
+  function playHit()     { blip(78 + Math.random() * 4, 0.06, 'square',   0.18); }
+  function playShatter() {
+    blip(72, 0.18, 'triangle', 0.5);
+    setTimeout(() => blip(79, 0.18, 'triangle', 0.5), 70);
+    setTimeout(() => blip(84, 0.22, 'triangle', 0.5), 140);
+  }
+  function playStrike() {
+    blip(60, 0.16, 'sawtooth', 0.4);
+    setTimeout(() => blip(48, 0.30, 'sawtooth', 0.35), 100);
+  }
+
+  // ---------------- Particles ----------------
+  function spawnParticles(x, y, color, count, speed) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = speed * (0.4 + Math.random() * 0.9);
+      state.particles.push({
+        x, y,
+        vx: Math.cos(a) * s,
+        vy: Math.sin(a) * s,
+        color,
+        life: 0,
+        ttl: 0.5 + Math.random() * 0.4,
+        size: 2 + Math.random() * 3,
+      });
+    }
+  }
+  function updateParticles(dt) {
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const p = state.particles[i];
+      p.life += dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.96; p.vy *= 0.96;
+      if (p.life >= p.ttl) state.particles.splice(i, 1);
+    }
+  }
+  function drawParticles() {
+    for (const p of state.particles) {
+      const alpha = 1 - p.life / p.ttl;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------------- Background stars ----------------
+  function buildStars() {
+    state.stars.length = 0;
+    const n = 40;
+    for (let i = 0; i < n; i++) {
+      state.stars.push({
+        x: Math.random() * state.field.w,
+        y: Math.random() * state.field.h,
+        r: 0.6 + Math.random() * 1.6,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.5 + Math.random() * 1.5,
+      });
+    }
+  }
+  function drawStars() {
+    const t = performance.now() / 1000;
+    for (const s of state.stars) {
+      const a = 0.25 + (Math.sin(t * s.speed + s.phase) + 1) * 0.25;
+      ctx.fillStyle = `rgba(255, 245, 230, ${a})`;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
 
   // ---------------- Ball ----------------
   const BALL_R = 14;
@@ -318,6 +488,11 @@
     best.value -= dmg;
     state.score += dmg;
     scoreEl.textContent = state.score;
+    // Small hit spark wherever the ball touched the brick.
+    const hitX = b.x - n.nx * b.r;
+    const hitY = b.y - n.ny * b.r;
+    spawnParticles(hitX, hitY, best.color, 6, 180);
+    playHit();
     if (best.value <= 0) {
       best.value = 0;
       onBrickDestroyed(best);
@@ -325,7 +500,10 @@
     b.value += ballGrowRoll();
   }
 
-  function onBrickDestroyed(_brick) {
+  function onBrickDestroyed(brick) {
+    // Big shatter burst at the brick's center.
+    spawnParticles(brick.x + brick.w / 2, brick.y + brick.h / 2, brick.color, 22, 260);
+    playShatter();
     // If everything's dead, level up.
     if (state.bricks.every(br => br.value <= 0)) {
       levelUp();
@@ -355,6 +533,9 @@
   }
 
   function loseBall() {
+    const b = state.ball;
+    if (b) spawnParticles(b.x, b.y, '#ff5277', 16, 280);
+    playStrike();
     state.ballsLeft -= 1;
     ballsEl.textContent = state.ballsLeft;
     if (state.ballsLeft <= 0) return gameOver();
@@ -363,6 +544,7 @@
 
   function gameOver() {
     state.playing = false;
+    stopMusic();
     showOverlay('GAME OVER', `Score: ${state.score}  •  Level: ${state.level}`, 'Play again');
   }
 
@@ -561,8 +743,10 @@
     // Background field outline
     ctx.fillStyle = 'rgba(255,255,255,0.02)';
     ctx.fillRect(0, 0, W, H);
+    drawStars();
     drawBricks();
     drawPlatform();
+    drawParticles();
     drawBall();
     drawAim();
   }
@@ -574,6 +758,7 @@
     const dt = Math.min(0.05, (t - state.lastFrame) / 1000);
     state.lastFrame = t;
     updateBall(dt);
+    updateParticles(dt);
     render();
     requestAnimationFrame(frame);
   }
@@ -734,8 +919,11 @@
     ballsEl.textContent = state.ballsLeft;
     fitCanvas();
     buildBricks(state.level);
+    buildStars();
     spawnBall();
+    state.particles.length = 0;
     hideOverlay();
+    startMusic();
     requestAnimationFrame(frame);
   }
 

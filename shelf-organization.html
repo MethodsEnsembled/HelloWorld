@@ -287,6 +287,63 @@
   }
   .item.front { z-index: 1; }
 
+  /* drag interaction */
+  .item.front { cursor: grab; }
+  .item.front.dragging-source {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .ghost {
+    position: fixed;
+    left: 0; top: 0;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
+    border-radius: 8px;
+    box-shadow:
+      0 6px 14px rgba(0,0,0,0.3),
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    pointer-events: none;
+    z-index: 50;
+    transform: translate(-50%, -50%) scale(1.1) rotate(-4deg);
+    transition: transform 0.12s;
+  }
+  .cell.drop-ok {
+    background: rgba(106,200,120,0.45) !important;
+    box-shadow: inset 0 0 0 2px rgba(106,200,120,0.9), inset 0 2px 4px rgba(0,0,0,0.15);
+  }
+  .cell.drop-bad {
+    background: rgba(201,53,53,0.35) !important;
+  }
+
+  /* match animation */
+  @keyframes matchPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25) rotate(-6deg); filter: brightness(1.4); }
+    100% { transform: scale(0); opacity: 0; }
+  }
+  .item.front.matched {
+    animation: matchPop 0.45s ease-in forwards;
+    z-index: 2;
+  }
+  @keyframes sparkle {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(0.4); }
+    50% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(1.6); }
+  }
+  .spark {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 80%; height: 80%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff7c2 0%, #ffd166 50%, transparent 70%);
+    pointer-events: none;
+    animation: sparkle 0.5s ease-out forwards;
+    z-index: 3;
+  }
+
   /* high (unreachable) shelves get a dim look + lock badge */
   .shelf.high { opacity: 0.95; }
   .shelf.high .cell { background: rgba(0,0,0,0.32); }
@@ -507,9 +564,191 @@
   let state = null;
 
   function startLevel(level) {
-    state = { board: makeBoard(level) };
+    state = { board: makeBoard(level), busy: false };
     renderBoard(state.board);
   }
+
+  // ---- Drag interaction ----
+  let drag = null;
+  let ghostEl = null;
+
+  function cellEl(row, col) {
+    return stackEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+  }
+  function cellFromPoint(x, y) {
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      if (el.classList && el.classList.contains('cell')) return el;
+    }
+    return null;
+  }
+
+  function onPointerDown(e) {
+    if (!state || state.busy) return;
+    const target = e.target.closest('.item.front');
+    if (!target) return;
+    const cellNode = target.closest('.cell');
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    if (shelf.high) return;
+
+    e.preventDefault();
+    target.setPointerCapture && target.setPointerCapture(e.pointerId);
+
+    const cell = shelf.cells[c];
+    drag = { fromR: r, fromC: c, itemId: cell.front, sourceEl: target, pointerId: e.pointerId };
+    target.classList.add('dragging-source');
+
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'ghost';
+    ghostEl.textContent = itemById(cell.front).e;
+    document.body.appendChild(ghostEl);
+    moveGhost(e.clientX, e.clientY);
+  }
+
+  function moveGhost(x, y) {
+    if (!ghostEl) return;
+    ghostEl.style.left = x + 'px';
+    ghostEl.style.top = y + 'px';
+  }
+
+  function clearDropHints() {
+    stackEl.querySelectorAll('.cell.drop-ok, .cell.drop-bad')
+      .forEach(el => el.classList.remove('drop-ok', 'drop-bad'));
+  }
+
+  function onPointerMove(e) {
+    if (!drag) return;
+    e.preventDefault();
+    moveGhost(e.clientX, e.clientY);
+
+    const cellNode = cellFromPoint(e.clientX, e.clientY);
+    clearDropHints();
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    const cell = shelf.cells[c];
+    const isSource = (r === drag.fromR && c === drag.fromC);
+    if (shelf.high) {
+      cellNode.classList.add('drop-bad');
+    } else if (isSource) {
+      // self-drop is a no-op, no hint
+    } else if (cell.front == null) {
+      cellNode.classList.add('drop-ok');
+    } else {
+      cellNode.classList.add('drop-bad');
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!drag) return;
+    e.preventDefault();
+    const cellNode = cellFromPoint(e.clientX, e.clientY);
+    let landed = null;
+    if (cellNode) {
+      const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+      const shelf = state.board.shelves[r];
+      const cell = shelf.cells[c];
+      if (!shelf.high && cell.front == null && !(r === drag.fromR && c === drag.fromC)) {
+        landed = { r, c };
+      }
+    }
+    cleanupDrag();
+    if (landed) commitMove(drag, landed);
+    drag = null;
+  }
+  function onPointerCancel() {
+    cleanupDrag();
+    drag = null;
+  }
+  function cleanupDrag() {
+    clearDropHints();
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    if (drag && drag.sourceEl) drag.sourceEl.classList.remove('dragging-source');
+  }
+
+  function commitMove(d, to) {
+    const board = state.board;
+    const fromCell = board.shelves[d.fromR].cells[d.fromC];
+    const toCell = board.shelves[to.r].cells[to.c];
+    toCell.front = fromCell.front;
+    fromCell.front = fromCell.back; // back item moves up to front
+    fromCell.back = null;
+    renderBoard(board);
+    resolveMatches();
+  }
+
+  // ---- Match detection ----
+  function findMatches(board) {
+    const matched = []; // list of {r,c}
+    for (let r = 0; r < board.shelves.length; r++) {
+      const cells = board.shelves[r].cells;
+      let runStart = 0;
+      for (let c = 1; c <= cells.length; c++) {
+        const prev = cells[c - 1].front;
+        const curr = c < cells.length ? cells[c].front : null;
+        if (c === cells.length || curr !== prev || prev == null) {
+          const len = c - runStart;
+          if (prev != null && len >= 3) {
+            for (let k = runStart; k < c; k++) matched.push({ r, c: k });
+          }
+          runStart = c;
+        }
+      }
+    }
+    return matched;
+  }
+
+  function resolveMatches() {
+    const board = state.board;
+    const matches = findMatches(board);
+    if (matches.length === 0) {
+      hudItems.textContent = countItems(board);
+      checkWin();
+      return;
+    }
+    state.busy = true;
+    // animate and remove
+    matches.forEach(({ r, c }) => {
+      const ce = cellEl(r, c);
+      if (!ce) return;
+      const front = ce.querySelector('.item.front');
+      if (front) front.classList.add('matched');
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      ce.appendChild(spark);
+    });
+    setTimeout(() => {
+      matches.forEach(({ r, c }) => {
+        const cell = board.shelves[r].cells[c];
+        cell.front = cell.back;
+        cell.back = null;
+      });
+      renderBoard(board);
+      state.busy = false;
+      // chain into next pass for any new matches
+      resolveMatches();
+    }, 460);
+  }
+
+  function checkWin() {
+    if (!state) return;
+    const remaining = countItems(state.board);
+    if (remaining === 0) {
+      // win flow added in step 5
+      console.log('Level cleared!');
+    }
+  }
+
+  // pointer listeners
+  stackEl.addEventListener('pointerdown', onPointerDown);
+  stackEl.addEventListener('pointermove', onPointerMove);
+  stackEl.addEventListener('pointerup', onPointerUp);
+  stackEl.addEventListener('pointercancel', onPointerCancel);
+  // global move/up so dragging keeps working if finger leaves the stack
+  window.addEventListener('pointermove', (e) => { if (drag) onPointerMove(e); });
+  window.addEventListener('pointerup', (e) => { if (drag) onPointerUp(e); });
 
   document.getElementById('btn-start').addEventListener('click', () => {
     show('game');

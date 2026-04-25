@@ -1,15 +1,15 @@
-# Diamond 2048
+# Arcade
 
-A mobile-first twist on 2048:
+A small portal of mobile-first web games. No build step — open `index.html`.
 
-- The board is a **diamond** (rotated 4×4 grid) so all merges happen **diagonally**.
-- Numbers start at **2048** and **halve** on each merge. Reach **2** to win.
-- Swipe ↖ ↗ ↙ ↘ on mobile, or use arrow keys / WASD on desktop.
+## Games
+
+- **Diamond 2048** (`diamond-2048.html`) — 2048 with a diamond grid; merges happen diagonally and tile values **halve** instead of doubling. Reach **2** to win.
+
+More to come.
 
 ## Run it
 
-Single file — no build step.
+**On your phone (easiest):** enable GitHub Pages on the repo (Settings → Pages → deploy from this branch, root). Visit the URL on your phone.
 
-**On your phone (easiest):** enable GitHub Pages for this repo (Settings → Pages → deploy from `main` or this branch, root), then visit the URL on your phone.
-
-**Local:** open `index.html` directly in a browser, or serve with `python3 -m http.server 8000` and open `http://<your-computer-ip>:8000` from your phone on the same Wi‑Fi.
+**Local:** open `index.html` directly, or serve with `python3 -m http.server 8000` and open `http://<your-ip>:8000` from a phone on the same Wi-Fi.

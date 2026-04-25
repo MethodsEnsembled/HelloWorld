@@ -486,6 +486,7 @@
     ctx.fillRect(0, 0, W, H);
     drawBricks();
     drawBall();
+    drawAim();
   }
 
   // ---------------- Game loop ----------------
@@ -500,6 +501,18 @@
   }
 
   // ---------------- Input ----------------
+  // Three states for the ball:
+  //   - !launched (fresh, stationary, pulsing) -> tap launches in random
+  //     upward-biased direction.
+  //   - launched and moving -> tap on the ball freezes it (vx=vy=0); ball
+  //     enters "aiming" mode.
+  //   - aiming (frozen) -> drag from the ball and release to flick. The
+  //     drag vector sets direction and speed; release without dragging
+  //     keeps it frozen so the player can re-aim.
+  let aiming = false;
+  let aimStart = null;
+  let aimNow = null;
+
   function localPoint(clientX, clientY) {
     const r = canvas.getBoundingClientRect();
     return { x: clientX - r.left, y: clientY - r.top };
@@ -508,25 +521,110 @@
     const b = state.ball;
     if (!b) return false;
     const dx = p.x - b.x, dy = p.y - b.y;
-    // Generous hit radius for fingers.
-    return dx * dx + dy * dy <= (b.r + 14) * (b.r + 14);
+    return dx * dx + dy * dy <= (b.r + 18) * (b.r + 18);
   }
 
-  function onTap(p) {
-    if (!state.playing) return;
-    if (!state.ball) return;
-    if (!state.ball.launched && pointInBall(p)) {
-      launchBall();
+  function onPointerDown(p) {
+    if (!state.playing || !state.ball) return;
+    const b = state.ball;
+    if (!b.launched) {
+      if (pointInBall(p)) launchBall();
+      return;
     }
+    // Moving or already-aiming ball: tap on the ball stops/starts aim.
+    if (pointInBall(p)) {
+      b.vx = 0; b.vy = 0;
+      aiming = true;
+      aimStart = { x: b.x, y: b.y };
+      aimNow = { x: p.x, y: p.y };
+    }
+  }
+  function onPointerMove(p) {
+    if (!aiming) return;
+    aimNow = { x: p.x, y: p.y };
+  }
+  function onPointerUp(_p) {
+    if (!aiming) return;
+    aiming = false;
+    const b = state.ball;
+    if (!b || !aimStart || !aimNow) return;
+    // Flick: launch in the OPPOSITE direction of the drag (pull-back-and-release
+    // feels more natural than push). Drag length controls speed within bounds.
+    const dx = aimStart.x - aimNow.x;
+    const dy = aimStart.y - aimNow.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 8) {
+      // Too short — leave the ball stopped so the player can re-aim.
+      return;
+    }
+    const minSpeed = 220;
+    const maxSpeed = 620;
+    const speed = Math.min(maxSpeed, minSpeed + len * 2.4);
+    const nx = dx / len, ny = dy / len;
+    b.vx = nx * speed;
+    b.vy = ny * speed;
+    aimStart = null;
+    aimNow = null;
   }
 
   canvas.addEventListener('touchstart', e => {
     const t = e.changedTouches[0];
-    onTap(localPoint(t.clientX, t.clientY));
+    onPointerDown(localPoint(t.clientX, t.clientY));
   }, { passive: true });
-  canvas.addEventListener('mousedown', e => {
-    onTap(localPoint(e.clientX, e.clientY));
-  });
+  canvas.addEventListener('touchmove', e => {
+    const t = e.changedTouches[0];
+    onPointerMove(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    onPointerUp(localPoint(t.clientX, t.clientY));
+  }, { passive: true });
+  canvas.addEventListener('mousedown', e => onPointerDown(localPoint(e.clientX, e.clientY)));
+  canvas.addEventListener('mousemove', e => onPointerMove(localPoint(e.clientX, e.clientY)));
+  canvas.addEventListener('mouseup',   e => onPointerUp(localPoint(e.clientX, e.clientY)));
+
+  function drawAim() {
+    if (!aiming || !aimStart || !aimNow) return;
+    const b = state.ball;
+    if (!b) return;
+    // Pull-back arrow: from drag-current toward the ball, extending past
+    // ball in the launch direction so the player can preview the path.
+    const dx = aimStart.x - aimNow.x;
+    const dy = aimStart.y - aimNow.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const nx = dx / len, ny = dy / len;
+    ctx.save();
+    // Pull-back line: ball -> finger
+    ctx.strokeStyle = 'rgba(255, 209, 102, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(aimNow.x, aimNow.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Aim arrow (launch direction): ball -> away
+    const arrowLen = Math.min(140, 40 + len * 1.4);
+    const tx = b.x + nx * arrowLen;
+    const ty = b.y + ny * arrowLen;
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // Arrow head
+    const ax = -ny, ay = nx;
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(tx + nx * 8, ty + ny * 8);
+    ctx.lineTo(tx + ax * 6, ty + ay * 6);
+    ctx.lineTo(tx - ax * 6, ty - ay * 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 
   function showOverlay(title, text, btnLabel) {
     modalTitle.textContent = title;

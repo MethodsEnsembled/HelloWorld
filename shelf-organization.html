@@ -364,6 +364,67 @@
     z-index: 3;
   }
 
+  /* level-clear and game over overlays */
+  .overlay {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(20,10,4,0.55);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    animation: fadeIn 0.18s ease-out;
+  }
+  .overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .overlay .panel {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 22px 24px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    border: 3px solid var(--accent);
+  }
+  .overlay h3 {
+    margin: 4px 0 6px;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .overlay p {
+    margin: 4px 0 10px;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+  .overlay .stat-row {
+    margin: 10px 0 14px;
+    display: flex; justify-content: center; gap: 18px;
+    color: var(--ink);
+  }
+  .overlay .stat-row b {
+    display: block;
+    font-size: 22px;
+    color: var(--accent);
+  }
+  .overlay .stat-row span {
+    font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft); text-transform: uppercase;
+  }
+  .hard-banner {
+    background: linear-gradient(135deg, #c93535, #e26b3b);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    margin: 0 auto 10px;
+    display: inline-block;
+    animation: hardPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hardPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
   /* high (unreachable) shelves get a dim look + lock badge */
   .shelf.high { opacity: 0.95; filter: saturate(0.85); }
   .shelf.high .cell { background: rgba(0,0,0,0.32); }
@@ -443,6 +504,7 @@
 
     <!-- Game screen -->
     <section id="screen-game" class="screen">
+      <div id="hard-banner-slot"></div>
       <div class="hud">
         <div class="hud-tile"><span class="lbl">Level</span><span class="val" id="hud-level">1</span></div>
         <div class="hud-tile timer" id="hud-timer-tile"><span class="lbl">Time</span><span class="val" id="hud-timer">--</span></div>
@@ -451,11 +513,41 @@
       <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
     </section>
 
-    <!-- Result screen (built in later steps) -->
+    <!-- Result screen -->
     <section id="screen-result" class="screen">
-      <p style="color: var(--ink-soft);">Result screen coming next step…</p>
+      <div class="title-hero" style="margin-top: 28px;">
+        <span id="result-emoji">🥲</span>
+      </div>
+      <h2 class="title-name" id="result-title">Time's Up!</h2>
+      <p class="title-sub" id="result-sub">The pantry got the better of you.</p>
+      <div style="display:flex; gap:18px; margin: 4px 0 22px;">
+        <div style="text-align:center;">
+          <span style="font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft);">REACHED</span>
+          <b style="display:block; font-size: 26px; color: var(--accent);" id="result-level">1</b>
+        </div>
+        <div style="text-align:center;">
+          <span style="font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft);">BEST</span>
+          <b style="display:block; font-size: 26px; color: var(--accent);" id="result-best">—</b>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-retry" class="big-btn">PLAY AGAIN</button>
+        <button id="btn-home" class="big-btn secondary">HOME</button>
+      </div>
     </section>
   </main>
+
+  <div class="overlay" id="overlay-clear">
+    <div class="panel">
+      <h3 id="clear-title">Shelf Tidy!</h3>
+      <p id="clear-sub">Nice work.</p>
+      <div class="stat-row">
+        <div><b id="clear-level">1</b><span>Level</span></div>
+        <div><b id="clear-time">0</b><span>Time Left</span></div>
+      </div>
+      <button id="btn-next" class="big-btn">NEXT LEVEL →</button>
+    </div>
+  </div>
 
   <footer>Tap. Slide. Tidy.</footer>
 
@@ -507,6 +599,17 @@
     const count = Math.min(ITEM_CATALOG.length, 4 + Math.floor((level - 1) / 5));
     return ITEM_CATALOG.slice(0, count);
   }
+
+  function isHardLevel(level) {
+    // every 7th level is the brutal one (and only after level 5).
+    return level >= 7 && level % 7 === 0;
+  }
+  function timeBudgetForLevel(level) {
+    // 60s base, drops 1.5s per level, floored, harder on hard levels.
+    let t = Math.max(28, 60 - Math.floor((level - 1) * 1.5));
+    if (isHardLevel(level)) t = Math.max(22, Math.floor(t * 0.72));
+    return t;
+  }
   function itemById(id) {
     return ITEM_CATALOG.find(it => it.id === id);
   }
@@ -517,20 +620,25 @@
   // A shelf can be marked .high (unreachable). Some cells can hold a back item.
   function makeBoard(level) {
     const items = itemsForLevel(level);
+    const hard = isHardLevel(level);
     const cols = 6;
     const rowsTotal = 4;
-    // First shelf is "too high" starting at level 3, otherwise all reachable.
-    const highIdx = level >= 3 ? 0 : -1;
+    // First shelf is "too high" starting at level 3.
+    // Hard levels: top two shelves are unreachable.
+    const highRows = new Set();
+    if (hard) { highRows.add(0); highRows.add(1); }
+    else if (level >= 3) { highRows.add(0); }
 
     // Density: how full the shelves are (out of 1).
-    const density = Math.min(0.85, 0.55 + level * 0.012);
+    let density = Math.min(0.85, 0.55 + level * 0.012);
     // Depth: chance any given cell has a back item too.
-    const depthChance = level >= 4 ? Math.min(0.32, 0.06 + (level - 4) * 0.015) : 0;
+    let depthChance = level >= 4 ? Math.min(0.32, 0.06 + (level - 4) * 0.015) : 0;
+    if (hard) { density = Math.min(0.92, density + 0.1); depthChance = Math.min(0.5, depthChance + 0.18); }
 
     const shelves = [];
     for (let r = 0; r < rowsTotal; r++) {
       const cells = [];
-      const isHigh = r === highIdx;
+      const isHigh = highRows.has(r);
       // High shelf: keep mostly full (decorative clutter).
       const cellDensity = isHigh ? 0.92 : density;
       for (let c = 0; c < cols; c++) {
@@ -557,7 +665,7 @@
         target.cells[target.cells.length - 1].back = null;
       }
     }
-    return { shelves, level, items };
+    return { shelves, level, items, hard };
   }
 
   // ---- Renderer ----
@@ -615,10 +723,74 @@
 
   // Game state.
   let state = null;
+  const hudTimer = document.getElementById('hud-timer');
+  const hudTimerTile = document.getElementById('hud-timer-tile');
+  const hardSlot = document.getElementById('hard-banner-slot');
+
+  function clearTimer() {
+    if (state && state.timerInterval) {
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+  }
+  function setTimerDisplay(secs) {
+    hudTimer.textContent = secs;
+    if (secs <= 10) hudTimerTile.classList.add('warn');
+    else hudTimerTile.classList.remove('warn');
+  }
 
   function startLevel(level) {
-    state = { board: makeBoard(level), busy: false };
-    renderBoard(state.board);
+    clearTimer();
+    const board = makeBoard(level);
+    const totalTime = timeBudgetForLevel(level);
+    state = {
+      board,
+      busy: false,
+      level,
+      timeLeft: totalTime,
+      totalTime,
+      timerInterval: null,
+      ended: false,
+    };
+    hardSlot.innerHTML = board.hard ? '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>' : '';
+    renderBoard(board);
+    setTimerDisplay(state.timeLeft);
+    state.timerInterval = setInterval(() => {
+      if (!state || state.ended) return;
+      state.timeLeft -= 1;
+      setTimerDisplay(Math.max(0, state.timeLeft));
+      if (state.timeLeft <= 0) {
+        endRun();
+      }
+    }, 1000);
+  }
+
+  function endRun() {
+    if (!state || state.ended) return;
+    state.ended = true;
+    clearTimer();
+    refreshRecord();
+    document.getElementById('result-emoji').textContent = '🥲';
+    document.getElementById('result-title').textContent = "Time's Up!";
+    document.getElementById('result-sub').textContent = 'The pantry got the better of you.';
+    document.getElementById('result-level').textContent = state.level;
+    document.getElementById('result-best').textContent = loadBest() || '—';
+    show('result');
+  }
+
+  function showLevelClear() {
+    document.getElementById('clear-level').textContent = state.level;
+    document.getElementById('clear-time').textContent = Math.max(0, state.timeLeft);
+    document.getElementById('clear-title').textContent =
+      state.level % 5 === 0 ? 'New Item Unlocked!' : 'Shelf Tidy!';
+    document.getElementById('clear-sub').textContent =
+      state.level % 5 === 0
+        ? "Things are about to get more crowded."
+        : 'Onto the next mess.';
+    document.getElementById('overlay-clear').classList.add('show');
+  }
+  function hideLevelClear() {
+    document.getElementById('overlay-clear').classList.remove('show');
   }
 
   // ---- Drag interaction ----
@@ -787,11 +959,16 @@
   }
 
   function checkWin() {
-    if (!state) return;
+    if (!state || state.ended) return;
     const remaining = countItems(state.board);
     if (remaining === 0) {
-      // win flow added in step 5
-      console.log('Level cleared!');
+      state.ended = true;
+      clearTimer();
+      // best-level-reached is the level you've cleared.
+      saveBest(state.level);
+      refreshRecord();
+      // small beat before showing the panel.
+      setTimeout(showLevelClear, 350);
     }
   }
 
@@ -808,6 +985,21 @@
     show('game');
     startLevel(1);
   });
+  document.getElementById('btn-next').addEventListener('click', () => {
+    hideLevelClear();
+    startLevel(state.level + 1);
+  });
+  document.getElementById('btn-retry').addEventListener('click', () => {
+    show('game');
+    startLevel(1);
+  });
+  document.getElementById('btn-home').addEventListener('click', () => {
+    show('title');
+    refreshRecord();
+  });
+
+  // Tidy up timers if the user backs out.
+  window.addEventListener('pagehide', () => clearTimer());
 
   // Expose helpers for later steps.
   window.__shelf = { show, loadBest, saveBest, refreshRecord, startLevel, get state() { return state; }, renderBoard };

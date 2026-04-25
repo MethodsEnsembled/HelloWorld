@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffd6e7">
+<title>Making Dessert</title>
+<style>
+  :root {
+    --bg: #ffe9f1;
+    --bg2: #fff4d6;
+    --panel: #ffffff;
+    --ink: #4a2548;
+    --ink-soft: #8b6485;
+    --accent: #ff5e9c;
+    --accent2: #ffb84d;
+    --good: #6bd968;
+    --bad: #b8a08a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: linear-gradient(160deg, var(--bg) 0%, var(--bg2) 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+    min-height: 100vh;
+  }
+  .top-bar {
+    width: 100%; max-width: 520px;
+    padding: 12px 4px; display: flex; align-items: center; gap: 12px;
+  }
+  .back {
+    color: var(--ink); text-decoration: none; font-size: 14px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(74,37,72,0.1);
+  }
+  .back:active { background: rgba(255,255,255,1); }
+  .top-bar h1 {
+    margin: 0; flex: 1; text-align: center; font-size: 16px;
+    letter-spacing: 2px; font-weight: 800; color: var(--ink-soft);
+  }
+  .top-bar .spacer { width: 56px; }
+
+  main {
+    width: 100%; max-width: 520px; flex: 1;
+    display: flex; flex-direction: column;
+    padding: 8px 4px 24px;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    text-align: center;
+  }
+  .screen.active { display: flex; }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a class="back" href="index.html">‹ Arcade</a>
+    <h1>MAKING DESSERT</h1>
+    <span class="spacer"></span>
+  </div>
+
+  <main>
+    <section id="screen-title" class="screen active">
+      <p>Title screen placeholder.</p>
+    </section>
+
+    <section id="screen-memorize" class="screen">
+      <p>Memorize screen placeholder.</p>
+    </section>
+
+    <section id="screen-tap" class="screen">
+      <p>Tap screen placeholder.</p>
+    </section>
+
+    <section id="screen-ending" class="screen">
+      <p>Ending screen placeholder.</p>
+    </section>
+  </main>
+
+<script>
+  // Screen router
+  const screens = {
+    title: document.getElementById('screen-title'),
+    memorize: document.getElementById('screen-memorize'),
+    tap: document.getElementById('screen-tap'),
+    ending: document.getElementById('screen-ending'),
+  };
+  function show(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+  // Start at title for now
+  show('title');
+</script>
+</body>
+</html>

@@ -147,6 +147,16 @@
     font-size: 17px;
     margin-left: 4px;
   }
+  .title-pu {
+    margin: 8px 0 0;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .title-pu span { color: var(--ink); font-size: 13px; }
+  .title-pu b { color: var(--accent); font-weight: 800; margin-left: 1px; }
 
   /* Mini decorative shelf preview on title */
   .preview-shelf {
@@ -213,11 +223,12 @@
 
   .shelf-stack {
     width: 100%;
-    max-width: 360px;
-    margin: 4px auto 12px;
-    display: flex; flex-direction: column;
-    gap: 12px;
-    padding: 8px 6px 12px;
+    max-width: 380px;
+    margin: 4px auto 10px;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 2), 1fr);
+    gap: 8px;
+    padding: 8px 6px 10px;
     background: linear-gradient(180deg, #d9b888 0%, #c79a64 100%);
     border: 2px solid var(--wood-edge);
     border-radius: 10px;
@@ -240,40 +251,40 @@
   }
 
   .shelf {
-    --cols: 6;
+    --cols: 3;
     position: relative;
     background: linear-gradient(180deg, #b07a45 0%, #97623a 100%);
     border-radius: 5px;
-    padding: 6px 4px 8px;
+    padding: 4px 3px 6px;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.18),
-      inset 0 -4px 0 var(--wood-dark),
-      0 4px 0 rgba(58,36,18,0.25);
+      inset 0 -3px 0 var(--wood-dark),
+      0 3px 0 rgba(58,36,18,0.25);
   }
   .shelf-row {
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
-    gap: 3px;
+    gap: 2px;
   }
   .cell {
     aspect-ratio: 1 / 1;
     background: rgba(0,0,0,0.18);
-    border-radius: 4px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.25);
     position: relative;
     display: flex; align-items: center; justify-content: center;
     overflow: visible;
   }
   .item {
     position: absolute;
-    inset: 6%;
+    inset: 8%;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(34px, 12vw, 56px);
+    font-size: clamp(18px, 5vw, 28px);
     line-height: 1;
     background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
-    border-radius: 8px;
+    border-radius: 5px;
     box-shadow:
-      0 2px 0 rgba(0,0,0,0.18),
+      0 1px 0 rgba(0,0,0,0.18),
       inset 0 1px 0 rgba(255,255,255,0.8);
     filter: drop-shadow(0 1px 0 rgba(0,0,0,0.1));
     transition: transform 0.18s, opacity 0.2s;
@@ -316,9 +327,9 @@
   .ghost {
     position: fixed;
     left: 0; top: 0;
-    width: 60px; height: 60px;
+    width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 42px;
+    font-size: 28px;
     background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
     border-radius: 8px;
     box-shadow:
@@ -336,6 +347,23 @@
   }
   .cell.drop-bad {
     background: rgba(201,53,53,0.35) !important;
+  }
+  .cell.tap-target {
+    background: rgba(106,200,120,0.22) !important;
+    box-shadow: inset 0 0 0 1px rgba(106,200,120,0.7), inset 0 2px 3px rgba(0,0,0,0.18);
+  }
+  .item.front.picked {
+    z-index: 5;
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 0 10px rgba(226,107,59,0.55),
+      0 1px 0 rgba(0,0,0,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    animation: pickedPulse 0.95s ease-in-out infinite;
+  }
+  @keyframes pickedPulse {
+    0%, 100% { transform: scale(1.04); }
+    50% { transform: scale(1.12); }
   }
 
   /* match animation */
@@ -408,6 +436,73 @@
     animation: spawnPop 0.32s ease-out;
   }
 
+  /* Power-up tray */
+  .powerups {
+    width: 100%;
+    max-width: 380px;
+    margin: 8px auto 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .pu {
+    appearance: none;
+    border: 2px solid transparent;
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 7px 4px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--ink);
+    box-shadow: 0 3px 0 rgba(58,36,18,0.15);
+    transition: transform 0.08s, box-shadow 0.08s, background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .pu:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(58,36,18,0.15);
+  }
+  .pu .pu-icon { font-size: 22px; line-height: 1; }
+  .pu .pu-name {
+    font-size: 9px; font-weight: 800; color: var(--ink-soft);
+    letter-spacing: 1px; margin-top: 1px;
+  }
+  .pu .pu-count {
+    position: absolute;
+    top: -6px; right: -4px;
+    background: var(--accent);
+    color: white;
+    font-size: 10px; font-weight: 800;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .pu.empty {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .pu.empty .pu-count { background: var(--ink-soft); }
+  .pu.armed {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, #fff5e0 0%, #ffd9a8 100%);
+    animation: armPulse 0.9s ease-in-out infinite;
+  }
+  @keyframes armPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(226,107,59,0.55), 0 3px 0 rgba(58,36,18,0.15); }
+    70%      { box-shadow: 0 0 0 8px rgba(226,107,59,0), 0 3px 0 rgba(58,36,18,0.15); }
+  }
+  .arm-instruction {
+    width: 100%; max-width: 380px; margin: 6px auto 0;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--accent); text-align: center; font-weight: 800;
+    min-height: 14px;
+  }
+
   /* level-clear and game over overlays */
   .overlay {
     position: fixed; inset: 0;
@@ -467,6 +562,36 @@
   @keyframes hardPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
+  }
+  .mod-banner {
+    color: white;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+    margin: 0 auto 8px;
+    display: inline-block;
+  }
+  .mod-banner.queue { background: linear-gradient(135deg, #c77800, #f0a23c); }
+  .mod-banner.high  { background: linear-gradient(135deg, #5a3614, #8a5a30); }
+  .mod-banner.depth { background: linear-gradient(135deg, #2f4858, #4a6a82); }
+
+  .drop-row {
+    margin: 4px 0 14px;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, #fff5e0 0%, #ffd9a8 100%);
+    border-radius: 10px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-size: 13px;
+    animation: dropAppear 0.5s cubic-bezier(.5,1.6,.4,1);
+    border: 1px solid rgba(226,107,59,0.4);
+  }
+  @keyframes dropAppear {
+    0%   { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
   }
 
   /* high (unreachable) shelves get a dim look + lock badge */
@@ -541,9 +666,16 @@
       </div>
 
       <div class="btn-row">
-        <button id="btn-start" class="big-btn">START</button>
+        <button id="btn-continue" class="big-btn" style="display:none;">CONTINUE LV <span id="continue-level">1</span></button>
+        <button id="btn-new" class="big-btn secondary">NEW GAME</button>
       </div>
       <p class="record">BEST LEVEL <b id="record-display">—</b></p>
+      <p class="title-pu" id="title-pu" style="display:none;">
+        YOUR POWER-UPS
+        <span>🔨×<b id="title-pu-hammer">0</b></span>
+        <span>⏱×<b id="title-pu-time">0</b></span>
+        <span>💣×<b id="title-pu-bomb">0</b></span>
+      </p>
     </section>
 
     <!-- Game screen -->
@@ -552,13 +684,31 @@
       <div class="hud">
         <div class="hud-tile"><span class="lbl">Level</span><span class="val" id="hud-level">1</span></div>
         <div class="hud-tile timer" id="hud-timer-tile"><span class="lbl">Time</span><span class="val" id="hud-timer">--</span></div>
-        <div class="hud-tile"><span class="lbl">Items</span><span class="val" id="hud-items">0</span></div>
+        <div class="hud-tile"><span class="lbl">Matches</span><span class="val" id="hud-matches">0/0</span></div>
       </div>
       <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
       <div id="next-tray" class="next-tray" aria-label="next items">
         <span class="next-label">NEXT BAD MOVE SPAWNS</span>
         <div class="next-items" id="next-items"></div>
       </div>
+      <div class="powerups" id="powerups" aria-label="power-ups">
+        <button class="pu" data-pu="hammer">
+          <span class="pu-icon">🔨</span>
+          <span class="pu-name">HAMMER</span>
+          <span class="pu-count" id="pu-hammer">0</span>
+        </button>
+        <button class="pu" data-pu="time">
+          <span class="pu-icon">⏱</span>
+          <span class="pu-name">+30s</span>
+          <span class="pu-count" id="pu-time">0</span>
+        </button>
+        <button class="pu" data-pu="bomb">
+          <span class="pu-icon">💣</span>
+          <span class="pu-name">BOMB</span>
+          <span class="pu-count" id="pu-bomb">0</span>
+        </button>
+      </div>
+      <p class="arm-instruction" id="arm-instruction"></p>
     </section>
 
     <!-- Result screen -->
@@ -593,6 +743,9 @@
         <div><b id="clear-level">1</b><span>Level</span></div>
         <div><b id="clear-time">0</b><span>Time Left</span></div>
       </div>
+      <div class="drop-row" id="drop-row" style="display:none;">
+        ✨ <span id="drop-text">+1</span> ✨
+      </div>
       <button id="btn-next" class="big-btn">NEXT LEVEL →</button>
     </div>
   </div>
@@ -602,6 +755,7 @@
 <script>
 (() => {
   const RECORD_KEY = 'shelfOrg.bestLevel';
+  const LEVEL_KEY  = 'shelfOrg.currentLevel';
 
   const screens = {
     title: document.getElementById('screen-title'),
@@ -621,11 +775,37 @@
     const cur = loadBest();
     if (level > cur) localStorage.setItem(RECORD_KEY, String(level));
   }
-  function refreshRecord() {
+  function loadCurrentLevel() {
+    const v = parseInt(localStorage.getItem(LEVEL_KEY) || '1', 10);
+    return Number.isFinite(v) && v >= 1 ? v : 1;
+  }
+  function saveCurrentLevel(n) {
+    localStorage.setItem(LEVEL_KEY, String(n));
+  }
+  function refreshTitle() {
     const best = loadBest();
     document.getElementById('record-display').textContent = best > 0 ? best : '—';
+    const cur = loadCurrentLevel();
+    const continueBtn = document.getElementById('btn-continue');
+    if (cur > 1) {
+      continueBtn.style.display = '';
+      document.getElementById('continue-level').textContent = cur;
+    } else {
+      continueBtn.style.display = 'none';
+    }
+    const titlePu = document.getElementById('title-pu');
+    const total = (inventory.hammer || 0) + (inventory.time || 0) + (inventory.bomb || 0);
+    if (total > 0) {
+      titlePu.style.display = '';
+      document.getElementById('title-pu-hammer').textContent = inventory.hammer || 0;
+      document.getElementById('title-pu-time').textContent   = inventory.time   || 0;
+      document.getElementById('title-pu-bomb').textContent   = inventory.bomb   || 0;
+    } else {
+      titlePu.style.display = 'none';
+    }
   }
-  refreshRecord();
+  // refreshRecord kept as a thin alias so existing callers stay consistent.
+  function refreshRecord() { refreshTitle(); }
 
   // ---- Item catalog ----
   // Items unlock progressively; baseline 4, plus one new every 5 levels.
@@ -652,10 +832,33 @@
     // every 7th level is the brutal one (and only after level 5).
     return level >= 7 && level % 7 === 0;
   }
+  // Modifier rotation: L1-L2 none, then queue/high/depth on a 3-cycle, hard on every 7th.
+  function modifierForLevel(level) {
+    if (level <= 2) return 'none';
+    if (isHardLevel(level)) return 'hard';
+    const m = level % 3;
+    if (m === 0) return 'queue';
+    if (m === 1) return 'high';
+    return 'depth';
+  }
+  function modifierFlags(mod) {
+    return {
+      queue: mod === 'queue' || mod === 'hard',
+      high:  mod === 'high'  || mod === 'hard',
+      depth: mod === 'depth' || mod === 'hard',
+      hard:  mod === 'hard',
+    };
+  }
+  function targetForLevel(level) {
+    // Matches needed to clear the level.
+    let t = 5 + Math.floor((level - 1) * 1.2);
+    if (isHardLevel(level)) t = Math.floor(t * 1.25);
+    return t;
+  }
   function timeBudgetForLevel(level) {
-    // 60s base, drops 1.5s per level, floored, harder on hard levels.
-    let t = Math.max(28, 60 - Math.floor((level - 1) * 1.5));
-    if (isHardLevel(level)) t = Math.max(22, Math.floor(t * 0.72));
+    // 70s base, drops 1.2s per level, floored, harder on hard levels.
+    let t = Math.max(35, 70 - Math.floor((level - 1) * 1.2));
+    if (isHardLevel(level)) t = Math.max(28, Math.floor(t * 0.78));
     return t;
   }
   function itemById(id) {
@@ -674,60 +877,67 @@
     return arr;
   }
 
+  // Shelf grid scales with level: more shelves once more icon types unlock.
+  function gridShapeForLevel(level) {
+    if (level <= 4) return { gridCols: 2, gridRows: 2 };
+    if (level <= 9) return { gridCols: 2, gridRows: 3 };
+    return { gridCols: 3, gridRows: 3 };
+  }
+
   function makeBoard(level) {
     const items = itemsForLevel(level);
-    const hard = isHardLevel(level);
+    const mod = modifierForLevel(level);
+    const flags = modifierFlags(mod);
+    const hard = flags.hard;
     const cols = 3;
-    const rowsTotal = 6;
-    // First shelf is "too high" starting at level 3.
-    // Hard levels: top two shelves are unreachable.
-    const highRows = new Set();
-    if (hard) { highRows.add(0); highRows.add(1); }
-    else if (level >= 3) { highRows.add(0); }
+    const { gridCols, gridRows } = gridShapeForLevel(level);
+    const totalShelves = gridCols * gridRows;
+
+    // High-shelf modifier: the first shelf in the grid is decorative/locked.
+    const highShelves = new Set();
+    if (flags.high) highShelves.add(0);
 
     // Build empty shelves first.
     const shelves = [];
-    for (let r = 0; r < rowsTotal; r++) {
+    for (let s = 0; s < totalShelves; s++) {
       const cells = [];
       for (let c = 0; c < cols; c++) cells.push({ front: null, back: null });
-      shelves.push({ cols, cells, high: highRows.has(r) });
+      shelves.push({ cols, cells, high: highShelves.has(s) });
     }
 
-    // How many "sets of 3" to start with on reachable shelves.
-    // Always a multiple of 3, always leaves at least 1 reachable shelf empty.
-    const reachableShelves = rowsTotal - highRows.size;
+    // How many "sets of 3" to start with. Multiples of 3, always leaves at
+    // least one shelf-worth of empty cells.
+    const reachableShelves = totalShelves - highShelves.size;
     const reachableCells = reachableShelves * cols;
-    const maxSets = Math.floor(reachableCells / 3) - 1;
+    const maxSets = Math.max(1, Math.floor(reachableCells / 3) - 1);
     let sets = Math.min(maxSets, 2 + Math.floor((level - 1) / 2));
     if (hard) sets = Math.min(maxSets, sets + 1);
     sets = Math.max(2, sets);
 
-    // Collect reachable front slots; depth slots become eligible at level 4+.
     const frontSlots = [];
-    for (let r = 0; r < rowsTotal; r++) {
-      if (highRows.has(r)) continue;
-      for (let c = 0; c < cols; c++) frontSlots.push({ r, c });
+    for (let s = 0; s < totalShelves; s++) {
+      if (highShelves.has(s)) continue;
+      for (let c = 0; c < cols; c++) frontSlots.push({ s, c });
     }
     shuffle(frontSlots);
 
-    const depthChance = level >= 4 ? Math.min(0.35, 0.06 + (level - 4) * 0.02) : 0;
+    const depthChance = flags.depth ? Math.min(0.35, 0.08 + (level - 4) * 0.02) : 0;
     const placeBack = (itemId) => {
-      // Look for a cell with a front item but no back; place itemId behind.
       const candidates = [];
-      for (let r = 0; r < rowsTotal; r++) {
-        if (highRows.has(r)) continue;
+      for (let s = 0; s < totalShelves; s++) {
+        if (highShelves.has(s)) continue;
         for (let c = 0; c < cols; c++) {
-          const cell = shelves[r].cells[c];
-          if (cell.front != null && cell.back == null) candidates.push({ r, c });
+          const cell = shelves[s].cells[c];
+          if (cell.front != null && cell.back == null) candidates.push({ s, c });
         }
       }
       if (candidates.length === 0) return false;
       const slot = candidates[Math.floor(Math.random() * candidates.length)];
-      shelves[slot.r].cells[slot.c].back = itemId;
+      shelves[slot.s].cells[slot.c].back = itemId;
       return true;
     };
 
-    for (let s = 0; s < sets; s++) {
+    for (let i = 0; i < sets; i++) {
       const itemId = items[Math.floor(Math.random() * items.length)].id;
       let placed = 0;
       while (placed < 3) {
@@ -736,50 +946,43 @@
           continue;
         }
         if (frontSlots.length === 0) {
-          // fall back to a back-slot if any.
           if (placeBack(itemId)) { placed++; continue; }
           break;
         }
         const slot = frontSlots.pop();
-        shelves[slot.r].cells[slot.c].front = itemId;
+        shelves[slot.s].cells[slot.c].front = itemId;
         placed++;
       }
     }
 
-    // Decorate high shelves with random items (not part of clearable count).
-    for (let r = 0; r < rowsTotal; r++) {
-      if (!highRows.has(r)) continue;
+    // Decorate high shelves with random items so they look full of clutter.
+    for (let s = 0; s < totalShelves; s++) {
+      if (!highShelves.has(s)) continue;
       for (let c = 0; c < cols; c++) {
         if (Math.random() < 0.92) {
-          shelves[r].cells[c].front = items[Math.floor(Math.random() * items.length)].id;
+          shelves[s].cells[c].front = items[Math.floor(Math.random() * items.length)].id;
         }
       }
     }
 
-    return { shelves, level, items, hard };
+    return { shelves, level, items, hard, gridCols, gridRows, modifier: mod, flags };
   }
 
   // ---- Renderer ----
   const stackEl = document.getElementById('shelf-stack');
   const hudLevel = document.getElementById('hud-level');
-  const hudItems = document.getElementById('hud-items');
+  const hudMatches = document.getElementById('hud-matches');
+  const nextTrayEl = document.getElementById('next-tray');
 
-  // Items needing to be cleared: only on reachable shelves.
-  // High-shelf items are decorative obstacles.
-  function countItems(board) {
-    let n = 0;
-    for (const sh of board.shelves) {
-      if (sh.high) continue;
-      for (const c of sh.cells) {
-        if (c.front) n++;
-        if (c.back) n++;
-      }
-    }
-    return n;
+  function refreshHud() {
+    if (!state) return;
+    hudLevel.textContent = state.level;
+    hudMatches.textContent = `${state.matchesMade}/${state.target}`;
   }
 
   function renderBoard(board) {
     stackEl.innerHTML = '';
+    stackEl.style.setProperty('--grid-cols', board.gridCols);
     board.shelves.forEach((shelf, ri) => {
       const shelfEl = document.createElement('div');
       shelfEl.className = 'shelf' + (shelf.high ? ' high' : '');
@@ -808,8 +1011,7 @@
       shelfEl.appendChild(row);
       stackEl.appendChild(shelfEl);
     });
-    hudLevel.textContent = board.level;
-    hudItems.textContent = countItems(board);
+    refreshHud();
   }
 
   // Game state.
@@ -830,10 +1032,48 @@
     else hudTimerTile.classList.remove('warn');
   }
 
+  function modifierBannerHtml(mod, hard) {
+    if (mod === 'hard' || hard) return '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>';
+    if (mod === 'queue') return '<div class="mod-banner queue">⚙ NEXT BAD MOVE SPAWNS</div>';
+    if (mod === 'high')  return '<div class="mod-banner high">⚙ HIGH SHELF — top is locked</div>';
+    if (mod === 'depth') return '<div class="mod-banner depth">⚙ DEEP SHELVES — items behind</div>';
+    return '';
+  }
+
+  const POWERUPS_KEY = 'shelfOrg.powerups';
+  function loadInventory() {
+    try {
+      const raw = localStorage.getItem(POWERUPS_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      return {
+        hammer: Math.max(0, parseInt(obj.hammer || 0, 10)),
+        time:   Math.max(0, parseInt(obj.time   || 0, 10)),
+        bomb:   Math.max(0, parseInt(obj.bomb   || 0, 10)),
+      };
+    } catch (e) { return null; }
+  }
+  function saveInventory() {
+    try { localStorage.setItem(POWERUPS_KEY, JSON.stringify(inventory)); } catch (e) {}
+  }
+  // Persisted across levels and runs.
+  let inventory = loadInventory() || { hammer: 1, time: 1, bomb: 0 };
+
+  function rollPowerupDrop(level, isHard) {
+    const dropChance = isHard ? 1.0 : 0.55;
+    if (Math.random() >= dropChance) return null;
+    const r = Math.random();
+    if (r < 0.45) return 'hammer';
+    if (r < 0.80) return 'time';
+    return 'bomb';
+  }
+
   function startLevel(level) {
     clearTimer();
+    setPicked(null);
     const board = makeBoard(level);
     const totalTime = timeBudgetForLevel(level);
+    const target = targetForLevel(level);
     state = {
       board,
       busy: false,
@@ -842,11 +1082,17 @@
       totalTime,
       timerInterval: null,
       ended: false,
-      queue: genSpawnSet(board.items),
+      target,
+      matchesMade: 0,
+      queue: board.flags.queue ? genSpawnSet(board.items) : null,
+      powerups: inventory, // shared reference so changes persist into the next level
+      armed: null,
     };
-    hardSlot.innerHTML = board.hard ? '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>' : '';
+    hardSlot.innerHTML = modifierBannerHtml(board.modifier, board.hard);
+    nextTrayEl.style.display = state.queue ? '' : 'none';
     renderBoard(board);
     renderQueue();
+    refreshPowerupTray();
     setTimerDisplay(state.timeLeft);
     state.timerInterval = setInterval(() => {
       if (!state || state.ended) return;
@@ -883,14 +1129,175 @@
       state.level % 5 === 0
         ? "Things are about to get more crowded."
         : 'Onto the next mess.';
+    const dropRow = document.getElementById('drop-row');
+    if (state.lastDrop) {
+      const labels = { hammer: '🔨 HAMMER', time: '⏱ +30s', bomb: '💣 BOMB' };
+      document.getElementById('drop-text').textContent = `+1 ${labels[state.lastDrop]}`;
+      dropRow.style.display = '';
+    } else {
+      dropRow.style.display = 'none';
+    }
     document.getElementById('overlay-clear').classList.add('show');
   }
   function hideLevelClear() {
     document.getElementById('overlay-clear').classList.remove('show');
   }
 
-  // ---- Drag interaction ----
-  let drag = null;
+  // ---- Power-ups ----
+  const armInstructionEl = document.getElementById('arm-instruction');
+  const powerupEls = {
+    hammer: document.querySelector('.pu[data-pu="hammer"]'),
+    time:   document.querySelector('.pu[data-pu="time"]'),
+    bomb:   document.querySelector('.pu[data-pu="bomb"]'),
+  };
+  const powerupCountEls = {
+    hammer: document.getElementById('pu-hammer'),
+    time:   document.getElementById('pu-time'),
+    bomb:   document.getElementById('pu-bomb'),
+  };
+  function refreshPowerupTray() {
+    if (!state) return;
+    for (const k of ['hammer','time','bomb']) {
+      const cnt = state.powerups[k] || 0;
+      powerupCountEls[k].textContent = cnt;
+      powerupEls[k].classList.toggle('empty', cnt <= 0);
+      powerupEls[k].classList.toggle('armed', state.armed === k);
+    }
+    if (state.armed === 'hammer') armInstructionEl.textContent = '🔨 tap any item';
+    else if (state.armed === 'bomb') armInstructionEl.textContent = '💣 tap any shelf';
+    else armInstructionEl.textContent = '';
+  }
+  function disarmPowerup() {
+    if (!state) return;
+    state.armed = null;
+    refreshPowerupTray();
+  }
+  function armPowerup(pu) {
+    if (!state || state.busy || state.ended) return;
+    if ((state.powerups[pu] || 0) <= 0) return;
+    if (pu === 'time') {
+      state.powerups.time -= 1;
+      saveInventory();
+      state.timeLeft += 30;
+      setTimerDisplay(state.timeLeft);
+      refreshPowerupTray();
+      return;
+    }
+    state.armed = (state.armed === pu) ? null : pu;
+    setPicked(null);
+    refreshPowerupTray();
+  }
+  document.getElementById('powerups').addEventListener('click', (e) => {
+    const btn = e.target.closest('.pu');
+    if (!btn) return;
+    armPowerup(btn.dataset.pu);
+  });
+
+  // Cell coordinate helpers for distance.
+  function cellPos(board, r, c) {
+    const gridR = Math.floor(r / board.gridCols);
+    const gridC = r % board.gridCols;
+    return { x: gridC * 3 + c, y: gridR };
+  }
+  function cellDistSq(board, ar, ac, br, bc) {
+    const a = cellPos(board, ar, ac), b = cellPos(board, br, bc);
+    const dx = a.x - b.x, dy = (a.y - b.y) * 3;
+    return dx*dx + dy*dy;
+  }
+  function shelfDistSq(board, ar, br) {
+    return cellDistSq(board, ar, 1, br, 1);
+  }
+
+  function animateClear(targets) {
+    targets.forEach(({ r, c }) => {
+      const ce = cellEl(r, c);
+      if (!ce) return;
+      const fr = ce.querySelector('.item.front');
+      if (fr) fr.classList.add('matched');
+      const sp = document.createElement('div'); sp.className = 'spark'; ce.appendChild(sp);
+    });
+  }
+
+  function useHammer(targetR, targetC) {
+    const board = state.board;
+    const cell = board.shelves[targetR].cells[targetC];
+    const itemId = cell.front;
+    if (!itemId) return false;
+    const cands = [];
+    for (let r = 0; r < board.shelves.length; r++) {
+      const sh = board.shelves[r];
+      if (sh.high) continue;
+      for (let c = 0; c < sh.cells.length; c++) {
+        if (sh.cells[c].front === itemId) cands.push({ r, c });
+      }
+    }
+    if (cands.length === 0) return false;
+    cands.sort((a, b) => cellDistSq(board, a.r, a.c, targetR, targetC) - cellDistSq(board, b.r, b.c, targetR, targetC));
+    const toClear = cands.slice(0, 3);
+    state.busy = true;
+    animateClear(toClear);
+    setTimeout(() => {
+      toClear.forEach(({ r, c }) => {
+        const cl = board.shelves[r].cells[c];
+        cl.front = cl.back; cl.back = null;
+      });
+      state.matchesMade += 1;
+      renderBoard(board);
+      refreshHud();
+      state.busy = false;
+      resolveMatches(() => {});
+    }, 460);
+    return true;
+  }
+
+  function useBomb(targetR) {
+    const board = state.board;
+    const cands = [];
+    for (let r = 0; r < board.shelves.length; r++) {
+      if (board.shelves[r].high) continue;
+      cands.push({ r });
+    }
+    if (cands.length === 0) return false;
+    cands.sort((a, b) => shelfDistSq(board, a.r, targetR) - shelfDistSq(board, b.r, targetR));
+    const toClearShelves = cands.slice(0, 3);
+    const toClearCells = [];
+    let shelvesActuallyCleared = 0;
+    toClearShelves.forEach(({ r }) => {
+      const sh = board.shelves[r];
+      let hadAny = false;
+      for (let c = 0; c < sh.cells.length; c++) {
+        if (sh.cells[c].front != null) { hadAny = true; toClearCells.push({ r, c }); }
+      }
+      if (hadAny) shelvesActuallyCleared++;
+    });
+    state.busy = true;
+    animateClear(toClearCells);
+    setTimeout(() => {
+      toClearShelves.forEach(({ r }) => {
+        const sh = board.shelves[r];
+        for (let c = 0; c < sh.cells.length; c++) {
+          const cl = sh.cells[c];
+          cl.front = cl.back; cl.back = null;
+        }
+      });
+      state.matchesMade += shelvesActuallyCleared;
+      renderBoard(board);
+      refreshHud();
+      state.busy = false;
+      resolveMatches(() => {
+        if (state.ended) return;
+        checkTarget();
+      });
+    }, 460);
+    return true;
+  }
+
+  // ---- Tap-and-drag interaction ----
+  // pending: a pointer is down; may turn into a tap or a drag
+  // picked: an item has been tap-picked, awaiting a tap on a destination cell
+  const TAP_DRAG_THRESHOLD = 6; // px before pointermove counts as a drag
+  let pending = null;
+  let picked = null;
   let ghostEl = null;
 
   function cellEl(row, col) {
@@ -904,89 +1311,169 @@
     return null;
   }
 
-  function onPointerDown(e) {
-    if (!state || state.busy) return;
-    const target = e.target.closest('.item.front');
-    if (!target) return;
-    const cellNode = target.closest('.cell');
-    if (!cellNode) return;
-    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
-    const shelf = state.board.shelves[r];
-    if (shelf.high) return;
-
-    e.preventDefault();
-    target.setPointerCapture && target.setPointerCapture(e.pointerId);
-
-    const cell = shelf.cells[c];
-    drag = { fromR: r, fromC: c, itemId: cell.front, sourceEl: target, pointerId: e.pointerId };
-    target.classList.add('dragging-source');
-
-    ghostEl = document.createElement('div');
-    ghostEl.className = 'ghost';
-    ghostEl.textContent = itemById(cell.front).e;
-    document.body.appendChild(ghostEl);
-    moveGhost(e.clientX, e.clientY);
-  }
-
   function moveGhost(x, y) {
     if (!ghostEl) return;
     ghostEl.style.left = x + 'px';
     ghostEl.style.top = y + 'px';
   }
-
   function clearDropHints() {
     stackEl.querySelectorAll('.cell.drop-ok, .cell.drop-bad')
       .forEach(el => el.classList.remove('drop-ok', 'drop-bad'));
   }
+  function clearTapTargets() {
+    stackEl.querySelectorAll('.cell.tap-target').forEach(el => el.classList.remove('tap-target'));
+    stackEl.querySelectorAll('.item.front.picked').forEach(el => el.classList.remove('picked'));
+  }
+  function setPicked(p) {
+    clearTapTargets();
+    picked = p;
+    if (!p || !state) return;
+    const ce = cellEl(p.fromR, p.fromC);
+    if (ce) {
+      const fr = ce.querySelector('.item.front');
+      if (fr) fr.classList.add('picked');
+    }
+    // Highlight every empty reachable cell as a valid drop target.
+    for (let r = 0; r < state.board.shelves.length; r++) {
+      const shelf = state.board.shelves[r];
+      if (shelf.high) continue;
+      for (let c = 0; c < shelf.cells.length; c++) {
+        if (shelf.cells[c].front == null && !(r === p.fromR && c === p.fromC)) {
+          const node = cellEl(r, c);
+          if (node) node.classList.add('tap-target');
+        }
+      }
+    }
+  }
+
+  function onPointerDown(e) {
+    if (!state || state.busy || state.ended) return;
+    const cellNode = e.target.closest('.cell');
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    const cell = shelf.cells[c];
+    const itemEl = e.target.closest('.item.front');
+
+    e.preventDefault();
+    pending = {
+      startX: e.clientX, startY: e.clientY,
+      fromR: r, fromC: c,
+      itemEl,
+      cell,
+      shelf,
+      pointerId: e.pointerId,
+      dragging: false,
+    };
+  }
+
+  function startDragFromPending() {
+    if (!pending || pending.dragging) return;
+    if (state && state.armed) { pending = null; return; }
+    if (!pending.itemEl || pending.shelf.high) { pending = null; return; }
+    pending.dragging = true;
+    setPicked(null);
+    pending.itemEl.classList.add('dragging-source');
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'ghost';
+    ghostEl.textContent = pending.itemEl.textContent;
+    document.body.appendChild(ghostEl);
+  }
 
   function onPointerMove(e) {
-    if (!drag) return;
+    if (!pending) return;
+    if (!pending.dragging) {
+      const dx = e.clientX - pending.startX;
+      const dy = e.clientY - pending.startY;
+      if (dx * dx + dy * dy < TAP_DRAG_THRESHOLD * TAP_DRAG_THRESHOLD) return;
+      startDragFromPending();
+      if (!pending) return;
+    }
     e.preventDefault();
     moveGhost(e.clientX, e.clientY);
-
     const cellNode = cellFromPoint(e.clientX, e.clientY);
     clearDropHints();
     if (!cellNode) return;
     const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
     const shelf = state.board.shelves[r];
     const cell = shelf.cells[c];
-    const isSource = (r === drag.fromR && c === drag.fromC);
-    if (shelf.high) {
-      cellNode.classList.add('drop-bad');
-    } else if (isSource) {
-      // self-drop is a no-op, no hint
-    } else if (cell.front == null) {
-      cellNode.classList.add('drop-ok');
-    } else {
-      cellNode.classList.add('drop-bad');
-    }
+    const isSource = (r === pending.fromR && c === pending.fromC);
+    if (shelf.high) cellNode.classList.add('drop-bad');
+    else if (isSource) {}
+    else if (cell.front == null) cellNode.classList.add('drop-ok');
+    else cellNode.classList.add('drop-bad');
   }
 
   function onPointerUp(e) {
-    if (!drag) return;
+    if (!pending) return;
     e.preventDefault();
-    const cellNode = cellFromPoint(e.clientX, e.clientY);
-    let landed = null;
-    if (cellNode) {
-      const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
-      const shelf = state.board.shelves[r];
-      const cell = shelf.cells[c];
-      if (!shelf.high && cell.front == null && !(r === drag.fromR && c === drag.fromC)) {
-        landed = { r, c };
+    if (pending.dragging) {
+      const cellNode = cellFromPoint(e.clientX, e.clientY);
+      let landed = null;
+      if (cellNode) {
+        const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+        const shelf = state.board.shelves[r];
+        const cell = shelf.cells[c];
+        if (!shelf.high && cell.front == null && !(r === pending.fromR && c === pending.fromC)) {
+          landed = { r, c };
+        }
       }
+      cleanupDrag();
+      const from = { fromR: pending.fromR, fromC: pending.fromC };
+      pending = null;
+      if (landed) commitMove(from, landed);
+      return;
     }
-    cleanupDrag();
-    if (landed) commitMove(drag, landed);
-    drag = null;
+    // Tap (no drag distance).
+    const r = pending.fromR, c = pending.fromC;
+    const hasItem = !!pending.itemEl;
+    const shelf = pending.shelf;
+    const cell = pending.cell;
+    pending = null;
+
+    // Armed power-up takes precedence over normal pick/drop.
+    if (state.armed === 'hammer') {
+      if (!shelf.high && hasItem) {
+        const used = useHammer(r, c);
+        if (used) { state.powerups.hammer -= 1; saveInventory(); }
+      }
+      disarmPowerup();
+      return;
+    }
+    if (state.armed === 'bomb') {
+      if (!shelf.high) {
+        const used = useBomb(r);
+        if (used) { state.powerups.bomb -= 1; saveInventory(); }
+      }
+      disarmPowerup();
+      return;
+    }
+
+    if (hasItem) {
+      if (shelf.high) return;
+      if (picked && picked.fromR === r && picked.fromC === c) {
+        setPicked(null); // toggle off
+      } else {
+        setPicked({ fromR: r, fromC: c });
+      }
+    } else {
+      if (!picked) return;
+      if (shelf.high) return;
+      if (cell.front != null) return;
+      const from = { fromR: picked.fromR, fromC: picked.fromC };
+      setPicked(null);
+      commitMove(from, { r, c });
+    }
   }
+
   function onPointerCancel() {
     cleanupDrag();
-    drag = null;
+    pending = null;
   }
   function cleanupDrag() {
     clearDropHints();
     if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-    if (drag && drag.sourceEl) drag.sourceEl.classList.remove('dragging-source');
+    if (pending && pending.itemEl) pending.itemEl.classList.remove('dragging-source');
   }
 
   function commitMove(d, to) {
@@ -999,11 +1486,37 @@
     renderBoard(board);
     resolveMatches((cleared) => {
       if (state.ended) return;
-      if (!cleared) {
-        // Bad move: spawn the queued items.
+      if (!cleared && state.queue) {
+        // Bad move on a queue-modifier level: spawn the queued items.
         spawnFromQueue();
       }
     });
+  }
+
+  // Pick refill items that keep the board cleanable. Prefer item types whose
+  // current count is short of a multiple of 3; otherwise fall back to either
+  // an empty refill or 3 of one type (which auto-matches).
+  function chooseRefill(board) {
+    const typeCount = {};
+    for (const sh of board.shelves) {
+      for (const cell of sh.cells) {
+        if (cell.front) typeCount[cell.front] = (typeCount[cell.front] || 0) + 1;
+        if (cell.back)  typeCount[cell.back]  = (typeCount[cell.back]  || 0) + 1;
+      }
+    }
+    const candidates = [];
+    for (const id of Object.keys(typeCount)) {
+      const cnt = typeCount[id];
+      const short = (3 - (cnt % 3)) % 3;
+      for (let i = 0; i < short; i++) candidates.push(id);
+    }
+    if (candidates.length > 0) {
+      shuffle(candidates);
+      return candidates.slice(0, 3);
+    }
+    if (Math.random() < 0.5) return [];
+    const id = board.items[Math.floor(Math.random() * board.items.length)].id;
+    return [id, id, id];
   }
 
   // ---- Match detection ----
@@ -1032,8 +1545,8 @@
       const board = state.board;
       const matches = findMatches(board);
       if (matches.length === 0) {
-        hudItems.textContent = countItems(board);
-        if (anyCleared) checkWin();
+        refreshHud();
+        if (anyCleared) checkTarget();
         if (done) done(anyCleared);
         return;
       }
@@ -1048,11 +1561,26 @@
         spark.className = 'spark';
         ce.appendChild(spark);
       });
+      const matchedShelves = new Set(matches.map(m => m.r));
+      // Each cleared shelf counts as one match toward the target.
+      state.matchesMade += matchedShelves.size;
+      refreshHud();
       setTimeout(() => {
         matches.forEach(({ r, c }) => {
           const cell = board.shelves[r].cells[c];
           cell.front = cell.back;
           cell.back = null;
+        });
+        // Refill: any shelf that's now fully empty has a 50/50 chance to
+        // refill with up to 3 items chosen to preserve cleanability.
+        matchedShelves.forEach(r => {
+          const shelf = board.shelves[r];
+          if (!shelf.cells.every(c => c.front == null)) return;
+          if (Math.random() >= 0.5) return;
+          const refill = chooseRefill(board);
+          for (let i = 0; i < refill.length && i < shelf.cells.length; i++) {
+            shelf.cells[i].front = refill[i];
+          }
         });
         renderBoard(board);
         state.busy = false;
@@ -1062,16 +1590,20 @@
     pass();
   }
 
-  function checkWin() {
+  function checkTarget() {
     if (!state || state.ended) return;
-    const remaining = countItems(state.board);
-    if (remaining === 0) {
+    if (state.matchesMade >= state.target) {
       state.ended = true;
       clearTimer();
-      // best-level-reached is the level you've cleared.
       saveBest(state.level);
-      refreshRecord();
-      // small beat before showing the panel.
+      // Unlock the next level so CONTINUE resumes there.
+      saveCurrentLevel(state.level + 1);
+      const drop = rollPowerupDrop(state.level, state.board.hard);
+      if (drop) {
+        inventory[drop] += 1;
+        saveInventory();
+      }
+      state.lastDrop = drop;
       setTimeout(showLevelClear, 350);
     }
   }
@@ -1145,10 +1677,15 @@
   stackEl.addEventListener('pointerup', onPointerUp);
   stackEl.addEventListener('pointercancel', onPointerCancel);
   // global move/up so dragging keeps working if finger leaves the stack
-  window.addEventListener('pointermove', (e) => { if (drag) onPointerMove(e); });
-  window.addEventListener('pointerup', (e) => { if (drag) onPointerUp(e); });
+  window.addEventListener('pointermove', (e) => { if (pending) onPointerMove(e); });
+  window.addEventListener('pointerup', (e) => { if (pending) onPointerUp(e); });
 
-  document.getElementById('btn-start').addEventListener('click', () => {
+  document.getElementById('btn-continue').addEventListener('click', () => {
+    show('game');
+    startLevel(loadCurrentLevel());
+  });
+  document.getElementById('btn-new').addEventListener('click', () => {
+    saveCurrentLevel(1);
     show('game');
     startLevel(1);
   });
@@ -1158,12 +1695,15 @@
   });
   document.getElementById('btn-retry').addEventListener('click', () => {
     show('game');
-    startLevel(1);
+    startLevel(loadCurrentLevel());
   });
   document.getElementById('btn-home').addEventListener('click', () => {
     show('title');
-    refreshRecord();
+    refreshTitle();
   });
+
+  // Initial title refresh after inventory has loaded.
+  refreshTitle();
 
   // Tidy up timers if the user backs out.
   window.addEventListener('pagehide', () => clearTimer());

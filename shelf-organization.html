@@ -567,6 +567,23 @@
   .mod-banner.high  { background: linear-gradient(135deg, #5a3614, #8a5a30); }
   .mod-banner.depth { background: linear-gradient(135deg, #2f4858, #4a6a82); }
 
+  .drop-row {
+    margin: 4px 0 14px;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, #fff5e0 0%, #ffd9a8 100%);
+    border-radius: 10px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 1px;
+    font-size: 13px;
+    animation: dropAppear 0.5s cubic-bezier(.5,1.6,.4,1);
+    border: 1px solid rgba(226,107,59,0.4);
+  }
+  @keyframes dropAppear {
+    0%   { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
   /* high (unreachable) shelves get a dim look + lock badge */
   .shelf.high { opacity: 0.95; filter: saturate(0.85); }
   .shelf.high .cell { background: rgba(0,0,0,0.32); }
@@ -708,6 +725,9 @@
       <div class="stat-row">
         <div><b id="clear-level">1</b><span>Level</span></div>
         <div><b id="clear-time">0</b><span>Time Left</span></div>
+      </div>
+      <div class="drop-row" id="drop-row" style="display:none;">
+        ✨ <span id="drop-text">+1</span> ✨
       </div>
       <button id="btn-next" class="big-btn">NEXT LEVEL →</button>
     </div>
@@ -976,8 +996,33 @@
     return '';
   }
 
-  // Persisted across levels and runs (proper persistence wired in step 6).
-  let inventory = { hammer: 1, time: 1, bomb: 0 };
+  const POWERUPS_KEY = 'shelfOrg.powerups';
+  function loadInventory() {
+    try {
+      const raw = localStorage.getItem(POWERUPS_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      return {
+        hammer: Math.max(0, parseInt(obj.hammer || 0, 10)),
+        time:   Math.max(0, parseInt(obj.time   || 0, 10)),
+        bomb:   Math.max(0, parseInt(obj.bomb   || 0, 10)),
+      };
+    } catch (e) { return null; }
+  }
+  function saveInventory() {
+    try { localStorage.setItem(POWERUPS_KEY, JSON.stringify(inventory)); } catch (e) {}
+  }
+  // Persisted across levels and runs.
+  let inventory = loadInventory() || { hammer: 1, time: 1, bomb: 0 };
+
+  function rollPowerupDrop(level, isHard) {
+    const dropChance = isHard ? 1.0 : 0.55;
+    if (Math.random() >= dropChance) return null;
+    const r = Math.random();
+    if (r < 0.45) return 'hammer';
+    if (r < 0.80) return 'time';
+    return 'bomb';
+  }
 
   function startLevel(level) {
     clearTimer();
@@ -1040,6 +1085,14 @@
       state.level % 5 === 0
         ? "Things are about to get more crowded."
         : 'Onto the next mess.';
+    const dropRow = document.getElementById('drop-row');
+    if (state.lastDrop) {
+      const labels = { hammer: '🔨 HAMMER', time: '⏱ +30s', bomb: '💣 BOMB' };
+      document.getElementById('drop-text').textContent = `+1 ${labels[state.lastDrop]}`;
+      dropRow.style.display = '';
+    } else {
+      dropRow.style.display = 'none';
+    }
     document.getElementById('overlay-clear').classList.add('show');
   }
   function hideLevelClear() {
@@ -1080,6 +1133,7 @@
     if ((state.powerups[pu] || 0) <= 0) return;
     if (pu === 'time') {
       state.powerups.time -= 1;
+      saveInventory();
       state.timeLeft += 30;
       setTimerDisplay(state.timeLeft);
       refreshPowerupTray();
@@ -1337,7 +1391,7 @@
     if (state.armed === 'hammer') {
       if (!shelf.high && hasItem) {
         const used = useHammer(r, c);
-        if (used) state.powerups.hammer -= 1;
+        if (used) { state.powerups.hammer -= 1; saveInventory(); }
       }
       disarmPowerup();
       return;
@@ -1345,7 +1399,7 @@
     if (state.armed === 'bomb') {
       if (!shelf.high) {
         const used = useBomb(r);
-        if (used) state.powerups.bomb -= 1;
+        if (used) { state.powerups.bomb -= 1; saveInventory(); }
       }
       disarmPowerup();
       return;
@@ -1499,6 +1553,12 @@
       clearTimer();
       saveBest(state.level);
       refreshRecord();
+      const drop = rollPowerupDrop(state.level, state.board.hard);
+      if (drop) {
+        inventory[drop] += 1;
+        saveInventory();
+      }
+      state.lastDrop = drop;
       setTimeout(showLevelClear, 350);
     }
   }

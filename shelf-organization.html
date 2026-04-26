@@ -213,11 +213,12 @@
 
   .shelf-stack {
     width: 100%;
-    max-width: 360px;
-    margin: 4px auto 12px;
-    display: flex; flex-direction: column;
-    gap: 12px;
-    padding: 8px 6px 12px;
+    max-width: 380px;
+    margin: 4px auto 10px;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-cols, 2), 1fr);
+    gap: 8px;
+    padding: 8px 6px 10px;
     background: linear-gradient(180deg, #d9b888 0%, #c79a64 100%);
     border: 2px solid var(--wood-edge);
     border-radius: 10px;
@@ -240,40 +241,40 @@
   }
 
   .shelf {
-    --cols: 6;
+    --cols: 3;
     position: relative;
     background: linear-gradient(180deg, #b07a45 0%, #97623a 100%);
     border-radius: 5px;
-    padding: 6px 4px 8px;
+    padding: 4px 3px 6px;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.18),
-      inset 0 -4px 0 var(--wood-dark),
-      0 4px 0 rgba(58,36,18,0.25);
+      inset 0 -3px 0 var(--wood-dark),
+      0 3px 0 rgba(58,36,18,0.25);
   }
   .shelf-row {
     display: grid;
     grid-template-columns: repeat(var(--cols), 1fr);
-    gap: 3px;
+    gap: 2px;
   }
   .cell {
     aspect-ratio: 1 / 1;
     background: rgba(0,0,0,0.18);
-    border-radius: 4px;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.25);
     position: relative;
     display: flex; align-items: center; justify-content: center;
     overflow: visible;
   }
   .item {
     position: absolute;
-    inset: 6%;
+    inset: 8%;
     display: flex; align-items: center; justify-content: center;
-    font-size: clamp(34px, 12vw, 56px);
+    font-size: clamp(18px, 5vw, 28px);
     line-height: 1;
     background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
-    border-radius: 8px;
+    border-radius: 5px;
     box-shadow:
-      0 2px 0 rgba(0,0,0,0.18),
+      0 1px 0 rgba(0,0,0,0.18),
       inset 0 1px 0 rgba(255,255,255,0.8);
     filter: drop-shadow(0 1px 0 rgba(0,0,0,0.1));
     transition: transform 0.18s, opacity 0.2s;
@@ -316,9 +317,9 @@
   .ghost {
     position: fixed;
     left: 0; top: 0;
-    width: 60px; height: 60px;
+    width: 44px; height: 44px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 42px;
+    font-size: 28px;
     background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
     border-radius: 8px;
     box-shadow:
@@ -674,60 +675,58 @@
     return arr;
   }
 
+  // Shelf grid scales with level: more shelves once more icon types unlock.
+  function gridShapeForLevel(level) {
+    if (level <= 4) return { gridCols: 2, gridRows: 2 };
+    if (level <= 9) return { gridCols: 2, gridRows: 3 };
+    return { gridCols: 3, gridRows: 3 };
+  }
+
   function makeBoard(level) {
     const items = itemsForLevel(level);
     const hard = isHardLevel(level);
     const cols = 3;
-    const rowsTotal = 6;
-    // First shelf is "too high" starting at level 3.
-    // Hard levels: top two shelves are unreachable.
-    const highRows = new Set();
-    if (hard) { highRows.add(0); highRows.add(1); }
-    else if (level >= 3) { highRows.add(0); }
+    const { gridCols, gridRows } = gridShapeForLevel(level);
+    const totalShelves = gridCols * gridRows;
 
     // Build empty shelves first.
     const shelves = [];
-    for (let r = 0; r < rowsTotal; r++) {
+    for (let s = 0; s < totalShelves; s++) {
       const cells = [];
       for (let c = 0; c < cols; c++) cells.push({ front: null, back: null });
-      shelves.push({ cols, cells, high: highRows.has(r) });
+      shelves.push({ cols, cells, high: false });
     }
 
-    // How many "sets of 3" to start with on reachable shelves.
-    // Always a multiple of 3, always leaves at least 1 reachable shelf empty.
-    const reachableShelves = rowsTotal - highRows.size;
-    const reachableCells = reachableShelves * cols;
-    const maxSets = Math.floor(reachableCells / 3) - 1;
+    // How many "sets of 3" to start with. Multiples of 3, always leaves at
+    // least one shelf-worth of empty cells.
+    const totalCells = totalShelves * cols;
+    const maxSets = Math.max(1, Math.floor(totalCells / 3) - 1);
     let sets = Math.min(maxSets, 2 + Math.floor((level - 1) / 2));
     if (hard) sets = Math.min(maxSets, sets + 1);
     sets = Math.max(2, sets);
 
-    // Collect reachable front slots; depth slots become eligible at level 4+.
     const frontSlots = [];
-    for (let r = 0; r < rowsTotal; r++) {
-      if (highRows.has(r)) continue;
-      for (let c = 0; c < cols; c++) frontSlots.push({ r, c });
+    for (let s = 0; s < totalShelves; s++) {
+      for (let c = 0; c < cols; c++) frontSlots.push({ s, c });
     }
     shuffle(frontSlots);
 
     const depthChance = level >= 4 ? Math.min(0.35, 0.06 + (level - 4) * 0.02) : 0;
     const placeBack = (itemId) => {
-      // Look for a cell with a front item but no back; place itemId behind.
       const candidates = [];
-      for (let r = 0; r < rowsTotal; r++) {
-        if (highRows.has(r)) continue;
+      for (let s = 0; s < totalShelves; s++) {
         for (let c = 0; c < cols; c++) {
-          const cell = shelves[r].cells[c];
-          if (cell.front != null && cell.back == null) candidates.push({ r, c });
+          const cell = shelves[s].cells[c];
+          if (cell.front != null && cell.back == null) candidates.push({ s, c });
         }
       }
       if (candidates.length === 0) return false;
       const slot = candidates[Math.floor(Math.random() * candidates.length)];
-      shelves[slot.r].cells[slot.c].back = itemId;
+      shelves[slot.s].cells[slot.c].back = itemId;
       return true;
     };
 
-    for (let s = 0; s < sets; s++) {
+    for (let i = 0; i < sets; i++) {
       const itemId = items[Math.floor(Math.random() * items.length)].id;
       let placed = 0;
       while (placed < 3) {
@@ -736,27 +735,16 @@
           continue;
         }
         if (frontSlots.length === 0) {
-          // fall back to a back-slot if any.
           if (placeBack(itemId)) { placed++; continue; }
           break;
         }
         const slot = frontSlots.pop();
-        shelves[slot.r].cells[slot.c].front = itemId;
+        shelves[slot.s].cells[slot.c].front = itemId;
         placed++;
       }
     }
 
-    // Decorate high shelves with random items (not part of clearable count).
-    for (let r = 0; r < rowsTotal; r++) {
-      if (!highRows.has(r)) continue;
-      for (let c = 0; c < cols; c++) {
-        if (Math.random() < 0.92) {
-          shelves[r].cells[c].front = items[Math.floor(Math.random() * items.length)].id;
-        }
-      }
-    }
-
-    return { shelves, level, items, hard };
+    return { shelves, level, items, hard, gridCols, gridRows };
   }
 
   // ---- Renderer ----
@@ -780,6 +768,7 @@
 
   function renderBoard(board) {
     stackEl.innerHTML = '';
+    stackEl.style.setProperty('--grid-cols', board.gridCols);
     board.shelves.forEach((shelf, ri) => {
       const shelfEl = document.createElement('div');
       shelfEl.className = 'shelf' + (shelf.high ? ' high' : '');

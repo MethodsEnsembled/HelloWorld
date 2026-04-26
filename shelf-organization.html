@@ -364,6 +364,50 @@
     z-index: 3;
   }
 
+  /* "NEXT" tray for upcoming spawn */
+  .next-tray {
+    width: 100%;
+    max-width: 360px;
+    margin: 4px auto 4px;
+    padding: 10px 14px;
+    background: var(--panel);
+    border-radius: 14px;
+    box-shadow: 0 4px 0 rgba(58,36,18,0.12);
+    display: flex; align-items: center; gap: 12px;
+    border: 2px dashed rgba(58,36,18,0.18);
+  }
+  .next-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    flex: 1;
+    text-align: left;
+    line-height: 1.2;
+  }
+  .next-items {
+    display: flex; gap: 6px;
+  }
+  .next-items .next-item {
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
+    border-radius: 8px;
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    line-height: 1;
+  }
+  @keyframes spawnPop {
+    0%   { transform: scale(0.4); opacity: 0; }
+    60%  { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .item.front.spawning {
+    animation: spawnPop 0.32s ease-out;
+  }
+
   /* level-clear and game over overlays */
   .overlay {
     position: fixed; inset: 0;
@@ -511,6 +555,10 @@
         <div class="hud-tile"><span class="lbl">Items</span><span class="val" id="hud-items">0</span></div>
       </div>
       <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
+      <div id="next-tray" class="next-tray" aria-label="next items">
+        <span class="next-label">NEXT BAD MOVE SPAWNS</span>
+        <div class="next-items" id="next-items"></div>
+      </div>
     </section>
 
     <!-- Result screen -->
@@ -794,28 +842,33 @@
       totalTime,
       timerInterval: null,
       ended: false,
+      queue: genSpawnSet(board.items),
     };
     hardSlot.innerHTML = board.hard ? '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>' : '';
     renderBoard(board);
+    renderQueue();
     setTimerDisplay(state.timeLeft);
     state.timerInterval = setInterval(() => {
       if (!state || state.ended) return;
       state.timeLeft -= 1;
       setTimerDisplay(Math.max(0, state.timeLeft));
       if (state.timeLeft <= 0) {
-        endRun();
+        endRun('time');
       }
     }, 1000);
   }
 
-  function endRun() {
+  function endRun(reason) {
     if (!state || state.ended) return;
     state.ended = true;
     clearTimer();
     refreshRecord();
-    document.getElementById('result-emoji').textContent = '🥲';
-    document.getElementById('result-title').textContent = "Time's Up!";
-    document.getElementById('result-sub').textContent = 'The pantry got the better of you.';
+    const isFull = reason === 'full';
+    document.getElementById('result-emoji').textContent = isFull ? '😵' : '🥲';
+    document.getElementById('result-title').textContent = isFull ? 'Pantry Overflowed!' : "Time's Up!";
+    document.getElementById('result-sub').textContent = isFull
+      ? 'No empty space left. The clutter wins.'
+      : 'The pantry got the better of you.';
     document.getElementById('result-level').textContent = state.level;
     document.getElementById('result-best').textContent = loadBest() || '—';
     show('result');
@@ -944,7 +997,13 @@
     fromCell.front = fromCell.back; // back item moves up to front
     fromCell.back = null;
     renderBoard(board);
-    resolveMatches();
+    resolveMatches((cleared) => {
+      if (state.ended) return;
+      if (!cleared) {
+        // Bad move: spawn the queued items.
+        spawnFromQueue();
+      }
+    });
   }
 
   // ---- Match detection ----
@@ -966,36 +1025,41 @@
     return matched;
   }
 
-  function resolveMatches() {
-    const board = state.board;
-    const matches = findMatches(board);
-    if (matches.length === 0) {
-      hudItems.textContent = countItems(board);
-      checkWin();
-      return;
-    }
-    state.busy = true;
-    // animate and remove
-    matches.forEach(({ r, c }) => {
-      const ce = cellEl(r, c);
-      if (!ce) return;
-      const front = ce.querySelector('.item.front');
-      if (front) front.classList.add('matched');
-      const spark = document.createElement('div');
-      spark.className = 'spark';
-      ce.appendChild(spark);
-    });
-    setTimeout(() => {
+  // Resolves cascading matches; calls done(anyCleared) when finished.
+  function resolveMatches(done) {
+    let anyCleared = false;
+    function pass() {
+      const board = state.board;
+      const matches = findMatches(board);
+      if (matches.length === 0) {
+        hudItems.textContent = countItems(board);
+        if (anyCleared) checkWin();
+        if (done) done(anyCleared);
+        return;
+      }
+      anyCleared = true;
+      state.busy = true;
       matches.forEach(({ r, c }) => {
-        const cell = board.shelves[r].cells[c];
-        cell.front = cell.back;
-        cell.back = null;
+        const ce = cellEl(r, c);
+        if (!ce) return;
+        const front = ce.querySelector('.item.front');
+        if (front) front.classList.add('matched');
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        ce.appendChild(spark);
       });
-      renderBoard(board);
-      state.busy = false;
-      // chain into next pass for any new matches
-      resolveMatches();
-    }, 460);
+      setTimeout(() => {
+        matches.forEach(({ r, c }) => {
+          const cell = board.shelves[r].cells[c];
+          cell.front = cell.back;
+          cell.back = null;
+        });
+        renderBoard(board);
+        state.busy = false;
+        pass();
+      }, 460);
+    }
+    pass();
   }
 
   function checkWin() {
@@ -1010,6 +1074,69 @@
       // small beat before showing the panel.
       setTimeout(showLevelClear, 350);
     }
+  }
+
+  // ---- Spawn queue ----
+  const nextItemsEl = document.getElementById('next-items');
+  function genSpawnSet(items) {
+    const id = items[Math.floor(Math.random() * items.length)].id;
+    return [id, id, id];
+  }
+  function renderQueue() {
+    if (!state || !state.queue) { nextItemsEl.innerHTML = ''; return; }
+    nextItemsEl.innerHTML = '';
+    for (const id of state.queue) {
+      const el = document.createElement('div');
+      el.className = 'next-item';
+      el.textContent = itemById(id).e;
+      nextItemsEl.appendChild(el);
+    }
+  }
+
+  function spawnFromQueue() {
+    if (!state || state.ended) return;
+    const board = state.board;
+    const empties = [];
+    for (let r = 0; r < board.shelves.length; r++) {
+      if (board.shelves[r].high) continue;
+      for (let c = 0; c < board.shelves[r].cells.length; c++) {
+        if (board.shelves[r].cells[c].front == null) empties.push({ r, c });
+      }
+    }
+    shuffle(empties);
+    const placedSlots = [];
+    for (const itemId of state.queue) {
+      if (empties.length === 0) break;
+      const slot = empties.pop();
+      board.shelves[slot.r].cells[slot.c].front = itemId;
+      placedSlots.push(slot);
+    }
+    state.queue = genSpawnSet(board.items);
+    renderQueue();
+    renderBoard(board);
+    // little pop animation on freshly spawned cells
+    placedSlots.forEach(({ r, c }) => {
+      const ce = cellEl(r, c);
+      const fr = ce && ce.querySelector('.item.front');
+      if (fr) fr.classList.add('spawning');
+    });
+    // The spawn might land 3 same items on a single shelf -> chain a clear.
+    resolveMatches(() => {
+      if (state.ended) return;
+      // After all clears settle, check if board is full / unrecoverable.
+      checkBoardFull();
+    });
+  }
+
+  function checkBoardFull() {
+    if (!state || state.ended) return;
+    const board = state.board;
+    let empty = 0;
+    for (let r = 0; r < board.shelves.length; r++) {
+      if (board.shelves[r].high) continue;
+      for (const c of board.shelves[r].cells) if (c.front == null) empty++;
+    }
+    if (empty === 0) endRun('full');
   }
 
   // pointer listeners

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f3e0c2">
+<title>Shelf Organization</title>
+<style>
+  :root {
+    --bg: #f6e6cb;
+    --bg2: #e9cfa6;
+    --wood: #b07a45;
+    --wood-dark: #7a4d24;
+    --wood-edge: #5a3614;
+    --panel: #fffaf0;
+    --ink: #3a2412;
+    --ink-soft: #8a6a4d;
+    --accent: #e26b3b;
+    --accent2: #f0a23c;
+    --good: #4caf50;
+    --bad: #c93535;
+    --shadow: rgba(58,36,18,0.18);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: linear-gradient(170deg, var(--bg) 0%, var(--bg2) 100%);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom);
+    min-height: 100vh;
+  }
+  .top-bar {
+    width: 100%; max-width: 520px;
+    padding: 12px 4px; display: flex; align-items: center; gap: 12px;
+  }
+  .back {
+    color: var(--ink); text-decoration: none; font-size: 14px;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(58,36,18,0.12);
+    font-weight: 600;
+  }
+  .back:active { background: rgba(255,255,255,1); }
+  .top-bar h1 {
+    margin: 0; flex: 1; text-align: center; font-size: 14px;
+    letter-spacing: 2px; font-weight: 800; color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .top-bar .spacer { width: 56px; }
+
+  main {
+    width: 100%; max-width: 520px; flex: 1;
+    display: flex; flex-direction: column;
+    padding: 4px 4px 18px;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    text-align: center;
+    width: 100%;
+  }
+  .screen.active { display: flex; }
+
+  /* ---- Title screen ---- */
+  .title-hero {
+    margin: 16px 0 4px;
+    display: flex; gap: 6px; justify-content: center;
+    font-size: 52px;
+    line-height: 1;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.08));
+  }
+  .title-hero span {
+    display: inline-block;
+    animation: bob 2.2s ease-in-out infinite;
+  }
+  .title-hero span:nth-child(2) { animation-delay: 0.18s; }
+  .title-hero span:nth-child(3) { animation-delay: 0.36s; }
+  .title-hero span:nth-child(4) { animation-delay: 0.54s; }
+  @keyframes bob {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-6px) rotate(3deg); }
+  }
+  .title-name {
+    margin: 18px 0 6px;
+    font-size: clamp(28px, 8vw, 40px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    background: linear-gradient(135deg, #e26b3b, #f0a23c);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .title-sub {
+    margin: 0 24px 24px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 340px;
+  }
+  .big-btn {
+    appearance: none; border: none; cursor: pointer;
+    padding: 16px 40px;
+    border-radius: 999px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: white;
+    background: linear-gradient(135deg, #e26b3b, #f0a23c);
+    box-shadow: 0 6px 0 #a04220, 0 12px 24px rgba(160,66,32,0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+    font-family: inherit;
+  }
+  .big-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #a04220, 0 6px 12px rgba(160,66,32,0.3);
+  }
+  .big-btn.secondary {
+    background: linear-gradient(135deg, #b89a78, #8a6a4d);
+    box-shadow: 0 6px 0 #5a4030, 0 12px 24px rgba(90,64,48,0.3);
+  }
+  .big-btn.secondary:active {
+    box-shadow: 0 2px 0 #5a4030, 0 6px 12px rgba(90,64,48,0.3);
+  }
+  .btn-row {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+    margin-top: 8px;
+  }
+
+  .record {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+  }
+  .record b {
+    color: var(--accent);
+    font-size: 17px;
+    margin-left: 4px;
+  }
+
+  /* Mini decorative shelf preview on title */
+  .preview-shelf {
+    margin: 10px auto 18px;
+    width: 240px;
+    background: linear-gradient(180deg, #f3d9b3 0%, #e7c08a 100%);
+    border: 2px solid var(--wood-edge);
+    border-radius: 8px;
+    box-shadow: 0 6px 0 rgba(58,36,18,0.15), inset 0 -6px 0 rgba(0,0,0,0.06);
+    padding: 6px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .preview-row {
+    display: flex; align-items: center; justify-content: space-around;
+    background: var(--wood);
+    border-radius: 4px;
+    padding: 4px 6px;
+    box-shadow: inset 0 -3px 0 var(--wood-dark);
+  }
+  .preview-row .it {
+    font-size: 22px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.15));
+  }
+
+  /* ---- Game screen ---- */
+  .hud {
+    width: 100%; max-width: 460px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 4px auto 10px;
+  }
+  .hud-tile {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 8px 6px;
+    box-shadow: 0 3px 0 rgba(58,36,18,0.12);
+    text-align: center;
+  }
+  .hud-tile .lbl {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .hud-tile .val {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .hud-tile.timer .val { color: var(--accent); }
+  .hud-tile.timer.warn .val {
+    color: var(--bad);
+    animation: pulseWarn 0.6s ease-in-out infinite;
+  }
+  @keyframes pulseWarn {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .shelf-stack {
+    width: 100%;
+    max-width: 460px;
+    margin: 4px auto 12px;
+    display: flex; flex-direction: column;
+    gap: 14px;
+    padding: 8px 6px 12px;
+    background: linear-gradient(180deg, #d9b888 0%, #c79a64 100%);
+    border: 2px solid var(--wood-edge);
+    border-radius: 10px;
+    box-shadow: 0 8px 0 rgba(58,36,18,0.2), inset 0 -10px 0 rgba(0,0,0,0.06);
+    position: relative;
+  }
+  .shelf-stack::before {
+    /* left wall */
+    content: ""; position: absolute; left: -2px; top: -2px; bottom: -2px;
+    width: 6px;
+    background: linear-gradient(180deg, #8a5a30, #5a3614);
+    border-radius: 8px 0 0 8px;
+  }
+  .shelf-stack::after {
+    /* right wall */
+    content: ""; position: absolute; right: -2px; top: -2px; bottom: -2px;
+    width: 6px;
+    background: linear-gradient(180deg, #8a5a30, #5a3614);
+    border-radius: 0 8px 8px 0;
+  }
+
+  .shelf {
+    --cols: 6;
+    position: relative;
+    background: linear-gradient(180deg, #b07a45 0%, #97623a 100%);
+    border-radius: 5px;
+    padding: 6px 4px 8px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -4px 0 var(--wood-dark),
+      0 4px 0 rgba(58,36,18,0.25);
+  }
+  .shelf-row {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: 3px;
+  }
+  .cell {
+    aspect-ratio: 1 / 1;
+    background: rgba(0,0,0,0.18);
+    border-radius: 4px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: visible;
+  }
+  .item {
+    position: absolute;
+    inset: 4%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: clamp(20px, 6.4vw, 30px);
+    line-height: 1;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
+    border-radius: 6px;
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    filter: drop-shadow(0 1px 0 rgba(0,0,0,0.1));
+    transition: transform 0.18s, opacity 0.2s;
+  }
+  .item.back {
+    inset: 10% 22% 22% 4%;
+    opacity: 0.5;
+    filter: brightness(0.8) blur(0.3px);
+    transform: scale(0.72);
+    z-index: 0;
+    background: linear-gradient(180deg, #e8d5ad 0%, #c79d6a 100%);
+    box-shadow:
+      0 1px 0 rgba(0,0,0,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.4);
+  }
+  .item.front { z-index: 1; }
+  .cell.has-back::after {
+    content: "";
+    position: absolute;
+    right: 6%; bottom: 6%;
+    width: 22%; height: 22%;
+    background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .cell.has-back .item.front {
+    box-shadow:
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8),
+      -3px 3px 0 rgba(0,0,0,0.12);
+  }
+
+  /* drag interaction */
+  .item.front { cursor: grab; }
+  .item.front.dragging-source {
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .ghost {
+    position: fixed;
+    left: 0; top: 0;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    background: linear-gradient(180deg, #fff8ec 0%, #ffe5b8 100%);
+    border-radius: 8px;
+    box-shadow:
+      0 6px 14px rgba(0,0,0,0.3),
+      0 2px 0 rgba(0,0,0,0.18),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    pointer-events: none;
+    z-index: 50;
+    transform: translate(-50%, -50%) scale(1.1) rotate(-4deg);
+    transition: transform 0.12s;
+  }
+  .cell.drop-ok {
+    background: rgba(106,200,120,0.45) !important;
+    box-shadow: inset 0 0 0 2px rgba(106,200,120,0.9), inset 0 2px 4px rgba(0,0,0,0.15);
+  }
+  .cell.drop-bad {
+    background: rgba(201,53,53,0.35) !important;
+  }
+
+  /* match animation */
+  @keyframes matchPop {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25) rotate(-6deg); filter: brightness(1.4); }
+    100% { transform: scale(0); opacity: 0; }
+  }
+  .item.front.matched {
+    animation: matchPop 0.45s ease-in forwards;
+    z-index: 2;
+  }
+  @keyframes sparkle {
+    0% { opacity: 0; transform: translate(-50%,-50%) scale(0.4); }
+    50% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%,-50%) scale(1.6); }
+  }
+  .spark {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 80%; height: 80%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fff7c2 0%, #ffd166 50%, transparent 70%);
+    pointer-events: none;
+    animation: sparkle 0.5s ease-out forwards;
+    z-index: 3;
+  }
+
+  /* level-clear and game over overlays */
+  .overlay {
+    position: fixed; inset: 0;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(20,10,4,0.55);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    animation: fadeIn 0.18s ease-out;
+  }
+  .overlay.show { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .overlay .panel {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 22px 24px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    border: 3px solid var(--accent);
+  }
+  .overlay h3 {
+    margin: 4px 0 6px;
+    font-size: 24px;
+    color: var(--accent);
+  }
+  .overlay p {
+    margin: 4px 0 10px;
+    color: var(--ink-soft);
+    font-size: 14px;
+  }
+  .overlay .stat-row {
+    margin: 10px 0 14px;
+    display: flex; justify-content: center; gap: 18px;
+    color: var(--ink);
+  }
+  .overlay .stat-row b {
+    display: block;
+    font-size: 22px;
+    color: var(--accent);
+  }
+  .overlay .stat-row span {
+    font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft); text-transform: uppercase;
+  }
+  .hard-banner {
+    background: linear-gradient(135deg, #c93535, #e26b3b);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    font-weight: 800;
+    margin: 0 auto 10px;
+    display: inline-block;
+    animation: hardPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes hardPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  /* high (unreachable) shelves get a dim look + lock badge */
+  .shelf.high { opacity: 0.95; filter: saturate(0.85); }
+  .shelf.high .cell { background: rgba(0,0,0,0.32); }
+  .shelf.high .item.front {
+    cursor: not-allowed;
+    filter: grayscale(0.2) brightness(0.95);
+  }
+  .shelf.high .item.front::after {
+    content: "🔒";
+    position: absolute;
+    right: -6px; top: -6px;
+    font-size: 12px;
+    background: var(--ink);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .shelf.high::after {
+    content: "TOO HIGH";
+    position: absolute;
+    top: -10px; right: 8px;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 800;
+  }
+
+  footer {
+    margin-top: auto;
+    padding: 10px 16px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a href="index.html" class="back">← BACK</a>
+    <h1>Shelf Organization</h1>
+    <div class="spacer"></div>
+  </div>
+
+  <main>
+    <!-- Title screen -->
+    <section id="screen-title" class="screen active">
+      <div class="title-hero">
+        <span>🥫</span><span>🍪</span><span>🥤</span><span>☕</span>
+      </div>
+      <h2 class="title-name">SHELF ORGANIZATION</h2>
+      <p class="title-sub">
+        Slide pantry items into empty spots. Three in a row clears the shelf.
+        Beat the timer. Levels get harder — deeper shelves, higher shelves,
+        and brand-new clutter.
+      </p>
+
+      <div class="preview-shelf" aria-hidden="true">
+        <div class="preview-row">
+          <div class="it">🥫</div><div class="it">🍪</div><div class="it">🥫</div>
+          <div class="it">🥤</div><div class="it">🍪</div>
+        </div>
+        <div class="preview-row">
+          <div class="it">☕</div><div class="it">🥤</div><div class="it">🍪</div>
+          <div class="it">☕</div><div class="it">🥫</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-start" class="big-btn">START</button>
+      </div>
+      <p class="record">BEST LEVEL <b id="record-display">—</b></p>
+    </section>
+
+    <!-- Game screen -->
+    <section id="screen-game" class="screen">
+      <div id="hard-banner-slot"></div>
+      <div class="hud">
+        <div class="hud-tile"><span class="lbl">Level</span><span class="val" id="hud-level">1</span></div>
+        <div class="hud-tile timer" id="hud-timer-tile"><span class="lbl">Time</span><span class="val" id="hud-timer">--</span></div>
+        <div class="hud-tile"><span class="lbl">Items</span><span class="val" id="hud-items">0</span></div>
+      </div>
+      <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
+    </section>
+
+    <!-- Result screen -->
+    <section id="screen-result" class="screen">
+      <div class="title-hero" style="margin-top: 28px;">
+        <span id="result-emoji">🥲</span>
+      </div>
+      <h2 class="title-name" id="result-title">Time's Up!</h2>
+      <p class="title-sub" id="result-sub">The pantry got the better of you.</p>
+      <div style="display:flex; gap:18px; margin: 4px 0 22px;">
+        <div style="text-align:center;">
+          <span style="font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft);">REACHED</span>
+          <b style="display:block; font-size: 26px; color: var(--accent);" id="result-level">1</b>
+        </div>
+        <div style="text-align:center;">
+          <span style="font-size: 11px; letter-spacing: 1.5px; color: var(--ink-soft);">BEST</span>
+          <b style="display:block; font-size: 26px; color: var(--accent);" id="result-best">—</b>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="btn-retry" class="big-btn">PLAY AGAIN</button>
+        <button id="btn-home" class="big-btn secondary">HOME</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay-clear">
+    <div class="panel">
+      <h3 id="clear-title">Shelf Tidy!</h3>
+      <p id="clear-sub">Nice work.</p>
+      <div class="stat-row">
+        <div><b id="clear-level">1</b><span>Level</span></div>
+        <div><b id="clear-time">0</b><span>Time Left</span></div>
+      </div>
+      <button id="btn-next" class="big-btn">NEXT LEVEL →</button>
+    </div>
+  </div>
+
+  <footer>Tap. Slide. Tidy.</footer>
+
+<script>
+(() => {
+  const RECORD_KEY = 'shelfOrg.bestLevel';
+
+  const screens = {
+    title: document.getElementById('screen-title'),
+    game: document.getElementById('screen-game'),
+    result: document.getElementById('screen-result'),
+  };
+  function show(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  function loadBest() {
+    const v = parseInt(localStorage.getItem(RECORD_KEY) || '0', 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  }
+  function saveBest(level) {
+    const cur = loadBest();
+    if (level > cur) localStorage.setItem(RECORD_KEY, String(level));
+  }
+  function refreshRecord() {
+    const best = loadBest();
+    document.getElementById('record-display').textContent = best > 0 ? best : '—';
+  }
+  refreshRecord();
+
+  // ---- Item catalog ----
+  // Items unlock progressively; baseline 4, plus one new every 5 levels.
+  const ITEM_CATALOG = [
+    { id: 'can',    e: '🥫' },
+    { id: 'cookie', e: '🍪' },
+    { id: 'bottle', e: '🥤' },
+    { id: 'mug',    e: '☕' },
+    { id: 'choc',   e: '🍫' },
+    { id: 'bread',  e: '🍞' },
+    { id: 'corn',   e: '🍿' },
+    { id: 'salt',   e: '🧂' },
+    { id: 'bowl',   e: '🥣' },
+    { id: 'honey',  e: '🍯' },
+    { id: 'cheese', e: '🧀' },
+    { id: 'tea',    e: '🍵' },
+  ];
+  function itemsForLevel(level) {
+    const count = Math.min(ITEM_CATALOG.length, 4 + Math.floor((level - 1) / 5));
+    return ITEM_CATALOG.slice(0, count);
+  }
+
+  function isHardLevel(level) {
+    // every 7th level is the brutal one (and only after level 5).
+    return level >= 7 && level % 7 === 0;
+  }
+  function timeBudgetForLevel(level) {
+    // 60s base, drops 1.5s per level, floored, harder on hard levels.
+    let t = Math.max(28, 60 - Math.floor((level - 1) * 1.5));
+    if (isHardLevel(level)) t = Math.max(22, Math.floor(t * 0.72));
+    return t;
+  }
+  function itemById(id) {
+    return ITEM_CATALOG.find(it => it.id === id);
+  }
+
+  // ---- Board model ----
+  // board.shelves: array of shelves, each shelf has cols and an array of cells.
+  // cell = { front: itemId|null, back: itemId|null }
+  // A shelf can be marked .high (unreachable). Some cells can hold a back item.
+  function makeBoard(level) {
+    const items = itemsForLevel(level);
+    const hard = isHardLevel(level);
+    const cols = 6;
+    const rowsTotal = 4;
+    // First shelf is "too high" starting at level 3.
+    // Hard levels: top two shelves are unreachable.
+    const highRows = new Set();
+    if (hard) { highRows.add(0); highRows.add(1); }
+    else if (level >= 3) { highRows.add(0); }
+
+    // Density: how full the shelves are (out of 1).
+    let density = Math.min(0.85, 0.55 + level * 0.012);
+    // Depth: chance any given cell has a back item too.
+    let depthChance = level >= 4 ? Math.min(0.32, 0.06 + (level - 4) * 0.015) : 0;
+    if (hard) { density = Math.min(0.92, density + 0.1); depthChance = Math.min(0.5, depthChance + 0.18); }
+
+    const shelves = [];
+    for (let r = 0; r < rowsTotal; r++) {
+      const cells = [];
+      const isHigh = highRows.has(r);
+      // High shelf: keep mostly full (decorative clutter).
+      const cellDensity = isHigh ? 0.92 : density;
+      for (let c = 0; c < cols; c++) {
+        let front = null, back = null;
+        if (Math.random() < cellDensity) {
+          front = items[Math.floor(Math.random() * items.length)].id;
+          if (!isHigh && Math.random() < depthChance) {
+            back = items[Math.floor(Math.random() * items.length)].id;
+          }
+        }
+        cells.push({ front, back });
+      }
+      shelves.push({ cols, cells, high: isHigh });
+    }
+    // Avoid a starting board with zero empty reachable spots.
+    let openCount = 0;
+    shelves.forEach(sh => { if (!sh.high) sh.cells.forEach(c => { if (!c.front) openCount++; }); });
+    if (openCount < 2) {
+      // force a couple of empties on a non-high shelf
+      const target = shelves.find(s => !s.high);
+      if (target) {
+        target.cells[0].front = null; target.cells[0].back = null;
+        target.cells[target.cells.length - 1].front = null;
+        target.cells[target.cells.length - 1].back = null;
+      }
+    }
+    return { shelves, level, items, hard };
+  }
+
+  // ---- Renderer ----
+  const stackEl = document.getElementById('shelf-stack');
+  const hudLevel = document.getElementById('hud-level');
+  const hudItems = document.getElementById('hud-items');
+
+  // Items needing to be cleared: only on reachable shelves.
+  // High-shelf items are decorative obstacles.
+  function countItems(board) {
+    let n = 0;
+    for (const sh of board.shelves) {
+      if (sh.high) continue;
+      for (const c of sh.cells) {
+        if (c.front) n++;
+        if (c.back) n++;
+      }
+    }
+    return n;
+  }
+
+  function renderBoard(board) {
+    stackEl.innerHTML = '';
+    board.shelves.forEach((shelf, ri) => {
+      const shelfEl = document.createElement('div');
+      shelfEl.className = 'shelf' + (shelf.high ? ' high' : '');
+      shelfEl.style.setProperty('--cols', shelf.cols);
+      const row = document.createElement('div');
+      row.className = 'shelf-row';
+      shelf.cells.forEach((cell, ci) => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'cell' + (cell.back ? ' has-back' : '');
+        cellEl.dataset.row = ri;
+        cellEl.dataset.col = ci;
+        if (cell.back) {
+          const back = document.createElement('div');
+          back.className = 'item back';
+          back.textContent = itemById(cell.back).e;
+          cellEl.appendChild(back);
+        }
+        if (cell.front) {
+          const front = document.createElement('div');
+          front.className = 'item front';
+          front.textContent = itemById(cell.front).e;
+          cellEl.appendChild(front);
+        }
+        row.appendChild(cellEl);
+      });
+      shelfEl.appendChild(row);
+      stackEl.appendChild(shelfEl);
+    });
+    hudLevel.textContent = board.level;
+    hudItems.textContent = countItems(board);
+  }
+
+  // Game state.
+  let state = null;
+  const hudTimer = document.getElementById('hud-timer');
+  const hudTimerTile = document.getElementById('hud-timer-tile');
+  const hardSlot = document.getElementById('hard-banner-slot');
+
+  function clearTimer() {
+    if (state && state.timerInterval) {
+      clearInterval(state.timerInterval);
+      state.timerInterval = null;
+    }
+  }
+  function setTimerDisplay(secs) {
+    hudTimer.textContent = secs;
+    if (secs <= 10) hudTimerTile.classList.add('warn');
+    else hudTimerTile.classList.remove('warn');
+  }
+
+  function startLevel(level) {
+    clearTimer();
+    const board = makeBoard(level);
+    const totalTime = timeBudgetForLevel(level);
+    state = {
+      board,
+      busy: false,
+      level,
+      timeLeft: totalTime,
+      totalTime,
+      timerInterval: null,
+      ended: false,
+    };
+    hardSlot.innerHTML = board.hard ? '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>' : '';
+    renderBoard(board);
+    setTimerDisplay(state.timeLeft);
+    state.timerInterval = setInterval(() => {
+      if (!state || state.ended) return;
+      state.timeLeft -= 1;
+      setTimerDisplay(Math.max(0, state.timeLeft));
+      if (state.timeLeft <= 0) {
+        endRun();
+      }
+    }, 1000);
+  }
+
+  function endRun() {
+    if (!state || state.ended) return;
+    state.ended = true;
+    clearTimer();
+    refreshRecord();
+    document.getElementById('result-emoji').textContent = '🥲';
+    document.getElementById('result-title').textContent = "Time's Up!";
+    document.getElementById('result-sub').textContent = 'The pantry got the better of you.';
+    document.getElementById('result-level').textContent = state.level;
+    document.getElementById('result-best').textContent = loadBest() || '—';
+    show('result');
+  }
+
+  function showLevelClear() {
+    document.getElementById('clear-level').textContent = state.level;
+    document.getElementById('clear-time').textContent = Math.max(0, state.timeLeft);
+    document.getElementById('clear-title').textContent =
+      state.level % 5 === 0 ? 'New Item Unlocked!' : 'Shelf Tidy!';
+    document.getElementById('clear-sub').textContent =
+      state.level % 5 === 0
+        ? "Things are about to get more crowded."
+        : 'Onto the next mess.';
+    document.getElementById('overlay-clear').classList.add('show');
+  }
+  function hideLevelClear() {
+    document.getElementById('overlay-clear').classList.remove('show');
+  }
+
+  // ---- Drag interaction ----
+  let drag = null;
+  let ghostEl = null;
+
+  function cellEl(row, col) {
+    return stackEl.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+  }
+  function cellFromPoint(x, y) {
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      if (el.classList && el.classList.contains('cell')) return el;
+    }
+    return null;
+  }
+
+  function onPointerDown(e) {
+    if (!state || state.busy) return;
+    const target = e.target.closest('.item.front');
+    if (!target) return;
+    const cellNode = target.closest('.cell');
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    if (shelf.high) return;
+
+    e.preventDefault();
+    target.setPointerCapture && target.setPointerCapture(e.pointerId);
+
+    const cell = shelf.cells[c];
+    drag = { fromR: r, fromC: c, itemId: cell.front, sourceEl: target, pointerId: e.pointerId };
+    target.classList.add('dragging-source');
+
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'ghost';
+    ghostEl.textContent = itemById(cell.front).e;
+    document.body.appendChild(ghostEl);
+    moveGhost(e.clientX, e.clientY);
+  }
+
+  function moveGhost(x, y) {
+    if (!ghostEl) return;
+    ghostEl.style.left = x + 'px';
+    ghostEl.style.top = y + 'px';
+  }
+
+  function clearDropHints() {
+    stackEl.querySelectorAll('.cell.drop-ok, .cell.drop-bad')
+      .forEach(el => el.classList.remove('drop-ok', 'drop-bad'));
+  }
+
+  function onPointerMove(e) {
+    if (!drag) return;
+    e.preventDefault();
+    moveGhost(e.clientX, e.clientY);
+
+    const cellNode = cellFromPoint(e.clientX, e.clientY);
+    clearDropHints();
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    const cell = shelf.cells[c];
+    const isSource = (r === drag.fromR && c === drag.fromC);
+    if (shelf.high) {
+      cellNode.classList.add('drop-bad');
+    } else if (isSource) {
+      // self-drop is a no-op, no hint
+    } else if (cell.front == null) {
+      cellNode.classList.add('drop-ok');
+    } else {
+      cellNode.classList.add('drop-bad');
+    }
+  }
+
+  function onPointerUp(e) {
+    if (!drag) return;
+    e.preventDefault();
+    const cellNode = cellFromPoint(e.clientX, e.clientY);
+    let landed = null;
+    if (cellNode) {
+      const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+      const shelf = state.board.shelves[r];
+      const cell = shelf.cells[c];
+      if (!shelf.high && cell.front == null && !(r === drag.fromR && c === drag.fromC)) {
+        landed = { r, c };
+      }
+    }
+    cleanupDrag();
+    if (landed) commitMove(drag, landed);
+    drag = null;
+  }
+  function onPointerCancel() {
+    cleanupDrag();
+    drag = null;
+  }
+  function cleanupDrag() {
+    clearDropHints();
+    if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+    if (drag && drag.sourceEl) drag.sourceEl.classList.remove('dragging-source');
+  }
+
+  function commitMove(d, to) {
+    const board = state.board;
+    const fromCell = board.shelves[d.fromR].cells[d.fromC];
+    const toCell = board.shelves[to.r].cells[to.c];
+    toCell.front = fromCell.front;
+    fromCell.front = fromCell.back; // back item moves up to front
+    fromCell.back = null;
+    renderBoard(board);
+    resolveMatches();
+  }
+
+  // ---- Match detection ----
+  function findMatches(board) {
+    const matched = []; // list of {r,c}
+    for (let r = 0; r < board.shelves.length; r++) {
+      if (board.shelves[r].high) continue;
+      const cells = board.shelves[r].cells;
+      let runStart = 0;
+      for (let c = 1; c <= cells.length; c++) {
+        const prev = cells[c - 1].front;
+        const curr = c < cells.length ? cells[c].front : null;
+        if (c === cells.length || curr !== prev || prev == null) {
+          const len = c - runStart;
+          if (prev != null && len >= 3) {
+            for (let k = runStart; k < c; k++) matched.push({ r, c: k });
+          }
+          runStart = c;
+        }
+      }
+    }
+    return matched;
+  }
+
+  function resolveMatches() {
+    const board = state.board;
+    const matches = findMatches(board);
+    if (matches.length === 0) {
+      hudItems.textContent = countItems(board);
+      checkWin();
+      return;
+    }
+    state.busy = true;
+    // animate and remove
+    matches.forEach(({ r, c }) => {
+      const ce = cellEl(r, c);
+      if (!ce) return;
+      const front = ce.querySelector('.item.front');
+      if (front) front.classList.add('matched');
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      ce.appendChild(spark);
+    });
+    setTimeout(() => {
+      matches.forEach(({ r, c }) => {
+        const cell = board.shelves[r].cells[c];
+        cell.front = cell.back;
+        cell.back = null;
+      });
+      renderBoard(board);
+      state.busy = false;
+      // chain into next pass for any new matches
+      resolveMatches();
+    }, 460);
+  }
+
+  function checkWin() {
+    if (!state || state.ended) return;
+    const remaining = countItems(state.board);
+    if (remaining === 0) {
+      state.ended = true;
+      clearTimer();
+      // best-level-reached is the level you've cleared.
+      saveBest(state.level);
+      refreshRecord();
+      // small beat before showing the panel.
+      setTimeout(showLevelClear, 350);
+    }
+  }
+
+  // pointer listeners
+  stackEl.addEventListener('pointerdown', onPointerDown);
+  stackEl.addEventListener('pointermove', onPointerMove);
+  stackEl.addEventListener('pointerup', onPointerUp);
+  stackEl.addEventListener('pointercancel', onPointerCancel);
+  // global move/up so dragging keeps working if finger leaves the stack
+  window.addEventListener('pointermove', (e) => { if (drag) onPointerMove(e); });
+  window.addEventListener('pointerup', (e) => { if (drag) onPointerUp(e); });
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    show('game');
+    startLevel(1);
+  });
+  document.getElementById('btn-next').addEventListener('click', () => {
+    hideLevelClear();
+    startLevel(state.level + 1);
+  });
+  document.getElementById('btn-retry').addEventListener('click', () => {
+    show('game');
+    startLevel(1);
+  });
+  document.getElementById('btn-home').addEventListener('click', () => {
+    show('title');
+    refreshRecord();
+  });
+
+  // Tidy up timers if the user backs out.
+  window.addEventListener('pagehide', () => clearTimer());
+
+  // Expose helpers for later steps.
+  window.__shelf = { show, loadBest, saveBest, refreshRecord, startLevel, get state() { return state; }, renderBoard };
+})();
+</script>
+</body>
+</html>

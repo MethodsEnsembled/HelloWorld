@@ -427,6 +427,11 @@
       inset 0 1px 0 rgba(255,255,255,0.8);
     line-height: 1;
   }
+  .next-items .next-item.empty {
+    background: rgba(255,255,255,0.25);
+    box-shadow: inset 0 0 0 1px rgba(58,36,18,0.15);
+    border-radius: 8px;
+  }
   @keyframes spawnPop {
     0%   { transform: scale(0.4); opacity: 0; }
     60%  { transform: scale(1.2); }
@@ -688,7 +693,7 @@
       </div>
       <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
       <div id="next-tray" class="next-tray" aria-label="next items">
-        <span class="next-label">NEXT BAD MOVE SPAWNS</span>
+        <span class="next-label" id="next-label">NEXT TO REFILL</span>
         <div class="next-items" id="next-items"></div>
       </div>
       <div class="powerups" id="powerups" aria-label="power-ups">
@@ -850,10 +855,15 @@
     };
   }
   function targetForLevel(level) {
-    // Matches needed to clear the level.
-    let t = 5 + Math.floor((level - 1) * 1.2);
-    if (isHardLevel(level)) t = Math.floor(t * 1.25);
-    return t;
+    // Target = number of starting sets so the level is always winnable
+    // by consuming exactly the items the level shipped with.
+    return setsForLevel(level);
+  }
+  // N sets of 3 are generated per level: floor(0.5*level + 1) up to L49,
+  // then a chaotic random 25-100 from L50 onward.
+  function setsForLevel(level) {
+    if (level >= 50) return Math.floor(Math.random() * 76) + 25;
+    return Math.max(1, Math.floor(0.5 * level + 1));
   }
   function timeBudgetForLevel(level) {
     // 70s base, drops 1.2s per level, floored, harder on hard levels.
@@ -905,55 +915,105 @@
       shelves.push({ cols, cells, high: highShelves.has(s) });
     }
 
-    // How many "sets of 3" to start with. Multiples of 3, always leaves at
-    // least one shelf-worth of empty cells.
-    const reachableShelves = totalShelves - highShelves.size;
-    const reachableCells = reachableShelves * cols;
-    const maxSets = Math.max(1, Math.floor(reachableCells / 3) - 1);
-    let sets = Math.min(maxSets, 2 + Math.floor((level - 1) / 2));
-    if (hard) sets = Math.min(maxSets, sets + 1);
-    sets = Math.max(2, sets);
+    // Generate exactly N sets of 3 (one item type per set, picked from the
+    // unlocked catalog). Item types within a set repeat by design; types
+    // across sets can also repeat, which is fine.
+    const totalSets = setsForLevel(level);
+    const sourceItems = [];
+    for (let i = 0; i < totalSets; i++) {
+      const id = items[Math.floor(Math.random() * items.length)].id;
+      sourceItems.push(id, id, id);
+    }
+    shuffle(sourceItems);
 
-    const frontSlots = [];
+    // Place items into reachable cells until full. Anything left becomes
+    // the backend queue (FIFO).
+    const reachableSlots = [];
     for (let s = 0; s < totalShelves; s++) {
       if (highShelves.has(s)) continue;
-      for (let c = 0; c < cols; c++) frontSlots.push({ s, c });
+      for (let c = 0; c < cols; c++) reachableSlots.push({ s, c });
     }
-    shuffle(frontSlots);
+    shuffle(reachableSlots);
 
-    const depthChance = flags.depth ? Math.min(0.35, 0.08 + (level - 4) * 0.02) : 0;
-    const placeBack = (itemId) => {
-      const candidates = [];
+    // Always keep at least one shelf-worth of cells empty so the player has
+    // room to maneuver. Anything beyond that goes to the backend queue.
+    const maxOnBoard = Math.max(3, reachableSlots.length - 3);
+    const onBoardCount = Math.min(sourceItems.length, maxOnBoard);
+
+    // Place the on-board portion, but never let one shelf accumulate 3 of
+    // the same type at start (would auto-match instantly).
+    const remaining = reachableSlots.slice();
+    let cursor = 0;
+    for (cursor = 0; cursor < onBoardCount && remaining.length > 0; cursor++) {
+      const itemId = sourceItems[cursor];
+      let chosenIdx = -1;
+      for (let k = 0; k < remaining.length; k++) {
+        const slot = remaining[k];
+        const shelfCells = shelves[slot.s].cells;
+        let sameCount = 0;
+        for (const c of shelfCells) if (c.front === itemId) sameCount++;
+        if (sameCount < 2) { chosenIdx = k; break; }
+      }
+      if (chosenIdx === -1) chosenIdx = 0; // fallback, shouldn't happen
+      const slot = remaining.splice(chosenIdx, 1)[0];
+      shelves[slot.s].cells[slot.c].front = itemId;
+    }
+
+    // Depth modifier: tuck some items behind already-placed front items.
+    // We move a fraction of existing front items to back slots of OTHER cells
+    // so the same item count is preserved, just hidden.
+    if (flags.depth) {
+      const depthChance = Math.min(0.35, 0.08 + Math.max(0, level - 4) * 0.02);
+      for (const slot of reachableSlots) {
+        const cell = shelves[slot.s].cells[slot.c];
+        if (cell.front == null) continue;
+        if (cell.back != null) continue;
+        if (Math.random() >= depthChance) continue;
+        // Find another cell with a front to move behind this one.
+        const donors = [];
+        for (let s = 0; s < totalShelves; s++) {
+          if (highShelves.has(s)) continue;
+          for (let c = 0; c < cols; c++) {
+            const o = shelves[s].cells[c];
+            if (o.front != null && (s !== slot.s || c !== slot.c)) donors.push({ s, c });
+          }
+        }
+        if (donors.length === 0) break;
+        const d = donors[Math.floor(Math.random() * donors.length)];
+        cell.back = shelves[d.s].cells[d.c].front;
+        shelves[d.s].cells[d.c].front = null;
+      }
+    }
+
+    // Avoid trivial start auto-matches: any reachable shelf where every front
+    // cell is the same item gets one cell swapped with a non-matching cell.
+    const swapAutoMatch = () => {
       for (let s = 0; s < totalShelves; s++) {
         if (highShelves.has(s)) continue;
-        for (let c = 0; c < cols; c++) {
-          const cell = shelves[s].cells[c];
-          if (cell.front != null && cell.back == null) candidates.push({ s, c });
+        const cells = shelves[s].cells;
+        const first = cells[0].front;
+        if (first == null) continue;
+        if (!cells.every(c => c.front === first)) continue;
+        // Find another reachable cell whose front differs from `first`.
+        for (let s2 = 0; s2 < totalShelves; s2++) {
+          if (highShelves.has(s2) || s2 === s) continue;
+          for (let c2 = 0; c2 < cols; c2++) {
+            const other = shelves[s2].cells[c2];
+            if (other.front != null && other.front !== first) {
+              const tmp = cells[2].front;
+              cells[2].front = other.front;
+              other.front = tmp;
+              return true;
+            }
+          }
         }
+        // No other type on board (shouldn't happen unless level has 1 type).
+        return false;
       }
-      if (candidates.length === 0) return false;
-      const slot = candidates[Math.floor(Math.random() * candidates.length)];
-      shelves[slot.s].cells[slot.c].back = itemId;
-      return true;
+      return false;
     };
-
-    for (let i = 0; i < sets; i++) {
-      const itemId = items[Math.floor(Math.random() * items.length)].id;
-      let placed = 0;
-      while (placed < 3) {
-        if (Math.random() < depthChance && placeBack(itemId)) {
-          placed++;
-          continue;
-        }
-        if (frontSlots.length === 0) {
-          if (placeBack(itemId)) { placed++; continue; }
-          break;
-        }
-        const slot = frontSlots.pop();
-        shelves[slot.s].cells[slot.c].front = itemId;
-        placed++;
-      }
-    }
+    let safety = totalShelves + 2;
+    while (safety-- > 0 && swapAutoMatch()) { /* keep swapping until stable */ }
 
     // Decorate high shelves with random items so they look full of clutter.
     for (let s = 0; s < totalShelves; s++) {
@@ -965,7 +1025,10 @@
       }
     }
 
-    return { shelves, level, items, hard, gridCols, gridRows, modifier: mod, flags };
+    // Overflow becomes the backend queue.
+    const queue = sourceItems.slice(cursor);
+
+    return { shelves, level, items, hard, gridCols, gridRows, modifier: mod, flags, queue, totalSets };
   }
 
   // ---- Renderer ----
@@ -1073,7 +1136,9 @@
     setPicked(null);
     const board = makeBoard(level);
     const totalTime = timeBudgetForLevel(level);
-    const target = targetForLevel(level);
+    // target is derived from the board's actual totalSets so the random
+    // L50+ count and the visible target stay in sync.
+    const target = board.totalSets;
     state = {
       board,
       busy: false,
@@ -1084,12 +1149,15 @@
       ended: false,
       target,
       matchesMade: 0,
-      queue: board.flags.queue ? genSpawnSet(board.items) : null,
+      // The queue is always the backend pool (may be empty on small levels).
+      queue: board.queue || [],
       powerups: inventory, // shared reference so changes persist into the next level
       armed: null,
     };
     hardSlot.innerHTML = modifierBannerHtml(board.modifier, board.hard);
-    nextTrayEl.style.display = state.queue ? '' : 'none';
+    nextTrayEl.style.display = '';
+    document.getElementById('next-label').textContent =
+      board.flags.queue ? 'NEXT BAD MOVE DUMPS' : 'NEXT TO REFILL';
     renderBoard(board);
     renderQueue();
     refreshPowerupTray();
@@ -1242,8 +1310,24 @@
         cl.front = cl.back; cl.back = null;
       });
       state.matchesMade += 1;
+      // Refill any shelf that hammer fully emptied. Animation is added
+      // after renderBoard rebuilds the DOM.
+      const emptiedShelves = new Set();
+      toClear.forEach(({ r }) => {
+        if (board.shelves[r].cells.every(c => c.front == null)) emptiedShelves.add(r);
+      });
+      const refilled = [];
+      emptiedShelves.forEach(r => {
+        for (const slot of refillShelfFromQueue(state, r)) refilled.push(slot);
+      });
       renderBoard(board);
+      renderQueue();
       refreshHud();
+      refilled.forEach(({ r, c }) => {
+        const ce = cellEl(r, c);
+        const fr = ce && ce.querySelector('.item.front');
+        if (fr) fr.classList.add('spawning');
+      });
       state.busy = false;
       resolveMatches(() => {});
     }, 460);
@@ -1281,8 +1365,21 @@
         }
       });
       state.matchesMade += shelvesActuallyCleared;
+      // Refill each fully-emptied shelf in turn from the queue.
+      const refilled = [];
+      toClearShelves.forEach(({ r }) => {
+        if (board.shelves[r].cells.every(c => c.front == null)) {
+          for (const slot of refillShelfFromQueue(state, r)) refilled.push(slot);
+        }
+      });
       renderBoard(board);
+      renderQueue();
       refreshHud();
+      refilled.forEach(({ r, c }) => {
+        const ce = cellEl(r, c);
+        const fr = ce && ce.querySelector('.item.front');
+        if (fr) fr.classList.add('spawning');
+      });
       state.busy = false;
       resolveMatches(() => {
         if (state.ended) return;
@@ -1486,37 +1583,29 @@
     renderBoard(board);
     resolveMatches((cleared) => {
       if (state.ended) return;
-      if (!cleared && state.queue) {
-        // Bad move on a queue-modifier level: spawn the queued items.
+      if (!cleared && state.board.flags.queue) {
+        // Bad move on a queue-modifier level: dump the next queue items
+        // onto random empty cells.
         spawnFromQueue();
       }
     });
   }
 
-  // Pick refill items that keep the board cleanable. Prefer item types whose
-  // current count is short of a multiple of 3; otherwise fall back to either
-  // an empty refill or 3 of one type (which auto-matches).
-  function chooseRefill(board) {
-    const typeCount = {};
-    for (const sh of board.shelves) {
-      for (const cell of sh.cells) {
-        if (cell.front) typeCount[cell.front] = (typeCount[cell.front] || 0) + 1;
-        if (cell.back)  typeCount[cell.back]  = (typeCount[cell.back]  || 0) + 1;
-      }
+  // Pop up to 3 items from the level's backend queue and slide them into
+  // any empty cells on the cleared shelf (left-to-right). Returns a list of
+  // {r,c} pairs that were filled so the caller can animate them.
+  function refillShelfFromQueue(state, shelfIdx) {
+    const filled = [];
+    if (!state || !state.queue || state.queue.length === 0) return filled;
+    const shelf = state.board.shelves[shelfIdx];
+    if (shelf.high) return filled;
+    for (let c = 0; c < shelf.cells.length; c++) {
+      if (shelf.cells[c].front != null) continue;
+      if (state.queue.length === 0) break;
+      shelf.cells[c].front = state.queue.shift();
+      filled.push({ r: shelfIdx, c });
     }
-    const candidates = [];
-    for (const id of Object.keys(typeCount)) {
-      const cnt = typeCount[id];
-      const short = (3 - (cnt % 3)) % 3;
-      for (let i = 0; i < short; i++) candidates.push(id);
-    }
-    if (candidates.length > 0) {
-      shuffle(candidates);
-      return candidates.slice(0, 3);
-    }
-    if (Math.random() < 0.5) return [];
-    const id = board.items[Math.floor(Math.random() * board.items.length)].id;
-    return [id, id, id];
+    return filled;
   }
 
   // ---- Match detection ----
@@ -1571,18 +1660,20 @@
           cell.front = cell.back;
           cell.back = null;
         });
-        // Refill: any shelf that's now fully empty has a 50/50 chance to
-        // refill with up to 3 items chosen to preserve cleanability.
+        // Refill: pop items from the backend queue into the empty cells of
+        // each cleared shelf, FIFO, left-to-right.
+        const refilled = [];
         matchedShelves.forEach(r => {
-          const shelf = board.shelves[r];
-          if (!shelf.cells.every(c => c.front == null)) return;
-          if (Math.random() >= 0.5) return;
-          const refill = chooseRefill(board);
-          for (let i = 0; i < refill.length && i < shelf.cells.length; i++) {
-            shelf.cells[i].front = refill[i];
-          }
+          for (const slot of refillShelfFromQueue(state, r)) refilled.push(slot);
         });
         renderBoard(board);
+        renderQueue();
+        // Pop animation on freshly refilled cells.
+        refilled.forEach(({ r, c }) => {
+          const ce = cellEl(r, c);
+          const fr = ce && ce.querySelector('.item.front');
+          if (fr) fr.classList.add('spawning');
+        });
         state.busy = false;
         pass();
       }, 460);
@@ -1608,26 +1699,31 @@
     }
   }
 
-  // ---- Spawn queue ----
+  // ---- NEXT tray + bad-move dump ----
   const nextItemsEl = document.getElementById('next-items');
-  function genSpawnSet(items) {
-    const id = items[Math.floor(Math.random() * items.length)].id;
-    return [id, id, id];
-  }
   function renderQueue() {
-    if (!state || !state.queue) { nextItemsEl.innerHTML = ''; return; }
     nextItemsEl.innerHTML = '';
-    for (const id of state.queue) {
+    if (!state) return;
+    const preview = (state.queue || []).slice(0, 3);
+    for (let i = 0; i < 3; i++) {
       const el = document.createElement('div');
       el.className = 'next-item';
-      el.textContent = itemById(id).e;
+      if (preview[i]) {
+        el.textContent = itemById(preview[i]).e;
+      } else {
+        el.classList.add('empty');
+      }
       nextItemsEl.appendChild(el);
     }
   }
 
+  // Queue-modifier punishment for a non-clearing move: dump up to the next
+  // 3 items from the backend queue into random empty reachable cells. If
+  // the queue is empty, no penalty.
   function spawnFromQueue() {
     if (!state || state.ended) return;
     const board = state.board;
+    if (!state.queue || state.queue.length === 0) return;
     const empties = [];
     for (let r = 0; r < board.shelves.length; r++) {
       if (board.shelves[r].high) continue;
@@ -1635,27 +1731,23 @@
         if (board.shelves[r].cells[c].front == null) empties.push({ r, c });
       }
     }
+    if (empties.length === 0) { endRun('full'); return; }
     shuffle(empties);
     const placedSlots = [];
-    for (const itemId of state.queue) {
-      if (empties.length === 0) break;
+    while (state.queue.length > 0 && empties.length > 0 && placedSlots.length < 3) {
       const slot = empties.pop();
-      board.shelves[slot.r].cells[slot.c].front = itemId;
+      board.shelves[slot.r].cells[slot.c].front = state.queue.shift();
       placedSlots.push(slot);
     }
-    state.queue = genSpawnSet(board.items);
-    renderQueue();
     renderBoard(board);
-    // little pop animation on freshly spawned cells
+    renderQueue();
     placedSlots.forEach(({ r, c }) => {
       const ce = cellEl(r, c);
       const fr = ce && ce.querySelector('.item.front');
       if (fr) fr.classList.add('spawning');
     });
-    // The spawn might land 3 same items on a single shelf -> chain a clear.
     resolveMatches(() => {
       if (state.ended) return;
-      // After all clears settle, check if board is full / unrecoverable.
       checkBoardFull();
     });
   }

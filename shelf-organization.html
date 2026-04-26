@@ -147,6 +147,16 @@
     font-size: 17px;
     margin-left: 4px;
   }
+  .title-pu {
+    margin: 8px 0 0;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  .title-pu span { color: var(--ink); font-size: 13px; }
+  .title-pu b { color: var(--accent); font-weight: 800; margin-left: 1px; }
 
   /* Mini decorative shelf preview on title */
   .preview-shelf {
@@ -656,9 +666,16 @@
       </div>
 
       <div class="btn-row">
-        <button id="btn-start" class="big-btn">START</button>
+        <button id="btn-continue" class="big-btn" style="display:none;">CONTINUE LV <span id="continue-level">1</span></button>
+        <button id="btn-new" class="big-btn secondary">NEW GAME</button>
       </div>
       <p class="record">BEST LEVEL <b id="record-display">—</b></p>
+      <p class="title-pu" id="title-pu" style="display:none;">
+        YOUR POWER-UPS
+        <span>🔨×<b id="title-pu-hammer">0</b></span>
+        <span>⏱×<b id="title-pu-time">0</b></span>
+        <span>💣×<b id="title-pu-bomb">0</b></span>
+      </p>
     </section>
 
     <!-- Game screen -->
@@ -738,6 +755,7 @@
 <script>
 (() => {
   const RECORD_KEY = 'shelfOrg.bestLevel';
+  const LEVEL_KEY  = 'shelfOrg.currentLevel';
 
   const screens = {
     title: document.getElementById('screen-title'),
@@ -757,11 +775,37 @@
     const cur = loadBest();
     if (level > cur) localStorage.setItem(RECORD_KEY, String(level));
   }
-  function refreshRecord() {
+  function loadCurrentLevel() {
+    const v = parseInt(localStorage.getItem(LEVEL_KEY) || '1', 10);
+    return Number.isFinite(v) && v >= 1 ? v : 1;
+  }
+  function saveCurrentLevel(n) {
+    localStorage.setItem(LEVEL_KEY, String(n));
+  }
+  function refreshTitle() {
     const best = loadBest();
     document.getElementById('record-display').textContent = best > 0 ? best : '—';
+    const cur = loadCurrentLevel();
+    const continueBtn = document.getElementById('btn-continue');
+    if (cur > 1) {
+      continueBtn.style.display = '';
+      document.getElementById('continue-level').textContent = cur;
+    } else {
+      continueBtn.style.display = 'none';
+    }
+    const titlePu = document.getElementById('title-pu');
+    const total = (inventory.hammer || 0) + (inventory.time || 0) + (inventory.bomb || 0);
+    if (total > 0) {
+      titlePu.style.display = '';
+      document.getElementById('title-pu-hammer').textContent = inventory.hammer || 0;
+      document.getElementById('title-pu-time').textContent   = inventory.time   || 0;
+      document.getElementById('title-pu-bomb').textContent   = inventory.bomb   || 0;
+    } else {
+      titlePu.style.display = 'none';
+    }
   }
-  refreshRecord();
+  // refreshRecord kept as a thin alias so existing callers stay consistent.
+  function refreshRecord() { refreshTitle(); }
 
   // ---- Item catalog ----
   // Items unlock progressively; baseline 4, plus one new every 5 levels.
@@ -1552,7 +1596,8 @@
       state.ended = true;
       clearTimer();
       saveBest(state.level);
-      refreshRecord();
+      // Unlock the next level so CONTINUE resumes there.
+      saveCurrentLevel(state.level + 1);
       const drop = rollPowerupDrop(state.level, state.board.hard);
       if (drop) {
         inventory[drop] += 1;
@@ -1635,7 +1680,12 @@
   window.addEventListener('pointermove', (e) => { if (pending) onPointerMove(e); });
   window.addEventListener('pointerup', (e) => { if (pending) onPointerUp(e); });
 
-  document.getElementById('btn-start').addEventListener('click', () => {
+  document.getElementById('btn-continue').addEventListener('click', () => {
+    show('game');
+    startLevel(loadCurrentLevel());
+  });
+  document.getElementById('btn-new').addEventListener('click', () => {
+    saveCurrentLevel(1);
     show('game');
     startLevel(1);
   });
@@ -1645,12 +1695,15 @@
   });
   document.getElementById('btn-retry').addEventListener('click', () => {
     show('game');
-    startLevel(1);
+    startLevel(loadCurrentLevel());
   });
   document.getElementById('btn-home').addEventListener('click', () => {
     show('title');
-    refreshRecord();
+    refreshTitle();
   });
+
+  // Initial title refresh after inventory has loaded.
+  refreshTitle();
 
   // Tidy up timers if the user backs out.
   window.addEventListener('pagehide', () => clearTimer());

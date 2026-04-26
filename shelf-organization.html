@@ -338,6 +338,23 @@
   .cell.drop-bad {
     background: rgba(201,53,53,0.35) !important;
   }
+  .cell.tap-target {
+    background: rgba(106,200,120,0.22) !important;
+    box-shadow: inset 0 0 0 1px rgba(106,200,120,0.7), inset 0 2px 3px rgba(0,0,0,0.18);
+  }
+  .item.front.picked {
+    z-index: 5;
+    box-shadow:
+      0 0 0 2px var(--accent),
+      0 0 10px rgba(226,107,59,0.55),
+      0 1px 0 rgba(0,0,0,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.8);
+    animation: pickedPulse 0.95s ease-in-out infinite;
+  }
+  @keyframes pickedPulse {
+    0%, 100% { transform: scale(1.04); }
+    50% { transform: scale(1.12); }
+  }
 
   /* match animation */
   @keyframes matchPop {
@@ -878,8 +895,12 @@
     document.getElementById('overlay-clear').classList.remove('show');
   }
 
-  // ---- Drag interaction ----
-  let drag = null;
+  // ---- Tap-and-drag interaction ----
+  // pending: a pointer is down; may turn into a tap or a drag
+  // picked: an item has been tap-picked, awaiting a tap on a destination cell
+  const TAP_DRAG_THRESHOLD = 6; // px before pointermove counts as a drag
+  let pending = null;
+  let picked = null;
   let ghostEl = null;
 
   function cellEl(row, col) {
@@ -893,89 +914,150 @@
     return null;
   }
 
-  function onPointerDown(e) {
-    if (!state || state.busy) return;
-    const target = e.target.closest('.item.front');
-    if (!target) return;
-    const cellNode = target.closest('.cell');
-    if (!cellNode) return;
-    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
-    const shelf = state.board.shelves[r];
-    if (shelf.high) return;
-
-    e.preventDefault();
-    target.setPointerCapture && target.setPointerCapture(e.pointerId);
-
-    const cell = shelf.cells[c];
-    drag = { fromR: r, fromC: c, itemId: cell.front, sourceEl: target, pointerId: e.pointerId };
-    target.classList.add('dragging-source');
-
-    ghostEl = document.createElement('div');
-    ghostEl.className = 'ghost';
-    ghostEl.textContent = itemById(cell.front).e;
-    document.body.appendChild(ghostEl);
-    moveGhost(e.clientX, e.clientY);
-  }
-
   function moveGhost(x, y) {
     if (!ghostEl) return;
     ghostEl.style.left = x + 'px';
     ghostEl.style.top = y + 'px';
   }
-
   function clearDropHints() {
     stackEl.querySelectorAll('.cell.drop-ok, .cell.drop-bad')
       .forEach(el => el.classList.remove('drop-ok', 'drop-bad'));
   }
+  function clearTapTargets() {
+    stackEl.querySelectorAll('.cell.tap-target').forEach(el => el.classList.remove('tap-target'));
+    stackEl.querySelectorAll('.item.front.picked').forEach(el => el.classList.remove('picked'));
+  }
+  function setPicked(p) {
+    clearTapTargets();
+    picked = p;
+    if (!p || !state) return;
+    const ce = cellEl(p.fromR, p.fromC);
+    if (ce) {
+      const fr = ce.querySelector('.item.front');
+      if (fr) fr.classList.add('picked');
+    }
+    // Highlight every empty reachable cell as a valid drop target.
+    for (let r = 0; r < state.board.shelves.length; r++) {
+      const shelf = state.board.shelves[r];
+      if (shelf.high) continue;
+      for (let c = 0; c < shelf.cells.length; c++) {
+        if (shelf.cells[c].front == null && !(r === p.fromR && c === p.fromC)) {
+          const node = cellEl(r, c);
+          if (node) node.classList.add('tap-target');
+        }
+      }
+    }
+  }
+
+  function onPointerDown(e) {
+    if (!state || state.busy || state.ended) return;
+    const cellNode = e.target.closest('.cell');
+    if (!cellNode) return;
+    const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+    const shelf = state.board.shelves[r];
+    const cell = shelf.cells[c];
+    const itemEl = e.target.closest('.item.front');
+
+    e.preventDefault();
+    pending = {
+      startX: e.clientX, startY: e.clientY,
+      fromR: r, fromC: c,
+      itemEl,
+      cell,
+      shelf,
+      pointerId: e.pointerId,
+      dragging: false,
+    };
+  }
+
+  function startDragFromPending() {
+    if (!pending || pending.dragging) return;
+    if (!pending.itemEl || pending.shelf.high) { pending = null; return; }
+    pending.dragging = true;
+    setPicked(null);
+    pending.itemEl.classList.add('dragging-source');
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'ghost';
+    ghostEl.textContent = pending.itemEl.textContent;
+    document.body.appendChild(ghostEl);
+  }
 
   function onPointerMove(e) {
-    if (!drag) return;
+    if (!pending) return;
+    if (!pending.dragging) {
+      const dx = e.clientX - pending.startX;
+      const dy = e.clientY - pending.startY;
+      if (dx * dx + dy * dy < TAP_DRAG_THRESHOLD * TAP_DRAG_THRESHOLD) return;
+      startDragFromPending();
+      if (!pending) return;
+    }
     e.preventDefault();
     moveGhost(e.clientX, e.clientY);
-
     const cellNode = cellFromPoint(e.clientX, e.clientY);
     clearDropHints();
     if (!cellNode) return;
     const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
     const shelf = state.board.shelves[r];
     const cell = shelf.cells[c];
-    const isSource = (r === drag.fromR && c === drag.fromC);
-    if (shelf.high) {
-      cellNode.classList.add('drop-bad');
-    } else if (isSource) {
-      // self-drop is a no-op, no hint
-    } else if (cell.front == null) {
-      cellNode.classList.add('drop-ok');
-    } else {
-      cellNode.classList.add('drop-bad');
-    }
+    const isSource = (r === pending.fromR && c === pending.fromC);
+    if (shelf.high) cellNode.classList.add('drop-bad');
+    else if (isSource) {}
+    else if (cell.front == null) cellNode.classList.add('drop-ok');
+    else cellNode.classList.add('drop-bad');
   }
 
   function onPointerUp(e) {
-    if (!drag) return;
+    if (!pending) return;
     e.preventDefault();
-    const cellNode = cellFromPoint(e.clientX, e.clientY);
-    let landed = null;
-    if (cellNode) {
-      const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
-      const shelf = state.board.shelves[r];
-      const cell = shelf.cells[c];
-      if (!shelf.high && cell.front == null && !(r === drag.fromR && c === drag.fromC)) {
-        landed = { r, c };
+    if (pending.dragging) {
+      const cellNode = cellFromPoint(e.clientX, e.clientY);
+      let landed = null;
+      if (cellNode) {
+        const r = +cellNode.dataset.row, c = +cellNode.dataset.col;
+        const shelf = state.board.shelves[r];
+        const cell = shelf.cells[c];
+        if (!shelf.high && cell.front == null && !(r === pending.fromR && c === pending.fromC)) {
+          landed = { r, c };
+        }
       }
+      cleanupDrag();
+      const from = { fromR: pending.fromR, fromC: pending.fromC };
+      pending = null;
+      if (landed) commitMove(from, landed);
+      return;
     }
-    cleanupDrag();
-    if (landed) commitMove(drag, landed);
-    drag = null;
+    // Tap (no drag distance).
+    const r = pending.fromR, c = pending.fromC;
+    const hasItem = !!pending.itemEl;
+    const shelf = pending.shelf;
+    const cell = pending.cell;
+    pending = null;
+
+    if (hasItem) {
+      if (shelf.high) return;
+      if (picked && picked.fromR === r && picked.fromC === c) {
+        setPicked(null); // toggle off
+      } else {
+        setPicked({ fromR: r, fromC: c });
+      }
+    } else {
+      if (!picked) return;
+      if (shelf.high) return;
+      if (cell.front != null) return;
+      const from = { fromR: picked.fromR, fromC: picked.fromC };
+      setPicked(null);
+      commitMove(from, { r, c });
+    }
   }
+
   function onPointerCancel() {
     cleanupDrag();
-    drag = null;
+    pending = null;
   }
   function cleanupDrag() {
     clearDropHints();
     if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-    if (drag && drag.sourceEl) drag.sourceEl.classList.remove('dragging-source');
+    if (pending && pending.itemEl) pending.itemEl.classList.remove('dragging-source');
   }
 
   function commitMove(d, to) {
@@ -1134,8 +1216,8 @@
   stackEl.addEventListener('pointerup', onPointerUp);
   stackEl.addEventListener('pointercancel', onPointerCancel);
   // global move/up so dragging keeps working if finger leaves the stack
-  window.addEventListener('pointermove', (e) => { if (drag) onPointerMove(e); });
-  window.addEventListener('pointerup', (e) => { if (drag) onPointerUp(e); });
+  window.addEventListener('pointermove', (e) => { if (pending) onPointerMove(e); });
+  window.addEventListener('pointerup', (e) => { if (pending) onPointerUp(e); });
 
   document.getElementById('btn-start').addEventListener('click', () => {
     show('game');

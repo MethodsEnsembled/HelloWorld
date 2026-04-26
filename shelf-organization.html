@@ -486,6 +486,19 @@
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.06); }
   }
+  .mod-banner {
+    color: white;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+    margin: 0 auto 8px;
+    display: inline-block;
+  }
+  .mod-banner.queue { background: linear-gradient(135deg, #c77800, #f0a23c); }
+  .mod-banner.high  { background: linear-gradient(135deg, #5a3614, #8a5a30); }
+  .mod-banner.depth { background: linear-gradient(135deg, #2f4858, #4a6a82); }
 
   /* high (unreachable) shelves get a dim look + lock badge */
   .shelf.high { opacity: 0.95; filter: saturate(0.85); }
@@ -570,7 +583,7 @@
       <div class="hud">
         <div class="hud-tile"><span class="lbl">Level</span><span class="val" id="hud-level">1</span></div>
         <div class="hud-tile timer" id="hud-timer-tile"><span class="lbl">Time</span><span class="val" id="hud-timer">--</span></div>
-        <div class="hud-tile"><span class="lbl">Items</span><span class="val" id="hud-items">0</span></div>
+        <div class="hud-tile"><span class="lbl">Matches</span><span class="val" id="hud-matches">0/0</span></div>
       </div>
       <div id="shelf-stack" class="shelf-stack" aria-label="shelves"></div>
       <div id="next-tray" class="next-tray" aria-label="next items">
@@ -670,10 +683,33 @@
     // every 7th level is the brutal one (and only after level 5).
     return level >= 7 && level % 7 === 0;
   }
+  // Modifier rotation: L1-L2 none, then queue/high/depth on a 3-cycle, hard on every 7th.
+  function modifierForLevel(level) {
+    if (level <= 2) return 'none';
+    if (isHardLevel(level)) return 'hard';
+    const m = level % 3;
+    if (m === 0) return 'queue';
+    if (m === 1) return 'high';
+    return 'depth';
+  }
+  function modifierFlags(mod) {
+    return {
+      queue: mod === 'queue' || mod === 'hard',
+      high:  mod === 'high'  || mod === 'hard',
+      depth: mod === 'depth' || mod === 'hard',
+      hard:  mod === 'hard',
+    };
+  }
+  function targetForLevel(level) {
+    // Matches needed to clear the level.
+    let t = 5 + Math.floor((level - 1) * 1.2);
+    if (isHardLevel(level)) t = Math.floor(t * 1.25);
+    return t;
+  }
   function timeBudgetForLevel(level) {
-    // 60s base, drops 1.5s per level, floored, harder on hard levels.
-    let t = Math.max(28, 60 - Math.floor((level - 1) * 1.5));
-    if (isHardLevel(level)) t = Math.max(22, Math.floor(t * 0.72));
+    // 70s base, drops 1.2s per level, floored, harder on hard levels.
+    let t = Math.max(35, 70 - Math.floor((level - 1) * 1.2));
+    if (isHardLevel(level)) t = Math.max(28, Math.floor(t * 0.78));
     return t;
   }
   function itemById(id) {
@@ -701,37 +737,46 @@
 
   function makeBoard(level) {
     const items = itemsForLevel(level);
-    const hard = isHardLevel(level);
+    const mod = modifierForLevel(level);
+    const flags = modifierFlags(mod);
+    const hard = flags.hard;
     const cols = 3;
     const { gridCols, gridRows } = gridShapeForLevel(level);
     const totalShelves = gridCols * gridRows;
+
+    // High-shelf modifier: the first shelf in the grid is decorative/locked.
+    const highShelves = new Set();
+    if (flags.high) highShelves.add(0);
 
     // Build empty shelves first.
     const shelves = [];
     for (let s = 0; s < totalShelves; s++) {
       const cells = [];
       for (let c = 0; c < cols; c++) cells.push({ front: null, back: null });
-      shelves.push({ cols, cells, high: false });
+      shelves.push({ cols, cells, high: highShelves.has(s) });
     }
 
     // How many "sets of 3" to start with. Multiples of 3, always leaves at
     // least one shelf-worth of empty cells.
-    const totalCells = totalShelves * cols;
-    const maxSets = Math.max(1, Math.floor(totalCells / 3) - 1);
+    const reachableShelves = totalShelves - highShelves.size;
+    const reachableCells = reachableShelves * cols;
+    const maxSets = Math.max(1, Math.floor(reachableCells / 3) - 1);
     let sets = Math.min(maxSets, 2 + Math.floor((level - 1) / 2));
     if (hard) sets = Math.min(maxSets, sets + 1);
     sets = Math.max(2, sets);
 
     const frontSlots = [];
     for (let s = 0; s < totalShelves; s++) {
+      if (highShelves.has(s)) continue;
       for (let c = 0; c < cols; c++) frontSlots.push({ s, c });
     }
     shuffle(frontSlots);
 
-    const depthChance = level >= 4 ? Math.min(0.35, 0.06 + (level - 4) * 0.02) : 0;
+    const depthChance = flags.depth ? Math.min(0.35, 0.08 + (level - 4) * 0.02) : 0;
     const placeBack = (itemId) => {
       const candidates = [];
       for (let s = 0; s < totalShelves; s++) {
+        if (highShelves.has(s)) continue;
         for (let c = 0; c < cols; c++) {
           const cell = shelves[s].cells[c];
           if (cell.front != null && cell.back == null) candidates.push({ s, c });
@@ -761,26 +806,29 @@
       }
     }
 
-    return { shelves, level, items, hard, gridCols, gridRows };
+    // Decorate high shelves with random items so they look full of clutter.
+    for (let s = 0; s < totalShelves; s++) {
+      if (!highShelves.has(s)) continue;
+      for (let c = 0; c < cols; c++) {
+        if (Math.random() < 0.92) {
+          shelves[s].cells[c].front = items[Math.floor(Math.random() * items.length)].id;
+        }
+      }
+    }
+
+    return { shelves, level, items, hard, gridCols, gridRows, modifier: mod, flags };
   }
 
   // ---- Renderer ----
   const stackEl = document.getElementById('shelf-stack');
   const hudLevel = document.getElementById('hud-level');
-  const hudItems = document.getElementById('hud-items');
+  const hudMatches = document.getElementById('hud-matches');
+  const nextTrayEl = document.getElementById('next-tray');
 
-  // Items needing to be cleared: only on reachable shelves.
-  // High-shelf items are decorative obstacles.
-  function countItems(board) {
-    let n = 0;
-    for (const sh of board.shelves) {
-      if (sh.high) continue;
-      for (const c of sh.cells) {
-        if (c.front) n++;
-        if (c.back) n++;
-      }
-    }
-    return n;
+  function refreshHud() {
+    if (!state) return;
+    hudLevel.textContent = state.level;
+    hudMatches.textContent = `${state.matchesMade}/${state.target}`;
   }
 
   function renderBoard(board) {
@@ -814,8 +862,7 @@
       shelfEl.appendChild(row);
       stackEl.appendChild(shelfEl);
     });
-    hudLevel.textContent = board.level;
-    hudItems.textContent = countItems(board);
+    refreshHud();
   }
 
   // Game state.
@@ -836,10 +883,20 @@
     else hudTimerTile.classList.remove('warn');
   }
 
+  function modifierBannerHtml(mod, hard) {
+    if (mod === 'hard' || hard) return '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>';
+    if (mod === 'queue') return '<div class="mod-banner queue">⚙ NEXT BAD MOVE SPAWNS</div>';
+    if (mod === 'high')  return '<div class="mod-banner high">⚙ HIGH SHELF — top is locked</div>';
+    if (mod === 'depth') return '<div class="mod-banner depth">⚙ DEEP SHELVES — items behind</div>';
+    return '';
+  }
+
   function startLevel(level) {
     clearTimer();
+    setPicked(null);
     const board = makeBoard(level);
     const totalTime = timeBudgetForLevel(level);
+    const target = targetForLevel(level);
     state = {
       board,
       busy: false,
@@ -848,9 +905,12 @@
       totalTime,
       timerInterval: null,
       ended: false,
-      queue: genSpawnSet(board.items),
+      target,
+      matchesMade: 0,
+      queue: board.flags.queue ? genSpawnSet(board.items) : null,
     };
-    hardSlot.innerHTML = board.hard ? '<div class="hard-banner">⚠ HARD LEVEL ⚠</div>' : '';
+    hardSlot.innerHTML = modifierBannerHtml(board.modifier, board.hard);
+    nextTrayEl.style.display = state.queue ? '' : 'none';
     renderBoard(board);
     renderQueue();
     setTimerDisplay(state.timeLeft);
@@ -1070,8 +1130,8 @@
     renderBoard(board);
     resolveMatches((cleared) => {
       if (state.ended) return;
-      if (!cleared) {
-        // Bad move: spawn the queued items.
+      if (!cleared && state.queue) {
+        // Bad move on a queue-modifier level: spawn the queued items.
         spawnFromQueue();
       }
     });
@@ -1129,8 +1189,8 @@
       const board = state.board;
       const matches = findMatches(board);
       if (matches.length === 0) {
-        hudItems.textContent = countItems(board);
-        if (anyCleared) checkWin();
+        refreshHud();
+        if (anyCleared) checkTarget();
         if (done) done(anyCleared);
         return;
       }
@@ -1146,6 +1206,9 @@
         ce.appendChild(spark);
       });
       const matchedShelves = new Set(matches.map(m => m.r));
+      // Each cleared shelf counts as one match toward the target.
+      state.matchesMade += matchedShelves.size;
+      refreshHud();
       setTimeout(() => {
         matches.forEach(({ r, c }) => {
           const cell = board.shelves[r].cells[c];
@@ -1171,16 +1234,13 @@
     pass();
   }
 
-  function checkWin() {
+  function checkTarget() {
     if (!state || state.ended) return;
-    const remaining = countItems(state.board);
-    if (remaining === 0) {
+    if (state.matchesMade >= state.target) {
       state.ended = true;
       clearTimer();
-      // best-level-reached is the level you've cleared.
       saveBest(state.level);
       refreshRecord();
-      // small beat before showing the panel.
       setTimeout(showLevelClear, 350);
     }
   }

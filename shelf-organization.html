@@ -1077,6 +1077,32 @@
     });
   }
 
+  // Pick refill items that keep the board cleanable. Prefer item types whose
+  // current count is short of a multiple of 3; otherwise fall back to either
+  // an empty refill or 3 of one type (which auto-matches).
+  function chooseRefill(board) {
+    const typeCount = {};
+    for (const sh of board.shelves) {
+      for (const cell of sh.cells) {
+        if (cell.front) typeCount[cell.front] = (typeCount[cell.front] || 0) + 1;
+        if (cell.back)  typeCount[cell.back]  = (typeCount[cell.back]  || 0) + 1;
+      }
+    }
+    const candidates = [];
+    for (const id of Object.keys(typeCount)) {
+      const cnt = typeCount[id];
+      const short = (3 - (cnt % 3)) % 3;
+      for (let i = 0; i < short; i++) candidates.push(id);
+    }
+    if (candidates.length > 0) {
+      shuffle(candidates);
+      return candidates.slice(0, 3);
+    }
+    if (Math.random() < 0.5) return [];
+    const id = board.items[Math.floor(Math.random() * board.items.length)].id;
+    return [id, id, id];
+  }
+
   // ---- Match detection ----
   function findMatches(board) {
     // A reachable shelf clears when every cell on it shares the same front item.
@@ -1119,11 +1145,23 @@
         spark.className = 'spark';
         ce.appendChild(spark);
       });
+      const matchedShelves = new Set(matches.map(m => m.r));
       setTimeout(() => {
         matches.forEach(({ r, c }) => {
           const cell = board.shelves[r].cells[c];
           cell.front = cell.back;
           cell.back = null;
+        });
+        // Refill: any shelf that's now fully empty has a 50/50 chance to
+        // refill with up to 3 items chosen to preserve cleanability.
+        matchedShelves.forEach(r => {
+          const shelf = board.shelves[r];
+          if (!shelf.cells.every(c => c.front == null)) return;
+          if (Math.random() >= 0.5) return;
+          const refill = chooseRefill(board);
+          for (let i = 0; i < refill.length && i < shelf.cells.length; i++) {
+            shelf.cells[i].front = refill[i];
+          }
         });
         renderBoard(board);
         state.busy = false;

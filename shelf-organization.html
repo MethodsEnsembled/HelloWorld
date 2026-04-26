@@ -426,6 +426,73 @@
     animation: spawnPop 0.32s ease-out;
   }
 
+  /* Power-up tray */
+  .powerups {
+    width: 100%;
+    max-width: 380px;
+    margin: 8px auto 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .pu {
+    appearance: none;
+    border: 2px solid transparent;
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 7px 4px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--ink);
+    box-shadow: 0 3px 0 rgba(58,36,18,0.15);
+    transition: transform 0.08s, box-shadow 0.08s, background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .pu:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(58,36,18,0.15);
+  }
+  .pu .pu-icon { font-size: 22px; line-height: 1; }
+  .pu .pu-name {
+    font-size: 9px; font-weight: 800; color: var(--ink-soft);
+    letter-spacing: 1px; margin-top: 1px;
+  }
+  .pu .pu-count {
+    position: absolute;
+    top: -6px; right: -4px;
+    background: var(--accent);
+    color: white;
+    font-size: 10px; font-weight: 800;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .pu.empty {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .pu.empty .pu-count { background: var(--ink-soft); }
+  .pu.armed {
+    border-color: var(--accent);
+    background: linear-gradient(180deg, #fff5e0 0%, #ffd9a8 100%);
+    animation: armPulse 0.9s ease-in-out infinite;
+  }
+  @keyframes armPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(226,107,59,0.55), 0 3px 0 rgba(58,36,18,0.15); }
+    70%      { box-shadow: 0 0 0 8px rgba(226,107,59,0), 0 3px 0 rgba(58,36,18,0.15); }
+  }
+  .arm-instruction {
+    width: 100%; max-width: 380px; margin: 6px auto 0;
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--accent); text-align: center; font-weight: 800;
+    min-height: 14px;
+  }
+
   /* level-clear and game over overlays */
   .overlay {
     position: fixed; inset: 0;
@@ -590,6 +657,24 @@
         <span class="next-label">NEXT BAD MOVE SPAWNS</span>
         <div class="next-items" id="next-items"></div>
       </div>
+      <div class="powerups" id="powerups" aria-label="power-ups">
+        <button class="pu" data-pu="hammer">
+          <span class="pu-icon">🔨</span>
+          <span class="pu-name">HAMMER</span>
+          <span class="pu-count" id="pu-hammer">0</span>
+        </button>
+        <button class="pu" data-pu="time">
+          <span class="pu-icon">⏱</span>
+          <span class="pu-name">+30s</span>
+          <span class="pu-count" id="pu-time">0</span>
+        </button>
+        <button class="pu" data-pu="bomb">
+          <span class="pu-icon">💣</span>
+          <span class="pu-name">BOMB</span>
+          <span class="pu-count" id="pu-bomb">0</span>
+        </button>
+      </div>
+      <p class="arm-instruction" id="arm-instruction"></p>
     </section>
 
     <!-- Result screen -->
@@ -891,6 +976,9 @@
     return '';
   }
 
+  // Persisted across levels and runs (proper persistence wired in step 6).
+  let inventory = { hammer: 1, time: 1, bomb: 0 };
+
   function startLevel(level) {
     clearTimer();
     setPicked(null);
@@ -908,11 +996,14 @@
       target,
       matchesMade: 0,
       queue: board.flags.queue ? genSpawnSet(board.items) : null,
+      powerups: inventory, // shared reference so changes persist into the next level
+      armed: null,
     };
     hardSlot.innerHTML = modifierBannerHtml(board.modifier, board.hard);
     nextTrayEl.style.display = state.queue ? '' : 'none';
     renderBoard(board);
     renderQueue();
+    refreshPowerupTray();
     setTimerDisplay(state.timeLeft);
     state.timerInterval = setInterval(() => {
       if (!state || state.ended) return;
@@ -953,6 +1044,154 @@
   }
   function hideLevelClear() {
     document.getElementById('overlay-clear').classList.remove('show');
+  }
+
+  // ---- Power-ups ----
+  const armInstructionEl = document.getElementById('arm-instruction');
+  const powerupEls = {
+    hammer: document.querySelector('.pu[data-pu="hammer"]'),
+    time:   document.querySelector('.pu[data-pu="time"]'),
+    bomb:   document.querySelector('.pu[data-pu="bomb"]'),
+  };
+  const powerupCountEls = {
+    hammer: document.getElementById('pu-hammer'),
+    time:   document.getElementById('pu-time'),
+    bomb:   document.getElementById('pu-bomb'),
+  };
+  function refreshPowerupTray() {
+    if (!state) return;
+    for (const k of ['hammer','time','bomb']) {
+      const cnt = state.powerups[k] || 0;
+      powerupCountEls[k].textContent = cnt;
+      powerupEls[k].classList.toggle('empty', cnt <= 0);
+      powerupEls[k].classList.toggle('armed', state.armed === k);
+    }
+    if (state.armed === 'hammer') armInstructionEl.textContent = '🔨 tap any item';
+    else if (state.armed === 'bomb') armInstructionEl.textContent = '💣 tap any shelf';
+    else armInstructionEl.textContent = '';
+  }
+  function disarmPowerup() {
+    if (!state) return;
+    state.armed = null;
+    refreshPowerupTray();
+  }
+  function armPowerup(pu) {
+    if (!state || state.busy || state.ended) return;
+    if ((state.powerups[pu] || 0) <= 0) return;
+    if (pu === 'time') {
+      state.powerups.time -= 1;
+      state.timeLeft += 30;
+      setTimerDisplay(state.timeLeft);
+      refreshPowerupTray();
+      return;
+    }
+    state.armed = (state.armed === pu) ? null : pu;
+    setPicked(null);
+    refreshPowerupTray();
+  }
+  document.getElementById('powerups').addEventListener('click', (e) => {
+    const btn = e.target.closest('.pu');
+    if (!btn) return;
+    armPowerup(btn.dataset.pu);
+  });
+
+  // Cell coordinate helpers for distance.
+  function cellPos(board, r, c) {
+    const gridR = Math.floor(r / board.gridCols);
+    const gridC = r % board.gridCols;
+    return { x: gridC * 3 + c, y: gridR };
+  }
+  function cellDistSq(board, ar, ac, br, bc) {
+    const a = cellPos(board, ar, ac), b = cellPos(board, br, bc);
+    const dx = a.x - b.x, dy = (a.y - b.y) * 3;
+    return dx*dx + dy*dy;
+  }
+  function shelfDistSq(board, ar, br) {
+    return cellDistSq(board, ar, 1, br, 1);
+  }
+
+  function animateClear(targets) {
+    targets.forEach(({ r, c }) => {
+      const ce = cellEl(r, c);
+      if (!ce) return;
+      const fr = ce.querySelector('.item.front');
+      if (fr) fr.classList.add('matched');
+      const sp = document.createElement('div'); sp.className = 'spark'; ce.appendChild(sp);
+    });
+  }
+
+  function useHammer(targetR, targetC) {
+    const board = state.board;
+    const cell = board.shelves[targetR].cells[targetC];
+    const itemId = cell.front;
+    if (!itemId) return false;
+    const cands = [];
+    for (let r = 0; r < board.shelves.length; r++) {
+      const sh = board.shelves[r];
+      if (sh.high) continue;
+      for (let c = 0; c < sh.cells.length; c++) {
+        if (sh.cells[c].front === itemId) cands.push({ r, c });
+      }
+    }
+    if (cands.length === 0) return false;
+    cands.sort((a, b) => cellDistSq(board, a.r, a.c, targetR, targetC) - cellDistSq(board, b.r, b.c, targetR, targetC));
+    const toClear = cands.slice(0, 3);
+    state.busy = true;
+    animateClear(toClear);
+    setTimeout(() => {
+      toClear.forEach(({ r, c }) => {
+        const cl = board.shelves[r].cells[c];
+        cl.front = cl.back; cl.back = null;
+      });
+      state.matchesMade += 1;
+      renderBoard(board);
+      refreshHud();
+      state.busy = false;
+      resolveMatches(() => {});
+    }, 460);
+    return true;
+  }
+
+  function useBomb(targetR) {
+    const board = state.board;
+    const cands = [];
+    for (let r = 0; r < board.shelves.length; r++) {
+      if (board.shelves[r].high) continue;
+      cands.push({ r });
+    }
+    if (cands.length === 0) return false;
+    cands.sort((a, b) => shelfDistSq(board, a.r, targetR) - shelfDistSq(board, b.r, targetR));
+    const toClearShelves = cands.slice(0, 3);
+    const toClearCells = [];
+    let shelvesActuallyCleared = 0;
+    toClearShelves.forEach(({ r }) => {
+      const sh = board.shelves[r];
+      let hadAny = false;
+      for (let c = 0; c < sh.cells.length; c++) {
+        if (sh.cells[c].front != null) { hadAny = true; toClearCells.push({ r, c }); }
+      }
+      if (hadAny) shelvesActuallyCleared++;
+    });
+    state.busy = true;
+    animateClear(toClearCells);
+    setTimeout(() => {
+      toClearShelves.forEach(({ r }) => {
+        const sh = board.shelves[r];
+        for (let c = 0; c < sh.cells.length; c++) {
+          const cl = sh.cells[c];
+          cl.front = cl.back; cl.back = null;
+        }
+      });
+      state.matchesMade += shelvesActuallyCleared;
+      renderBoard(board);
+      refreshHud();
+      state.busy = false;
+      resolveMatches(() => {
+        if (state.ended) return;
+        checkTarget();
+      });
+    }, 460);
+    return true;
   }
 
   // ---- Tap-and-drag interaction ----
@@ -1032,6 +1271,7 @@
 
   function startDragFromPending() {
     if (!pending || pending.dragging) return;
+    if (state && state.armed) { pending = null; return; }
     if (!pending.itemEl || pending.shelf.high) { pending = null; return; }
     pending.dragging = true;
     setPicked(null);
@@ -1092,6 +1332,24 @@
     const shelf = pending.shelf;
     const cell = pending.cell;
     pending = null;
+
+    // Armed power-up takes precedence over normal pick/drop.
+    if (state.armed === 'hammer') {
+      if (!shelf.high && hasItem) {
+        const used = useHammer(r, c);
+        if (used) state.powerups.hammer -= 1;
+      }
+      disarmPowerup();
+      return;
+    }
+    if (state.armed === 'bomb') {
+      if (!shelf.high) {
+        const used = useBomb(r);
+        if (used) state.powerups.bomb -= 1;
+      }
+      disarmPowerup();
+      return;
+    }
 
     if (hasItem) {
       if (shelf.high) return;

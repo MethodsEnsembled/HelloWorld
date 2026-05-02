@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffb6e1">
+<title>Princess Unicorn Jump</title>
+<style>
+  :root {
+    --sky-top: #ffe0f0;
+    --sky-mid: #d6c2ff;
+    --sky-bot: #b3e3ff;
+    --panel: rgba(255,255,255,0.65);
+    --text: #4a2871;
+    --accent: #ff6fb5;
+    --gold: #ffd166;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    overflow: hidden;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Comic Sans MS", sans-serif;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 55%, var(--sky-bot) 100%);
+  }
+
+  header {
+    flex-shrink: 0;
+    padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    display: flex; align-items: center; gap: 8px;
+    z-index: 5;
+  }
+  .back, .mute {
+    background: var(--panel);
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .back:active, .mute:active { background: var(--accent); color: white; }
+  .stats {
+    flex: 1;
+    display: flex; justify-content: space-around; align-items: center;
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 6px 14px;
+    border: 2px solid white;
+    font-weight: 700;
+    font-size: 14px;
+    gap: 10px;
+  }
+  .stats .pill {
+    display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+  .stats .multi { color: var(--accent); }
+  .sunbar {
+    flex: 1;
+    height: 8px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid white;
+    min-width: 50px;
+  }
+  .sunbar > div {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold), #ff8a3d);
+    width: 100%;
+    transition: width 0.2s linear;
+  }
+
+  /* Stage = canvas play area */
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+  }
+
+  .hint {
+    position: absolute;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--panel);
+    border: 2px solid white;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 700;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .hint.show { opacity: 1; }
+
+  /* Splash / game-over overlay */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(74, 40, 113, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: white;
+    border: 4px solid var(--accent);
+    border-radius: 24px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 86%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  }
+  .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 24px; }
+  .modal p { margin: 0 0 14px; font-size: 14px; line-height: 1.4; }
+  .modal .scores {
+    display: flex; justify-content: space-around;
+    margin: 8px 0 16px;
+    font-size: 14px;
+    font-weight: 700;
+    gap: 12px;
+  }
+  .modal .scores .v { font-size: 22px; color: var(--accent); display: block; }
+  .modal button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 28px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .modal button:active { transform: scale(0.96); }
+
+  .modal .preview {
+    width: 90px; height: 80px;
+    margin: 0 auto 6px;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html" aria-label="Back to home">←</a>
+    <div class="stats">
+      <span class="pill">⭐ <span id="score">0</span></span>
+      <span class="pill multi">×<span id="multi">1</span></span>
+      <div class="sunbar" aria-label="Sun"><div id="sunFill"></div></div>
+    </div>
+    <button class="mute" id="muteBtn" aria-label="Mute">🔊</button>
+  </header>
+
+  <div class="stage" id="stage">
+    <canvas id="game"></canvas>
+    <div class="hint" id="hint">Hold to dive!</div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <svg class="preview" viewBox="0 0 120 100" aria-hidden="true">
+        <!-- Decorative preview unicorn for the splash -->
+        <path d="M 28 60 Q 8 56 12 86" stroke="#ff6fb5" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <ellipse cx="60" cy="62" rx="32" ry="14" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <rect x="34" y="72" width="6" height="16" rx="2" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <rect x="46" y="72" width="6" height="16" rx="2" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <rect x="64" y="72" width="6" height="16" rx="2" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <rect x="76" y="72" width="6" height="16" rx="2" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <path d="M 82 56 L 90 44 L 96 46 L 88 60 Z" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <ellipse cx="96" cy="44" rx="12" ry="9" fill="#ffffff" stroke="#dcd0e8" stroke-width="1"/>
+        <path d="M 86 38 Q 80 30 76 40 Q 72 32 68 42 Q 62 34 58 44" stroke="#ff6fb5" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <polygon points="98,18 94,36 102,36" fill="#ffd166" stroke="#c89d36" stroke-width="0.6"/>
+        <circle cx="100" cy="44" r="1.6" fill="#1b1230"/>
+        <!-- Princess -->
+        <ellipse cx="58" cy="44" rx="6" ry="7" fill="#fce0c2"/>
+        <path d="M 52 40 Q 58 34 64 40 Q 64 46 58 46 Q 52 46 52 40 Z" fill="#f4d35e"/>
+        <polygon points="55,30 58,26 61,30 60,32 56,32" fill="#ffd166" stroke="#c89d36" stroke-width="0.4"/>
+        <path d="M 50 50 Q 58 58 66 50 L 64 64 L 52 64 Z" fill="#ff6fb5"/>
+      </svg>
+      <h2 id="modalTitle">Princess Unicorn Jump</h2>
+      <p id="modalText">Slide down hills, leap into the sky!<br><b>Hold</b> to dive — let go to fly. Land on the downslope just right for a sparkly speed boost.</p>
+      <div class="scores" id="scoreRow" style="display:none">
+        <div><span>SCORE</span><span class="v" id="finalScore">0</span></div>
+        <div><span>BEST</span><span class="v" id="bestScore">0</span></div>
+      </div>
+      <button id="modalBtn">Start</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------------- Setup ----------------
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const stage = document.getElementById('stage');
+  const scoreEl = document.getElementById('score');
+  const multiEl = document.getElementById('multi');
+  const sunFill = document.getElementById('sunFill');
+  const overlay = document.getElementById('overlay');
+  const modalBtn = document.getElementById('modalBtn');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const scoreRow = document.getElementById('scoreRow');
+  const finalScoreEl = document.getElementById('finalScore');
+  const bestScoreEl = document.getElementById('bestScore');
+  const muteBtn = document.getElementById('muteBtn');
+  const hint = document.getElementById('hint');
+
+  // Logical (CSS) size; we'll multiply by DPR for the canvas backing store.
+  let W = 360, H = 600;
+  let DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    W = Math.max(280, r.width);
+    H = Math.max(360, r.height);
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------------- Audio ----------------
+  // Tiny WebAudio blips — no asset loading, friendly on mobile.
+  let audioCtx = null;
+  let muted = false;
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function blip(freq, dur, type='sine', vol=0.12) {
+    if (muted || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur);
+  }
+  function chime(notes) {
+    if (muted || !audioCtx) return;
+    notes.forEach((n, i) => setTimeout(() => blip(n, 0.25, 'triangle', 0.15), i * 70));
+  }
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇' : '🔊';
+  });
+
+  // ---------------- Terrain ----------------
+  // World coordinates: x increases as the world scrolls. The visible window
+  // is [cameraX, cameraX + W]. The hill height function maps worldX -> y
+  // (where smaller y = higher in the sky, i.e. canvas convention).
+  // We sum a few sines for rolling Tiny-Wings-style hills with varying size.
+  const GROUND_BASE = () => H * 0.78;          // average hill height (canvas y)
+  const HILL_AMP_1  = () => H * 0.16;          // big rolling waves
+  const HILL_AMP_2  = () => H * 0.06;          // smaller bumps on top
+  const HILL_LEN_1  = 360;                     // wavelength of big waves (world px)
+  const HILL_LEN_2  = 130;                     // wavelength of small bumps
+
+  function terrainY(x) {
+    // Phase offsets keep the curve from being mirror-symmetric.
+    const a = Math.sin((x / HILL_LEN_1) * Math.PI * 2);
+    const b = Math.sin((x / HILL_LEN_2) * Math.PI * 2 + 1.3);
+    return GROUND_BASE() - a * HILL_AMP_1() - b * HILL_AMP_2();
+  }
+
+  // Slope (dy/dx). Used for landing alignment + perfect-slide detection.
+  // Positive slope = going downhill (y increases as x increases in screen space).
+  function terrainSlope(x) {
+    const eps = 1.5;
+    return (terrainY(x + eps) - terrainY(x - eps)) / (2 * eps);
+  }
+
+  // ---------------- Player ----------------
+  const player = {
+    worldX: 0,         // x position in world coords (camera follows)
+    y: 0,              // canvas y
+    vy: 0,             // vertical velocity (px/s)
+    vx: 280,           // horizontal velocity (px/s) — also the world scroll speed
+    onGround: false,
+    angle: 0,          // visual rotation (radians)
+    diving: false,     // input held
+    perfectStreak: 0,  // consecutive perfect slides
+    boostTimer: 0,     // remaining boost time in s
+  };
+
+  // ---------------- Game state ----------------
+  let running = false;
+  let lastT = 0;
+  let cameraX = 0;
+  let distanceTraveled = 0;
+  let score = 0;
+  let multiplier = 1;
+  let sun = 1.0;            // 1 = full daylight, 0 = night → game over
+  const SUN_DRAIN = 1 / 60; // depletes in ~60 seconds of pure flat travel
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('puj_best') || '0', 10) || 0; } catch (e) {}
+
+  // Visual sparkles emitted on perfect slides + boosts.
+  const sparkles = [];
+  function spawnSparkle(x, y, color='#ffd166') {
+    sparkles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 120,
+      vy: -60 - Math.random() * 80,
+      life: 0.6 + Math.random() * 0.4,
+      age: 0,
+      color,
+      size: 3 + Math.random() * 3,
+    });
+  }
+  function spawnBurst(x, y, n=12, palette=['#ffd166','#ff6fb5','#a06cd5','#ffffff']) {
+    for (let i = 0; i < n; i++) {
+      sparkles.push({
+        x, y,
+        vx: (Math.random() - 0.5) * 280,
+        vy: -120 - Math.random() * 160,
+        life: 0.7 + Math.random() * 0.5,
+        age: 0,
+        color: palette[Math.floor(Math.random() * palette.length)],
+        size: 3 + Math.random() * 4,
+      });
+    }
+  }
+
+  // Floating "+score" numbers for feedback.
+  const popups = [];
+  function spawnPopup(x, y, text, color='#ff6fb5') {
+    popups.push({ x, y, text, color, age: 0, life: 0.9 });
+  }
+
+  // ---------------- Drawing ----------------
+  // Decorative parallax clouds placed in world space — they scroll slowly.
+  const clouds = [];
+  function seedClouds() {
+    clouds.length = 0;
+    for (let i = 0; i < 14; i++) {
+      clouds.push({
+        x: Math.random() * 1400,
+        y: 40 + Math.random() * (H * 0.45),
+        scale: 0.6 + Math.random() * 0.9,
+        speed: 0.15 + Math.random() * 0.2,
+      });
+    }
+  }
+  function drawClouds() {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    for (const c of clouds) {
+      // Each cloud has its own scroll speed for parallax.
+      const screenX = c.x - cameraX * c.speed;
+      // Wrap horizontally so clouds keep appearing.
+      const wrapWidth = W + 200;
+      let sx = ((screenX % wrapWidth) + wrapWidth) % wrapWidth - 100;
+      const s = c.scale;
+      ctx.fillStyle = 'white';
+      ctx.beginPath();
+      ctx.ellipse(sx, c.y, 28 * s, 12 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx + 18 * s, c.y - 6 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx + 36 * s, c.y, 26 * s, 11 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Distant rolling hill silhouettes for depth (parallax background).
+  function drawBackdrop() {
+    // Soft sun
+    const sunX = W * 0.78;
+    const sunY = H * 0.18;
+    const grad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 140);
+    grad.addColorStop(0, 'rgba(255,243,160,0.9)');
+    grad.addColorStop(0.5, 'rgba(255,243,160,0.25)');
+    grad.addColorStop(1, 'rgba(255,243,160,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H * 0.6);
+    ctx.fillStyle = '#fff3a0';
+    ctx.beginPath(); ctx.arc(sunX, sunY, 28, 0, Math.PI * 2); ctx.fill();
+
+    // Far hills (slow parallax)
+    drawFarHills(0.25, '#cdb4ff', H * 0.62, 22, 220);
+    drawFarHills(0.45, '#b6e3ff', H * 0.70, 32, 180);
+  }
+  function drawFarHills(parallax, color, baseY, amp, len) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    const offset = cameraX * parallax;
+    for (let x = 0; x <= W; x += 8) {
+      const wx = x + offset;
+      const y = baseY - Math.sin((wx / len) * Math.PI * 2) * amp;
+      ctx.lineTo(x, y);
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Foreground hill (the playable terrain).
+  function drawTerrain() {
+    // Striped hill — base color + lighter cap, with a contrast shadow line.
+    const grad = ctx.createLinearGradient(0, GROUND_BASE() - HILL_AMP_1(), 0, H);
+    grad.addColorStop(0, '#a06cd5');
+    grad.addColorStop(0.4, '#7e4fc0');
+    grad.addColorStop(1, '#4a2871');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, H);
+    const step = 4;
+    for (let x = 0; x <= W; x += step) {
+      const wx = x + cameraX;
+      ctx.lineTo(x, terrainY(wx));
+    }
+    ctx.lineTo(W, H);
+    ctx.closePath();
+    ctx.fill();
+
+    // Bright candy stripe along the surface.
+    ctx.strokeStyle = '#ffd6f5';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += step) {
+      const wx = x + cameraX;
+      const y = terrainY(wx);
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Subtle inner highlight a few px below the stripe.
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += step) {
+      const wx = x + cameraX;
+      const y = terrainY(wx) + 8;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Sprinkle little stars on the hill for whimsy. Use worldX for stable
+    // placement so they stay on the terrain rather than flickering.
+    const starSpacing = 90;
+    const firstStarX = Math.floor(cameraX / starSpacing) * starSpacing;
+    for (let wx = firstStarX; wx < cameraX + W + starSpacing; wx += starSpacing) {
+      const sx = wx - cameraX;
+      const sy = terrainY(wx) + 22;
+      // Pseudo-random by x: pick a color and skip some.
+      const seed = Math.abs(Math.sin(wx * 0.13)) * 100;
+      if ((seed | 0) % 3 === 0) continue;
+      const colors = ['#ffd166', '#ffffff', '#ff6fb5'];
+      drawTinyStar(sx, sy, 4, colors[(seed | 0) % colors.length]);
+    }
+  }
+  function drawTinyStar(cx, cy, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a1 = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+      const a2 = a1 + Math.PI / 5;
+      ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
+      ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Render the princess+unicorn at (x, y) facing right with rotation.
+  // Uses a pre-rendered offscreen canvas for performance.
+  let unicornSprite = null;
+  function buildUnicornSprite() {
+    const w = 130, h = 110;
+    const c = document.createElement('canvas');
+    c.width = w * 2; c.height = h * 2;
+    const g = c.getContext('2d');
+    g.scale(2, 2);
+
+    // Unicorn body (pastel pink + white)
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+
+    // Tail
+    g.strokeStyle = '#ff6fb5';
+    g.lineWidth = 7;
+    g.beginPath(); g.moveTo(28, 70); g.quadraticCurveTo(8, 64, 14, 96); g.stroke();
+
+    // Body
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#dcd0e8';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.ellipse(60, 70, 34, 15, 0, 0, Math.PI * 2);
+    g.fill(); g.stroke();
+
+    // Legs (front pair lifted slightly to suggest gallop)
+    function leg(x, lift) {
+      g.fillStyle = '#ffffff';
+      g.strokeStyle = '#dcd0e8';
+      g.beginPath();
+      g.rect(x, 80 + lift, 6, 16 - lift);
+      g.fill(); g.stroke();
+      g.fillStyle = '#6a4a2a';
+      g.fillRect(x, 94 + lift / 2, 6, 3);
+    }
+    leg(34, 0); leg(46, 2); leg(64, 2); leg(76, 0);
+
+    // Neck
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#dcd0e8';
+    g.beginPath();
+    g.moveTo(82, 64); g.lineTo(94, 50); g.lineTo(100, 52); g.lineTo(90, 68);
+    g.closePath();
+    g.fill(); g.stroke();
+
+    // Head
+    g.beginPath();
+    g.ellipse(100, 50, 13, 10, 0, 0, Math.PI * 2);
+    g.fill(); g.stroke();
+
+    // Mane (multi-color for rainbow vibes)
+    const maneColors = ['#ff6fb5', '#ffd166', '#a06cd5', '#5aa9d6'];
+    for (let i = 0; i < 4; i++) {
+      g.strokeStyle = maneColors[i];
+      g.lineWidth = 5;
+      g.beginPath();
+      g.moveTo(88 - i * 4, 44 + i);
+      g.quadraticCurveTo(82 - i * 4, 36 + i, 78 - i * 4, 48 + i);
+      g.stroke();
+    }
+
+    // Horn
+    g.fillStyle = '#ffd166';
+    g.strokeStyle = '#c89d36';
+    g.lineWidth = 0.8;
+    g.beginPath();
+    g.moveTo(102, 22); g.lineTo(96, 42); g.lineTo(106, 42);
+    g.closePath();
+    g.fill(); g.stroke();
+    g.beginPath();
+    g.moveTo(99, 28); g.lineTo(103, 38);
+    g.stroke();
+
+    // Eye + smile
+    g.fillStyle = '#1b1230';
+    g.beginPath(); g.arc(104, 50, 1.6, 0, Math.PI * 2); g.fill();
+    g.fillStyle = 'white';
+    g.beginPath(); g.arc(104.5, 49.5, 0.6, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#1b1230';
+    g.lineWidth = 0.9;
+    g.beginPath(); g.moveTo(106, 56); g.quadraticCurveTo(109, 58, 111, 55); g.stroke();
+
+    // ---------- Princess on top ----------
+    // Dress (centered roughly over the saddle area)
+    g.fillStyle = '#ff6fb5';
+    g.beginPath();
+    g.moveTo(50, 56); g.quadraticCurveTo(58, 64, 66, 56);
+    g.lineTo(70, 72); g.lineTo(46, 72); g.closePath();
+    g.fill();
+    // Dress sparkle
+    g.fillStyle = '#ffd166';
+    g.beginPath(); g.arc(54, 64, 1.2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(60, 68, 1.0, 0, Math.PI * 2); g.fill();
+
+    // Arms (one holding a tiny rein forward)
+    g.strokeStyle = '#fce0c2';
+    g.lineWidth = 3.5;
+    g.beginPath(); g.moveTo(60, 56); g.quadraticCurveTo(70, 54, 78, 52); g.stroke();
+    // Rein
+    g.strokeStyle = '#7a4d24';
+    g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(78, 52); g.lineTo(96, 52); g.stroke();
+
+    // Head
+    g.fillStyle = '#fce0c2';
+    g.beginPath();
+    g.ellipse(58, 46, 6.5, 7.5, 0, 0, Math.PI * 2);
+    g.fill();
+
+    // Hair (long blonde flow)
+    g.fillStyle = '#f4d35e';
+    g.beginPath();
+    g.moveTo(52, 42); g.quadraticCurveTo(58, 34, 65, 42);
+    g.quadraticCurveTo(66, 50, 58, 50); g.quadraticCurveTo(50, 50, 52, 42);
+    g.closePath();
+    g.fill();
+    // Trailing hair behind
+    g.beginPath();
+    g.moveTo(52, 46); g.quadraticCurveTo(40, 56, 44, 68);
+    g.quadraticCurveTo(50, 60, 52, 52);
+    g.closePath();
+    g.fill();
+
+    // Crown
+    g.fillStyle = '#ffd166';
+    g.strokeStyle = '#c89d36';
+    g.lineWidth = 0.6;
+    g.beginPath();
+    g.moveTo(53, 38); g.lineTo(55, 32); g.lineTo(58, 36); g.lineTo(61, 32); g.lineTo(63, 38);
+    g.closePath();
+    g.fill(); g.stroke();
+    // Crown gem
+    g.fillStyle = '#ff6fb5';
+    g.beginPath(); g.arc(58, 36, 1.2, 0, Math.PI * 2); g.fill();
+
+    // Face dot eyes + smile
+    g.fillStyle = '#1b1230';
+    g.beginPath(); g.arc(56, 46, 0.9, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(60, 46, 0.9, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = '#d62c5b';
+    g.lineWidth = 0.8;
+    g.beginPath(); g.moveTo(56, 50); g.quadraticCurveTo(58, 52, 60, 50); g.stroke();
+
+    unicornSprite = c;
+  }
+
+  function drawPlayer() {
+    if (!unicornSprite) buildUnicornSprite();
+    // Sprite is 130x110 but anchored so the unicorn's hooves sit at (x, y+0).
+    const w = 130, h = 110;
+    ctx.save();
+    ctx.translate(player.screenX, player.y);
+    ctx.rotate(player.angle);
+    // Anchor: feet roughly at the bottom-center of the unicorn body.
+    // The hooves in the sprite are around y=94, body center x=60.
+    ctx.drawImage(unicornSprite, -60, -94, w, h);
+
+    // Glow when boosted
+    if (player.boostTimer > 0) {
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(performance.now() / 60);
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(0, -50, 56, 50, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSparkles() {
+    for (const s of sparkles) {
+      const t = 1 - s.age / s.life;
+      ctx.globalAlpha = Math.max(0, t);
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(s.x - cameraX, s.y, s.size * t, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawPopups() {
+    for (const p of popups) {
+      const t = p.age / p.life;
+      ctx.globalAlpha = Math.max(0, 1 - t);
+      ctx.fillStyle = p.color;
+      ctx.font = 'bold 18px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x - cameraX, p.y - t * 40);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'start';
+  }
+
+  // ---------------- Physics + game loop ----------------
+  // Player.screenX is fixed (the camera follows them). Set during reset.
+  function reset() {
+    cameraX = 0;
+    player.worldX = W * 0.3;
+    player.screenX = W * 0.3;
+    player.y = terrainY(player.worldX) - 40;
+    player.vy = 0;
+    player.vx = 280;
+    player.onGround = false;
+    player.angle = 0;
+    player.diving = false;
+    player.perfectStreak = 0;
+    player.boostTimer = 0;
+    distanceTraveled = 0;
+    score = 0;
+    multiplier = 1;
+    sun = 1.0;
+    sparkles.length = 0;
+    popups.length = 0;
+    seedClouds();
+    updateHUD();
+  }
+
+  function updateHUD() {
+    scoreEl.textContent = Math.floor(score);
+    multiEl.textContent = multiplier;
+    sunFill.style.width = (sun * 100).toFixed(1) + '%';
+  }
+
+  const GRAVITY = 1100;     // px/s^2
+  const DIVE_GRAVITY = 2400; // when input held in the air
+  const MAX_VX = 560;
+  const MIN_VX = 200;
+  const FRICTION_UPHILL = 90;   // vx loss while sliding up without diving
+  const SLOPE_GAIN = 1100;       // vx gain factor when diving down a slope (per slope unit per s)
+
+  function step(dt) {
+    // Forward speed gradually settles toward base when on ground without input.
+    // Apply gravity / dive-gravity.
+    if (!player.onGround) {
+      player.vy += (player.diving ? DIVE_GRAVITY : GRAVITY) * dt;
+    }
+
+    // Integrate vertical position.
+    player.y += player.vy * dt;
+    // Horizontal position in world.
+    player.worldX += player.vx * dt;
+    distanceTraveled += player.vx * dt;
+
+    const ground = terrainY(player.worldX);
+    const slope = terrainSlope(player.worldX);  // pos = downhill
+
+    if (player.y >= ground) {
+      // Landed / sliding.
+      const wasAirborne = !player.onGround;
+      const verticalImpact = player.vy;
+      player.y = ground;
+      player.onGround = true;
+
+      // Decompose impact relative to slope. If diving and the slope is going
+      // down, treat as a "perfect slide" — convert downward velocity into
+      // forward speed.
+      if (wasAirborne) {
+        // Direction of the surface tangent (unit-ish, slope is dy/dx).
+        // A landing aligned with slope means smooth; misaligned = lose speed.
+        const surfaceAngle = Math.atan(slope);
+        const flightAngle = Math.atan2(player.vy, Math.max(50, player.vx));
+        const misalign = Math.abs(flightAngle - surfaceAngle);
+
+        if (player.diving && slope > 0.15 && misalign < 0.55 && verticalImpact > 280) {
+          // PERFECT SLIDE
+          player.perfectStreak++;
+          multiplier = Math.min(8, 1 + player.perfectStreak);
+          player.boostTimer = 1.2;
+          // Convert vertical energy into horizontal speed.
+          const gained = Math.min(220, verticalImpact * 0.45);
+          player.vx = Math.min(MAX_VX, player.vx + gained);
+          score += 50 * multiplier;
+          spawnPopup(player.worldX, player.y - 30, '+' + (50 * multiplier), '#ffd166');
+          spawnBurst(player.worldX, player.y, 18);
+          chime([880, 1100, 1320]);
+          // Reward: extend daylight a bit for nailing it.
+          sun = Math.min(1, sun + 0.06);
+        } else {
+          // Normal landing: dampen vertical, bleed some forward speed if hard.
+          if (verticalImpact > 600) {
+            player.vx = Math.max(MIN_VX, player.vx - 60);
+            player.perfectStreak = 0;
+            multiplier = 1;
+            blip(180, 0.15, 'sawtooth', 0.08);
+          } else if (verticalImpact > 300) {
+            // Mild landing — small thump, no streak break.
+            blip(260, 0.08, 'sine', 0.06);
+          }
+        }
+        player.vy = 0;
+      }
+
+      // While grounded: terrain-following + slope-based speed.
+      // Re-snap y to surface (terrain shifts as worldX advances).
+      player.y = ground;
+
+      // Apply gravity-along-slope: downhill accelerates, uphill decelerates.
+      // Diving on downhill = bigger boost.
+      if (slope > 0) {
+        const boost = player.diving ? SLOPE_GAIN : SLOPE_GAIN * 0.45;
+        player.vx = Math.min(MAX_VX, player.vx + slope * boost * dt);
+      } else if (slope < 0) {
+        // Uphill: scrub speed.
+        player.vx = Math.max(MIN_VX, player.vx + slope * 700 * dt);
+        if (!player.diving) {
+          player.vx = Math.max(MIN_VX, player.vx - FRICTION_UPHILL * dt);
+        }
+      }
+
+      // Check: if going up and crested with enough speed, launch into air.
+      // Predict next slope; if upcoming slope flips downhill while we're
+      // moving fast, jump.
+      const aheadSlope = terrainSlope(player.worldX + 6);
+      if (slope < -0.05 && aheadSlope > -0.02 && player.vx > 320) {
+        // We're at or past the crest — convert some forward velocity into
+        // upward velocity scaled by how fast we're going.
+        const launchPower = Math.min(700, (player.vx - 250) * 1.6);
+        player.vy = -launchPower;
+        player.onGround = false;
+        spawnSparkle(player.worldX, player.y, '#ffffff');
+        spawnSparkle(player.worldX - 4, player.y, '#ffd166');
+      }
+
+      // Visual rotation = slope angle (capped).
+      const targetAngle = Math.atan(slope);
+      player.angle += (targetAngle - player.angle) * Math.min(1, dt * 12);
+    } else {
+      // Airborne — gentle rotation toward velocity vector.
+      const vAngle = Math.atan2(player.vy, Math.max(50, player.vx));
+      player.angle += (vAngle - player.angle) * Math.min(1, dt * 6);
+    }
+
+    // Camera follows player horizontally with a fixed screen offset.
+    cameraX = player.worldX - player.screenX;
+
+    // Boost timer countdown
+    if (player.boostTimer > 0) {
+      player.boostTimer = Math.max(0, player.boostTimer - dt);
+      // Trail sparkles
+      if (Math.random() < 0.6) {
+        spawnSparkle(player.worldX - 20, player.y - 30, ['#ffd166','#ff6fb5','#ffffff'][Math.floor(Math.random()*3)]);
+      }
+    }
+
+    // Sun drains over time; faster if you're slow.
+    const slowness = Math.max(0, 1 - (player.vx - MIN_VX) / (MAX_VX - MIN_VX));
+    sun -= dt * SUN_DRAIN * (0.6 + slowness * 1.4);
+    if (sun <= 0) {
+      sun = 0;
+      gameOver();
+      return;
+    }
+
+    // Distance score (small, steady) — keeps the number ticking even without
+    // perfect slides.
+    score += dt * (player.vx / 30);
+
+    // Update sparkles + popups.
+    for (let i = sparkles.length - 1; i >= 0; i--) {
+      const s = sparkles[i];
+      s.age += dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vy += 600 * dt;
+      if (s.age >= s.life) sparkles.splice(i, 1);
+    }
+    for (let i = popups.length - 1; i >= 0; i--) {
+      popups[i].age += dt;
+      if (popups[i].age >= popups[i].life) popups.splice(i, 1);
+    }
+
+    updateHUD();
+  }
+
+  function render() {
+    ctx.clearRect(0, 0, W, H);
+    drawBackdrop();
+    drawClouds();
+    drawTerrain();
+    drawSparkles();
+    drawPopups();
+    drawPlayer();
+  }
+
+  function loop(t) {
+    if (!running) return;
+    if (!lastT) lastT = t;
+    let dt = (t - lastT) / 1000;
+    lastT = t;
+    if (dt > 0.05) dt = 0.05; // clamp big frame gaps (tab switch)
+    step(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------------- Input ----------------
+  function pressDown(e) {
+    if (!running) return;
+    e.preventDefault();
+    player.diving = true;
+    ensureAudio();
+  }
+  function pressUp(e) {
+    if (!running) return;
+    e.preventDefault();
+    player.diving = false;
+  }
+  // Use pointer events on the stage so it works for touch + mouse.
+  stage.addEventListener('pointerdown', pressDown);
+  stage.addEventListener('pointerup', pressUp);
+  stage.addEventListener('pointercancel', pressUp);
+  stage.addEventListener('pointerleave', pressUp);
+  // Keyboard (space) for desktop play.
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && running) { e.preventDefault(); player.diving = true; ensureAudio(); }
+  });
+  window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space' && running) { e.preventDefault(); player.diving = false; }
+  });
+
+  // ---------------- Game over / start ----------------
+  function showHint(msg, ms=1600) {
+    hint.textContent = msg;
+    hint.classList.add('show');
+    clearTimeout(showHint._t);
+    showHint._t = setTimeout(() => hint.classList.remove('show'), ms);
+  }
+
+  function gameOver() {
+    running = false;
+    const finalScore = Math.floor(score);
+    if (finalScore > best) {
+      best = finalScore;
+      try { localStorage.setItem('puj_best', String(best)); } catch (e) {}
+    }
+    finalScoreEl.textContent = finalScore;
+    bestScoreEl.textContent = best;
+    scoreRow.style.display = 'flex';
+    modalTitle.textContent = 'The sun set! 🌙';
+    modalText.innerHTML = 'Your unicorn is sleepy. Try again to fly farther into the sunset!';
+    modalBtn.textContent = 'Fly Again';
+    overlay.classList.remove('hidden');
+    chime([520, 392, 330]);
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    resize();
+    reset();
+    running = true;
+    lastT = 0;
+    requestAnimationFrame(loop);
+    showHint('Hold to dive!', 2200);
+    ensureAudio();
+  }
+
+  modalBtn.addEventListener('click', start);
+
+  // Pause on tab hide so the dt clamp doesn't matter and the sun doesn't drain.
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && running) {
+      running = false;
+      overlay.classList.remove('hidden');
+      modalTitle.textContent = 'Paused';
+      modalText.innerHTML = 'Take a break — your princess will wait.';
+      modalBtn.textContent = 'Resume';
+      scoreRow.style.display = 'none';
+    }
+  });
+
+  // Initial sizing + sprite build (so first paint behind splash isn't blank).
+  resize();
+  buildUnicornSprite();
+  // Pre-render a static frame behind the splash for visual polish.
+  reset();
+  render();
+})();
+</script>
+</body>
+</html>

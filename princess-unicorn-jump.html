@@ -409,7 +409,10 @@
   let score = 0;
   let multiplier = 1;
   let sun = 1.0;            // 1 = full daylight, 0 = night → game over
-  const SUN_DRAIN = 1 / 60; // depletes in ~60 seconds of pure flat travel
+  const SUN_DRAIN = 1 / 40; // depletes in ~40 seconds of slow travel
+  let nextMilestone = MILESTONE_STEP;
+  let level = 1;
+  let won = false;
   let best = 0;
   try { best = parseInt(localStorage.getItem('puj_best') || '0', 10) || 0; } catch (e) {}
 
@@ -782,11 +785,13 @@
   // Player.screenX is fixed (the camera follows them). Set during reset.
   function reset() {
     cameraX = 0;
-    player.worldX = W * 0.3;
+    // Start airborne above a known downhill section so the first press
+    // immediately produces a satisfying nose-dive onto the slope.
+    player.worldX = 180;
     player.screenX = W * 0.3;
-    player.y = terrainY(player.worldX) - 40;
+    player.y = terrainY(player.worldX) - 160;
     player.vy = 0;
-    player.vx = 340;
+    player.vx = 360;
     player.onGround = false;
     player.angle = 0;
     player.diving = false;
@@ -796,6 +801,9 @@
     score = 0;
     multiplier = 1;
     sun = 1.0;
+    nextMilestone = MILESTONE_STEP + player.worldX;
+    level = 1;
+    won = false;
     sparkles.length = 0;
     popups.length = 0;
     seedClouds();
@@ -809,12 +817,14 @@
   }
 
   const GRAVITY = 1100;     // px/s^2
-  const DIVE_GRAVITY = 2600; // when input held in the air
-  const MAX_VX = 600;
+  const DIVE_GRAVITY = 3200; // when input held in the air
+  const MAX_VX = 620;
   const MIN_VX = 220;
-  const FRICTION_UPHILL = 90;   // vx loss while sliding up without diving
-  const SLOPE_GAIN = 1300;       // vx gain factor when diving down a slope (per slope unit per s)
-  const GROUND_DIVE_THRUST = 220; // px/s^2 forward when diving on the ground regardless of slope
+  const FRICTION_UPHILL = 70;   // vx loss while sliding up without diving
+  const SLOPE_GAIN = 1500;       // vx gain factor when diving down a slope (per slope unit per s)
+  const GROUND_DIVE_THRUST = 380; // px/s^2 forward when diving on the ground regardless of slope
+  const GOAL_DISTANCE = 6000;
+  const MILESTONE_STEP = 1500;
 
   function step(dt) {
     // Sync per-frame input → player state. Doing this every step avoids any
@@ -952,6 +962,22 @@
       return;
     }
 
+    // Milestones — every MILESTONE_STEP world units, refill some sun and
+    // celebrate. Reaching the goal distance triggers a win.
+    if (player.worldX >= nextMilestone && !won) {
+      level++;
+      sun = Math.min(1, sun + 0.25);
+      score += 200;
+      spawnPopup(player.worldX, player.y - 60, 'Level ' + level + '!', '#ffd166');
+      spawnBurst(player.worldX, player.y - 30, 22);
+      chime([523, 659, 783, 1046]);
+      nextMilestone += MILESTONE_STEP;
+      if (player.worldX >= GOAL_DISTANCE) {
+        win();
+        return;
+      }
+    }
+
     // Distance score (small, steady) — keeps the number ticking even without
     // perfect slides.
     score += dt * (player.vx / 30);
@@ -973,14 +999,82 @@
     updateHUD();
   }
 
+  function drawCastle() {
+    // Draw the goal castle on the terrain at GOAL_DISTANCE. Only visible
+    // when the camera is within range.
+    const sx = GOAL_DISTANCE - cameraX;
+    if (sx < -120 || sx > W + 120) return;
+    const baseY = terrainY(GOAL_DISTANCE);
+    ctx.save();
+    ctx.translate(sx, baseY);
+    // Main keep
+    ctx.fillStyle = '#fff3f8';
+    ctx.fillRect(-30, -70, 60, 70);
+    ctx.fillStyle = '#e8c8e8';
+    ctx.fillRect(-30, -70, 60, 8);
+    // Crenellations
+    ctx.fillStyle = '#fff3f8';
+    for (let i = -30; i < 30; i += 12) {
+      ctx.fillRect(i, -82, 6, 12);
+    }
+    // Towers
+    ctx.fillStyle = '#fff3f8';
+    ctx.fillRect(-44, -90, 14, 90);
+    ctx.fillRect(30, -90, 14, 90);
+    // Tower roofs
+    ctx.fillStyle = '#ff6fb5';
+    ctx.beginPath();
+    ctx.moveTo(-44, -90); ctx.lineTo(-30, -90); ctx.lineTo(-37, -110); ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(30, -90); ctx.lineTo(44, -90); ctx.lineTo(37, -110); ctx.closePath();
+    ctx.fill();
+    // Door
+    ctx.fillStyle = '#7a4d24';
+    ctx.beginPath();
+    ctx.moveTo(-7, 0); ctx.lineTo(-7, -16); ctx.quadraticCurveTo(0, -22, 7, -16); ctx.lineTo(7, 0); ctx.closePath();
+    ctx.fill();
+    // Flag
+    ctx.strokeStyle = '#7a4d24';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-37, -110); ctx.lineTo(-37, -125); ctx.stroke();
+    ctx.fillStyle = '#ffd166';
+    ctx.beginPath();
+    ctx.moveTo(-37, -125); ctx.lineTo(-25, -120); ctx.lineTo(-37, -115); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDistanceMarker() {
+    // Small "to castle" arrow + distance pill near the top of the canvas.
+    const remaining = Math.max(0, GOAL_DISTANCE - player.worldX);
+    const text = remaining > 0 ? Math.ceil(remaining / 100) + 'm to 🏰' : '🏰';
+    ctx.save();
+    ctx.font = 'bold 12px -apple-system, sans-serif';
+    const w = ctx.measureText(text).width + 16;
+    const x = W - w - 8;
+    const y = 8;
+    ctx.fillStyle = 'rgba(255,255,255,0.78)';
+    ctx.beginPath();
+    if (ctx.roundRect) { ctx.roundRect(x, y, w, 22, 11); } else { ctx.rect(x, y, w, 22); }
+    ctx.fill();
+    ctx.fillStyle = '#4a2871';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + 11);
+    ctx.restore();
+  }
+
   function render() {
     ctx.clearRect(0, 0, W, H);
     drawBackdrop();
     drawClouds();
     drawTerrain();
+    drawCastle();
     drawSparkles();
     drawPopups();
     drawPlayer();
+    drawDistanceMarker();
   }
 
   function loop(t) {
@@ -1047,11 +1141,31 @@
     finalScoreEl.textContent = finalScore;
     bestScoreEl.textContent = best;
     scoreRow.style.display = 'flex';
+    const pct = Math.min(99, Math.floor(player.worldX / GOAL_DISTANCE * 100));
     modalTitle.textContent = 'The sun set! 🌙';
-    modalText.innerHTML = 'Your unicorn is sleepy. Try again to fly farther into the sunset!';
+    modalText.innerHTML = 'You made it ' + pct + '% of the way to the castle. Try again to fly farther!';
     modalBtn.textContent = 'Fly Again';
     overlay.classList.remove('hidden');
     chime([520, 392, 330]);
+  }
+
+  function win() {
+    running = false;
+    stopMusic();
+    const finalScore = Math.floor(score) + 1000; // bonus for finishing
+    score = finalScore;
+    if (finalScore > best) {
+      best = finalScore;
+      try { localStorage.setItem('puj_best', String(best)); } catch (e) {}
+    }
+    finalScoreEl.textContent = finalScore;
+    bestScoreEl.textContent = best;
+    scoreRow.style.display = 'flex';
+    modalTitle.textContent = 'You reached the castle! 🏰';
+    modalText.innerHTML = 'The princess and unicorn made it home before sunset. ✨';
+    modalBtn.textContent = 'Fly Again';
+    overlay.classList.remove('hidden');
+    chime([523, 659, 784, 1047, 1319]);
   }
 
   function start() {

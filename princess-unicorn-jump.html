@@ -270,9 +270,93 @@
     if (muted || !audioCtx) return;
     notes.forEach((n, i) => setTimeout(() => blip(n, 0.25, 'triangle', 0.15), i * 70));
   }
+
+  // ---------------- Background music ----------------
+  // A simple cheerful loop: square-wave melody over a triangle bass line.
+  // Notes are scheduled against the AudioContext clock so timing stays tight
+  // even if the tab gets backgrounded briefly.
+  // Pitches in Hz. 0 = rest.
+  const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46,
+        G5 = 783.99, A5 = 880.00, B5 = 987.77, C6 = 1046.50;
+  const C3 = 130.81, F3 = 174.61, G3 = 196.00, A3 = 220.00;
+  // Each entry is [freq, beats]. One beat = 0.22s (≈136 BPM).
+  const MELODY = [
+    [E5, 1], [G5, 1], [C6, 1], [G5, 1],
+    [F5, 1], [A5, 1], [C6, 1], [A5, 1],
+    [G5, 1], [B5, 1], [C6, 1], [B5, 1],
+    [E5, 1], [G5, 1], [C6, 2], [0, 0.5], [G5, 0.5],
+    [E5, 1], [C5, 1], [E5, 1], [G5, 1],
+    [F5, 1], [D5, 1], [F5, 1], [A5, 1],
+    [G5, 1], [E5, 1], [G5, 1], [B5, 1],
+    [C6, 2], [G5, 1], [E5, 1],
+  ];
+  const BASS = [
+    [C3, 4], [F3, 4], [G3, 4], [C3, 4],
+    [C3, 4], [F3, 4], [G3, 4], [C3, 4],
+  ];
+  const BEAT = 0.22; // seconds per beat
+  let musicGain = null;
+  let musicTimer = null;
+  let musicScheduledUntil = 0;
+  let melodyIdx = 0, bassIdx = 0;
+  let musicBeatCursorMelody = 0, musicBeatCursorBass = 0;
+  function startMusic() {
+    if (!audioCtx || muted) return;
+    if (musicTimer) return;
+    if (!musicGain) {
+      musicGain = audioCtx.createGain();
+      musicGain.gain.value = 0.06;
+      musicGain.connect(audioCtx.destination);
+    }
+    melodyIdx = 0; bassIdx = 0;
+    musicScheduledUntil = audioCtx.currentTime + 0.05;
+    musicBeatCursorMelody = musicScheduledUntil;
+    musicBeatCursorBass = musicScheduledUntil;
+    pumpMusic();
+    musicTimer = setInterval(pumpMusic, 200);
+  }
+  function stopMusic() {
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  }
+  function scheduleNote(track, freq, dur, startAt, type) {
+    if (freq === 0) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0, startAt);
+    g.gain.linearRampToValueAtTime(track === 'm' ? 0.5 : 0.4, startAt + 0.015);
+    g.gain.linearRampToValueAtTime(0, startAt + dur * 0.95);
+    o.connect(g).connect(musicGain);
+    o.start(startAt); o.stop(startAt + dur);
+  }
+  function pumpMusic() {
+    if (!audioCtx || muted) return;
+    const horizon = audioCtx.currentTime + 0.6; // schedule ~600ms ahead
+    while (musicBeatCursorMelody < horizon) {
+      const [f, b] = MELODY[melodyIdx % MELODY.length];
+      scheduleNote('m', f, b * BEAT * 0.95, musicBeatCursorMelody, 'square');
+      musicBeatCursorMelody += b * BEAT;
+      melodyIdx++;
+    }
+    while (musicBeatCursorBass < horizon) {
+      const [f, b] = BASS[bassIdx % BASS.length];
+      scheduleNote('b', f, b * BEAT * 0.95, musicBeatCursorBass, 'triangle');
+      musicBeatCursorBass += b * BEAT;
+      bassIdx++;
+    }
+  }
+
   muteBtn.addEventListener('click', () => {
     muted = !muted;
     muteBtn.textContent = muted ? '🔇' : '🔊';
+    if (muted) {
+      stopMusic();
+      if (musicGain) musicGain.gain.value = 0;
+    } else {
+      if (musicGain) musicGain.gain.value = 0.06;
+      if (running) startMusic();
+    }
   });
 
   // ---------------- Terrain ----------------
@@ -305,13 +389,17 @@
     worldX: 0,         // x position in world coords (camera follows)
     y: 0,              // canvas y
     vy: 0,             // vertical velocity (px/s)
-    vx: 280,           // horizontal velocity (px/s) — also the world scroll speed
+    vx: 340,           // horizontal velocity (px/s) — also the world scroll speed
     onGround: false,
     angle: 0,          // visual rotation (radians)
     diving: false,     // input held
     perfectStreak: 0,  // consecutive perfect slides
     boostTimer: 0,     // remaining boost time in s
   };
+
+  // Input is tracked independently of "running" so the very first press
+  // (even one held through the splash) registers the moment play begins.
+  let inputHeld = false;
 
   // ---------------- Game state ----------------
   let running = false;
@@ -698,7 +786,7 @@
     player.screenX = W * 0.3;
     player.y = terrainY(player.worldX) - 40;
     player.vy = 0;
-    player.vx = 280;
+    player.vx = 340;
     player.onGround = false;
     player.angle = 0;
     player.diving = false;
@@ -721,13 +809,17 @@
   }
 
   const GRAVITY = 1100;     // px/s^2
-  const DIVE_GRAVITY = 2400; // when input held in the air
-  const MAX_VX = 560;
-  const MIN_VX = 200;
+  const DIVE_GRAVITY = 2600; // when input held in the air
+  const MAX_VX = 600;
+  const MIN_VX = 220;
   const FRICTION_UPHILL = 90;   // vx loss while sliding up without diving
-  const SLOPE_GAIN = 1100;       // vx gain factor when diving down a slope (per slope unit per s)
+  const SLOPE_GAIN = 1300;       // vx gain factor when diving down a slope (per slope unit per s)
+  const GROUND_DIVE_THRUST = 220; // px/s^2 forward when diving on the ground regardless of slope
 
   function step(dt) {
+    // Sync per-frame input → player state. Doing this every step avoids any
+    // edge cases where the press happens during the splash/transition.
+    player.diving = inputHeld;
     // Forward speed gradually settles toward base when on ground without input.
     // Apply gravity / dive-gravity.
     if (!player.onGround) {
@@ -806,14 +898,22 @@
         }
       }
 
-      // Check: if going up and crested with enough speed, launch into air.
-      // Predict next slope; if upcoming slope flips downhill while we're
-      // moving fast, jump.
-      const aheadSlope = terrainSlope(player.worldX + 6);
-      if (slope < -0.05 && aheadSlope > -0.02 && player.vx > 320) {
-        // We're at or past the crest — convert some forward velocity into
-        // upward velocity scaled by how fast we're going.
-        const launchPower = Math.min(700, (player.vx - 250) * 1.6);
+      // Holding while grounded gives a baseline forward thrust, so the dive
+      // input feels responsive even on flat or uphill terrain.
+      if (player.diving) {
+        player.vx = Math.min(MAX_VX, player.vx + GROUND_DIVE_THRUST * dt);
+        // A few dust sparkles at the hooves while pushing.
+        if (Math.random() < 0.35) {
+          spawnSparkle(player.worldX - 8, player.y - 2, 'rgba(255,255,255,0.8)');
+        }
+      }
+
+      // Check: if we just crested and the ground is dropping away faster
+      // than we'd naturally follow, fly off. Looser thresholds = more air.
+      const aheadSlope = terrainSlope(player.worldX + 8);
+      const cresting = slope < 0.05 && aheadSlope > slope + 0.04;
+      if (cresting && player.vx > 240) {
+        const launchPower = Math.min(620, (player.vx - 200) * 1.5);
         player.vy = -launchPower;
         player.onGround = false;
         spawnSparkle(player.worldX, player.y, '#ffffff');
@@ -824,9 +924,11 @@
       const targetAngle = Math.atan(slope);
       player.angle += (targetAngle - player.angle) * Math.min(1, dt * 12);
     } else {
-      // Airborne — gentle rotation toward velocity vector.
+      // Airborne — diving rotates nose-down quickly so the press is visible.
       const vAngle = Math.atan2(player.vy, Math.max(50, player.vx));
-      player.angle += (vAngle - player.angle) * Math.min(1, dt * 6);
+      const target = player.diving ? Math.max(vAngle, 0.7) : vAngle;
+      const lerp = player.diving ? Math.min(1, dt * 14) : Math.min(1, dt * 6);
+      player.angle += (target - player.angle) * lerp;
     }
 
     // Camera follows player horizontally with a fixed screen offset.
@@ -893,28 +995,37 @@
   }
 
   // ---------------- Input ----------------
+  // Listen broadly: pointerdown anywhere in the stage, releases on window so
+  // a finger that drifts off the canvas (e.g. onto the header) doesn't drop
+  // the press. We also capture the pointer so the same finger keeps fueling
+  // the dive even while sliding.
   function pressDown(e) {
-    if (!running) return;
     e.preventDefault();
-    player.diving = true;
+    inputHeld = true;
     ensureAudio();
+    startMusic();
+    if (e.pointerId !== undefined && stage.setPointerCapture) {
+      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    }
   }
   function pressUp(e) {
-    if (!running) return;
-    e.preventDefault();
-    player.diving = false;
+    inputHeld = false;
   }
-  // Use pointer events on the stage so it works for touch + mouse.
   stage.addEventListener('pointerdown', pressDown);
-  stage.addEventListener('pointerup', pressUp);
-  stage.addEventListener('pointercancel', pressUp);
-  stage.addEventListener('pointerleave', pressUp);
+  window.addEventListener('pointerup', pressUp);
+  window.addEventListener('pointercancel', pressUp);
+  // Fallback for browsers without pointer events:
+  stage.addEventListener('touchstart', (e) => { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); }, { passive: false });
+  window.addEventListener('touchend', () => { inputHeld = false; });
+  window.addEventListener('touchcancel', () => { inputHeld = false; });
+  stage.addEventListener('mousedown', (e) => { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); });
+  window.addEventListener('mouseup', () => { inputHeld = false; });
   // Keyboard (space) for desktop play.
   window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && running) { e.preventDefault(); player.diving = true; ensureAudio(); }
+    if (e.code === 'Space') { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); }
   });
   window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' && running) { e.preventDefault(); player.diving = false; }
+    if (e.code === 'Space') { e.preventDefault(); inputHeld = false; }
   });
 
   // ---------------- Game over / start ----------------
@@ -927,6 +1038,7 @@
 
   function gameOver() {
     running = false;
+    stopMusic();
     const finalScore = Math.floor(score);
     if (finalScore > best) {
       best = finalScore;
@@ -951,6 +1063,7 @@
     requestAnimationFrame(loop);
     showHint('Hold to dive!', 2200);
     ensureAudio();
+    startMusic();
   }
 
   modalBtn.addEventListener('click', start);
@@ -959,6 +1072,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && running) {
       running = false;
+      stopMusic();
       overlay.classList.remove('hidden');
       modalTitle.textContent = 'Paused';
       modalText.innerHTML = 'Take a break — your princess will wait.';

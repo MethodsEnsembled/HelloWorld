@@ -4,6 +4,7 @@ A small portal of mobile-first web games. No build step — open `index.html`.
 
 ## Games
 
+- **The Number Bakery** (`number-bakery.html`) — a mental-math puzzle for number-loving kids. Monster customers order a sum; drag a trail of numbered cookies that adds up exactly. Longer trails score more (rewards decomposing numbers), golden cookies double, berry cookies subtract, and every serve shows its equation.
 - **Bluey & Bingo: The Big Adventure** (`bluey-adventure.html`) — a gentle one-touch runner for young kids. Pick who leads; the other pup follows and helps. Tap to jump, hold to float, munch watermelons on the way to the picnic. No game over — just stars and a sticker book.
 
 - **Diamond 2048** (`diamond-2048.html`) — 2048 with a diamond grid; merges happen diagonally and tile values **halve** instead of doubling. Reach **2** to win.

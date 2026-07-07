@@ -510,6 +510,15 @@
     display: flex; flex-direction: column; gap: 12px;
     align-items: center;
   }
+
+  .streak-line {
+    margin: 0 24px 18px;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .streak-line b { color: var(--accent); font-size: 15px; }
 </style>
 </head>
 <body>
@@ -526,6 +535,7 @@
       </div>
       <h2 class="title-name">Making Dessert</h2>
       <p class="title-sub">A grumpy little kid is hungry. Memorize the recipe, then tap the steps in order. Get it right and they're happy. Mess it up... well, you'll see.</p>
+      <p class="streak-line" id="title-streak" style="display:none;">BEST STREAK <b>0</b></p>
       <button class="big-btn" id="btn-start">START COOKING</button>
     </section>
 
@@ -554,6 +564,7 @@
       <div class="ending-stage" id="ending-stage"></div>
       <h2 class="ending-caption" id="ending-caption">YUM!</h2>
       <p class="ending-sub" id="ending-sub"></p>
+      <p class="streak-line" id="ending-streak"></p>
       <div class="ending-actions">
         <button class="big-btn" id="btn-again">MAKE ANOTHER</button>
         <button class="big-btn secondary" id="btn-quit">BACK TO ARCADE</button>
@@ -634,7 +645,22 @@
   const state = {
     recipe: null,
     taps: [],   // sequence of step indices the player tapped
+    streak: 0,  // consecutive successful desserts this session
   };
+
+  const STREAK_KEY = 'dessert_bestStreak';
+  let bestStreak = 0;
+  try { bestStreak = parseInt(localStorage.getItem(STREAK_KEY) || '0', 10) || 0; } catch (e) {}
+
+  function refreshTitleStreak() {
+    const el = document.getElementById('title-streak');
+    if (bestStreak > 0) {
+      el.style.display = '';
+      el.querySelector('b').textContent = bestStreak;
+    } else {
+      el.style.display = 'none';
+    }
+  }
 
   function pickRecipe() {
     // Avoid replaying the same recipe twice in a row when possible.
@@ -823,6 +849,19 @@
     const stage = document.getElementById('ending-stage');
     const caption = document.getElementById('ending-caption');
     const sub = document.getElementById('ending-sub');
+    const streakEl = document.getElementById('ending-streak');
+
+    if (success) {
+      state.streak += 1;
+      if (state.streak > bestStreak) {
+        bestStreak = state.streak;
+        try { localStorage.setItem(STREAK_KEY, String(bestStreak)); } catch (e) {}
+      }
+      streakEl.innerHTML = `STREAK <b>${state.streak}</b>${state.streak > 1 ? ' 🔥' : ''} · BEST <b>${bestStreak}</b>`;
+    } else {
+      state.streak = 0;
+      streakEl.innerHTML = bestStreak > 0 ? `BEST STREAK <b>${bestStreak}</b>` : '';
+    }
 
     if (success) {
       stage.innerHTML = `
@@ -858,12 +897,14 @@
 
   document.getElementById('btn-again').addEventListener('click', startRound);
   document.getElementById('btn-quit').addEventListener('click', () => {
+    refreshTitleStreak();
     show('title');
   });
 
   document.getElementById('btn-start').addEventListener('click', startRound);
   document.getElementById('btn-cook').addEventListener('click', beginTapPhase);
 
+  refreshTitleStreak();
   show('title');
 </script>
 </body>

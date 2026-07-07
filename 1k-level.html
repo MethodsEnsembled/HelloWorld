@@ -39,7 +39,7 @@
     display: flex; align-items: center; gap: 8px;
     padding: 10px 12px;
   }
-  .back {
+  .back, .mute {
     background: var(--panel);
     border: 1px solid rgba(255,255,255,0.12);
     border-radius: 50%;
@@ -49,8 +49,10 @@
     color: var(--text);
     font-size: 18px;
     flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
   }
-  .back:active { background: var(--accent); color: white; }
+  .back:active, .mute:active { background: var(--accent); color: white; }
   .stats {
     flex: 1;
     display: flex; justify-content: space-around; align-items: center;
@@ -178,6 +180,7 @@
       <span class="stat">SCORE<b id="score">0</b></span>
       <span class="stat">BALLS<b id="balls">10</b></span>
     </div>
+    <button class="mute" id="muteBtn" aria-label="Toggle sound">🔊</button>
   </header>
 
   <div class="stage" id="stage">
@@ -244,7 +247,15 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     state.field.w = r.width;
     state.field.h = r.height;
-    if (state.bricks.length) buildBricks(state.level);
+    if (state.bricks.length) {
+      // Rebuild the layout for the new size but keep the damage the
+      // player has already dealt — a rotation shouldn't heal the bricks.
+      const oldValues = state.bricks.map(b => b.value);
+      buildBricks(state.level);
+      state.bricks.forEach((b, i) => {
+        if (oldValues[i] !== undefined) b.value = Math.min(b.max, oldValues[i]);
+      });
+    }
     if (state.playing || state.bricks.length) render();
   }
   window.addEventListener('resize', fitCanvas);
@@ -458,6 +469,13 @@
     osc.connect(env); env.connect(audio.master);
     osc.start(t); osc.stop(t + dur + 0.02);
   }
+  const muteBtn = document.getElementById('muteBtn');
+  muteBtn.addEventListener('click', () => {
+    audio.muted = !audio.muted;
+    if (audio.master) audio.master.gain.value = audio.muted ? 0 : 0.6;
+    muteBtn.textContent = audio.muted ? '🔇' : '🔊';
+  });
+
   function playHit()     { blip(78 + Math.random() * 4, 0.06, 'square',   0.18); }
   function playShatter() {
     blip(72, 0.18, 'triangle', 0.5);
@@ -726,6 +744,10 @@
     const b = state.ball;
     if (b) spawnParticles(b.x, b.y, '#ff5277', 16, 280);
     playStrike();
+    // End any active powerup with the ball it belonged to — otherwise a
+    // Speed expiry would halve the fresh ball's velocity permanently.
+    state.ball = null;
+    deactivatePowerup();
     state.ballsLeft -= 1;
     ballsEl.textContent = state.ballsLeft;
     if (state.ballsLeft <= 0) return gameOver();
@@ -736,10 +758,18 @@
     spawnBall(carry);
   }
 
+  const BEST_KEY = '1k_best';
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) {}
+
   function gameOver() {
     state.playing = false;
     stopMusic();
-    showOverlay('GAME OVER', `Score: ${state.score}  •  Level: ${state.level}`, 'Play again');
+    if (state.score > best) {
+      best = state.score;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    }
+    showOverlay('GAME OVER', `Score: ${fmt(state.score)}  •  Level: ${state.level}  •  Best: ${fmt(best)}`, 'Play again');
   }
 
   function updateBall(dt) {

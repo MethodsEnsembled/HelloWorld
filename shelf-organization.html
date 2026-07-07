@@ -1162,6 +1162,11 @@
     renderQueue();
     refreshPowerupTray();
     setTimerDisplay(state.timeLeft);
+    startTimerInterval();
+  }
+
+  function startTimerInterval() {
+    if (!state || state.ended || state.timerInterval) return;
     state.timerInterval = setInterval(() => {
       if (!state || state.ended) return;
       state.timeLeft -= 1;
@@ -1799,6 +1804,14 @@
 
   // Tidy up timers if the user backs out.
   window.addEventListener('pagehide', () => clearTimer());
+
+  // Pause the countdown while the tab is hidden and resume on return, so
+  // switching apps mid-level neither drains the clock nor kills it forever.
+  document.addEventListener('visibilitychange', () => {
+    if (!state || state.ended) return;
+    if (document.hidden) clearTimer();
+    else if (screens.game.classList.contains('active')) startTimerInterval();
+  });
 
   // Expose helpers for later steps.
   window.__shelf = { show, loadBest, saveBest, refreshRecord, startLevel, get state() { return state; }, renderBoard };

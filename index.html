@@ -185,6 +185,32 @@
     display: flex; flex-direction: column; gap: 3px;
     box-shadow: inset 0 -4px 0 rgba(0,0,0,0.1);
   }
+  .pantry-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #c08a4a, #6f4218);
+    border: 1px solid #4a2a12;
+    padding: 5px 4px;
+    display: flex; flex-direction: column; gap: 3px;
+    box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -4px 0 rgba(0,0,0,0.2);
+  }
+  .pantry-art .row {
+    background: linear-gradient(180deg, #33200f, #170b03);
+    border-radius: 3px;
+    flex: 1;
+    display: flex; align-items: flex-end; justify-content: space-around;
+    padding: 2px 3px;
+    box-shadow: inset 0 2px 3px rgba(0,0,0,0.6);
+  }
+  .pantry-art .g {
+    width: 9px; height: 11px; border-radius: 2.5px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 1px 1px rgba(0,0,0,0.4);
+  }
+  .card-info .badge.new {
+    background: linear-gradient(135deg, #ffb648, #ff6b4a);
+    color: #241208;
+    font-weight: 800;
+  }
   .shelf-art .row {
     background: #b07a45;
     border-radius: 2px;
@@ -281,6 +307,28 @@
         <h2>Making Dessert</h2>
         <p>Memorize the recipe, then tap the steps in order. Mess it up and you get a pile of suspicious goop.</p>
         <span class="badge">PLAY</span>
+      </div>
+    </a>
+
+    <a class="game-card" href="pantry-panic.html">
+      <div class="card-art">
+        <div class="pantry-art">
+          <div class="row">
+            <span class="g" style="background:#e34f63"></span>
+            <span class="g" style="background:#f6c445"></span>
+            <span class="g" style="background:#5a8fd6"></span>
+          </div>
+          <div class="row">
+            <span class="g" style="background:#f0a532"></span>
+            <span class="g" style="background:#3aa7a0"></span>
+            <span class="g" style="background:#e77fa5"></span>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Pantry Panic</h2>
+        <p>Match 3 goods on a shelf to clear them. Every match buys time — chain combos, pop open boarded slots, grab the golden goods.</p>
+        <span class="badge new">NEW</span>
       </div>
     </a>
 

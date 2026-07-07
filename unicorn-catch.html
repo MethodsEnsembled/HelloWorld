@@ -302,6 +302,7 @@
     <a class="back" href="index.html" aria-label="Back to home">←</a>
     <div class="stats">
       <span>⭐ <span id="score">0</span></span>
+      <span>🏆 <span id="best">0</span></span>
       <span class="lives" id="lives">💖💖💖</span>
     </div>
     <button class="mute" id="muteBtn" aria-label="Mute">🔊</button>
@@ -532,7 +533,13 @@
   const player = document.getElementById('player');
   const playerLabel = document.getElementById('playerLabel');
   const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
   const livesEl = document.getElementById('lives');
+
+  const BEST_KEY = 'ucatch_best';
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) {}
+  bestEl.textContent = best;
   const overlay = document.getElementById('overlay');
   const modalTitle = document.getElementById('modalTitle');
   const modalText = document.getElementById('modalText');
@@ -854,7 +861,15 @@
     state.playing = false;
     clearEntities();
     stopMusic();
-    showOverlay('Oh no!', `You caught ${state.score} matching ${state.score === 1 ? 'friend' : 'friends'}.`, 'Play again');
+    const isRecord = state.score > best;
+    if (isRecord) {
+      best = state.score;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+      bestEl.textContent = best;
+    }
+    const msg = `You caught ${state.score} matching ${state.score === 1 ? 'friend' : 'friends'}.`
+      + (isRecord ? ' 🏆 New best!' : ` Best: ${best}.`);
+    showOverlay('Oh no!', msg, 'Play again');
   }
 
   // ---------------- Spawning + physics ----------------

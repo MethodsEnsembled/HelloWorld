@@ -410,7 +410,8 @@
   let multiplier = 1;
   let sun = 1.0;            // 1 = full daylight, 0 = night → game over
   const SUN_DRAIN = 1 / 40; // depletes in ~40 seconds of slow travel
-  let nextMilestone = MILESTONE_STEP;
+  // Set properly in reset(); MILESTONE_STEP is declared further down.
+  let nextMilestone = 0;
   let level = 1;
   let won = false;
   let best = 0;
@@ -1180,12 +1181,26 @@
     startMusic();
   }
 
-  modalBtn.addEventListener('click', start);
+  // Resume a paused run without wiping progress.
+  function resume() {
+    paused = false;
+    overlay.classList.add('hidden');
+    resize();
+    running = true;
+    lastT = 0;
+    requestAnimationFrame(loop);
+    ensureAudio();
+    startMusic();
+  }
+
+  let paused = false;
+  modalBtn.addEventListener('click', () => (paused ? resume() : start()));
 
   // Pause on tab hide so the dt clamp doesn't matter and the sun doesn't drain.
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && running) {
       running = false;
+      paused = true;
       stopMusic();
       overlay.classList.remove('hidden');
       modalTitle.textContent = 'Paused';

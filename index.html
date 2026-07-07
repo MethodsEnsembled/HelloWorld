@@ -211,6 +211,43 @@
     color: #241208;
     font-weight: 800;
   }
+  .pups-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #aee3ff 0%, #cdefff 55%, #7ec850 55%, #5fae35 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .pups-art .pup {
+    position: absolute; bottom: 12px;
+    width: 20px; height: 15px;
+    border-radius: 8px 9px 5px 5px;
+  }
+  .pups-art .pup::before {
+    /* head */
+    content: ""; position: absolute; right: -7px; top: -7px;
+    width: 13px; height: 12px;
+    border-radius: 50%;
+    background: inherit;
+  }
+  .pups-art .pup::after {
+    /* ear */
+    content: ""; position: absolute; right: -4px; top: -12px;
+    width: 5px; height: 8px;
+    border-radius: 4px 4px 0 0;
+    transform: rotate(12deg);
+    background: inherit;
+    filter: brightness(0.75);
+  }
+  .pups-art .pup.b1 { left: 6px; background: #6da9dd; }
+  .pups-art .pup.b2 { left: 27px; bottom: 8px; background: #edb478; }
+  .pups-art .sun2 {
+    position: absolute; top: 5px; right: 6px;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: #fff3a0;
+    box-shadow: 0 0 7px #fff3a0;
+  }
   .shelf-art .row {
     background: #b07a45;
     border-radius: 2px;
@@ -307,6 +344,21 @@
         <h2>Making Dessert</h2>
         <p>Memorize the recipe, then tap the steps in order. Mess it up and you get a pile of suspicious goop.</p>
         <span class="badge">PLAY</span>
+      </div>
+    </a>
+
+    <a class="game-card" href="bluey-adventure.html">
+      <div class="card-art">
+        <div class="pups-art">
+          <span class="sun2"></span>
+          <span class="pup b1"></span>
+          <span class="pup b2"></span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Bluey &amp; Bingo: The Big Adventure</h2>
+        <p>Run to the picnic! Tap to jump, hold to float. Munch watermelons, dodge mud, and earn stickers for your sticker book.</p>
+        <span class="badge new">NEW</span>
       </div>
     </a>
 

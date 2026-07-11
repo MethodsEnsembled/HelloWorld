@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffe9c9">
+<title>Cook Cook Chef</title>
+<style>
+  :root {
+    --bg1: #fff4e0;
+    --bg2: #ffe0bd;
+    --ink: #5a3a22;
+    --ink-soft: #a4795a;
+    --panel: #fffdf7;
+    --line: #ffd9b0;
+    --red: #ff6b6b;
+    --green: #58c24d;
+    --pink: #ff8ad4;
+    --buggy: #9aa93c;
+    --gold: #ffb648;
+    --wood: #c98a4e;
+    --wood-dark: #9a6132;
+    --shadow: rgba(122, 74, 38, 0.16);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    overflow: hidden;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Comic Sans MS", sans-serif;
+    touch-action: none;
+    background:
+      radial-gradient(ellipse 130% 55% at 50% -6%, rgba(255, 200, 140, 0.55) 0%, transparent 55%),
+      linear-gradient(178deg, var(--bg1) 0%, var(--bg2) 92%);
+  }
+  body {
+    height: 100dvh;
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  body.shake { animation: bodyShake 0.45s; }
+  @keyframes bodyShake {
+    0%,100% { transform: none; }
+    20% { transform: translate(-5px, 2px) rotate(-0.5deg); }
+    40% { transform: translate(5px, -2px) rotate(0.5deg); }
+    60% { transform: translate(-4px, 1px); }
+    80% { transform: translate(3px, -1px); }
+  }
+
+  /* ============ Top bar ============ */
+  .top-bar {
+    flex-shrink: 0;
+    width: 100%; max-width: 480px; margin: 0 auto;
+    padding: 8px 12px 4px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .rbtn {
+    appearance: none;
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 17px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: 0 3px 0 var(--shadow);
+  }
+  .rbtn:active { transform: scale(0.92); background: #fff1de; }
+  .hud {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 13px;
+    box-shadow: 0 3px 0 var(--shadow);
+    font-weight: 900;
+    font-size: 15px;
+  }
+  .hud span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .hud .bump { animation: hudBump 0.35s; }
+  @keyframes hudBump { 40% { transform: scale(1.35); } }
+  #hud-basket em { font-style: normal; color: var(--wood-dark); }
+
+  /* ============ Scene ============ */
+  main {
+    flex: 1; min-height: 0;
+    width: 100%; max-width: 480px; margin: 0 auto;
+    display: flex; flex-direction: column;
+    padding: 2px 12px 10px;
+    position: relative;
+  }
+  #scene {
+    flex: 1; min-height: 150px;
+    position: relative;
+    border-radius: 20px;
+    border: 2.5px solid #eab676;
+    overflow: hidden;
+    background: linear-gradient(180deg, #ffeed4 0%, #ffe3bd 64%, #f7c98d 64.5%, #eeb673 100%);
+    box-shadow: 0 4px 0 var(--shadow), inset 0 -4px 12px rgba(154, 97, 50, 0.14);
+    container-type: size;
+  }
+  #scene .frame {
+    position: absolute;
+    background: #fffdf7;
+    border: 4px solid #b98156;
+    border-radius: 8px;
+    box-shadow: 0 3px 0 var(--shadow);
+    display: flex; align-items: center; justify-content: center;
+    width: 44px; height: 40px;
+    font-size: 22px;
+    transform: rotate(-3deg);
+  }
+  #scene .frame.f2 { transform: rotate(3deg); }
+  #scene .plant {
+    position: absolute;
+    font-size: 34px;
+    filter: drop-shadow(0 3px 2px rgba(90,45,10,0.25));
+  }
+  /* checkered floor */
+  #scene .floor {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 36%;
+    background-image:
+      linear-gradient(45deg, rgba(255,255,255,0.28) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.28) 75%),
+      linear-gradient(45deg, rgba(255,255,255,0.28) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.28) 75%);
+    background-size: 34px 34px;
+    background-position: 0 0, 17px 17px;
+    opacity: 0.6;
+  }
+  #scene .window {
+    position: absolute; left: 14px; top: 12px;
+    width: 84px; height: 62px;
+    background: linear-gradient(180deg, #bfe8ff 0%, #e6f7ff 100%);
+    border: 4px solid #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 0 var(--shadow);
+    overflow: hidden;
+  }
+  #scene .window .sun {
+    position: absolute; right: 8px; top: 7px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #ffe27a; box-shadow: 0 0 10px #ffe27a;
+  }
+  #scene .window .cloud {
+    position: absolute; left: -30px; top: 26px;
+    width: 34px; height: 12px; border-radius: 8px;
+    background: #fff;
+    animation: cloudDrift 16s linear infinite;
+  }
+  @keyframes cloudDrift { to { transform: translateX(150px); } }
+  #scene .lamp {
+    position: absolute; top: 0;
+    width: 34px; height: 40px;
+    display: flex; flex-direction: column; align-items: center;
+    animation: lampSway 5s ease-in-out infinite;
+    transform-origin: top center;
+  }
+  @keyframes lampSway { 0%,100% { transform: rotate(2.5deg); } 50% { transform: rotate(-2.5deg); } }
+  #scene .lamp::before { content: ""; width: 3px; height: 16px; background: #b98156; }
+  #scene .lamp::after {
+    content: "";
+    width: 30px; height: 20px;
+    background: linear-gradient(180deg, #ff9d76, #ff7a59);
+    clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+    border-radius: 3px;
+    box-shadow: 0 8px 14px rgba(255, 190, 110, 0.65);
+  }
+  #scene .menu-board {
+    position: absolute; right: 14px; top: 12px;
+    width: 66px; height: 52px;
+    background: #6d4726;
+    border: 4px solid #9a6132;
+    border-radius: 8px;
+    padding: 6px 7px;
+    display: flex; flex-direction: column; gap: 5px;
+    box-shadow: 0 3px 0 var(--shadow);
+  }
+  #scene .menu-board i { display: block; height: 4px; border-radius: 2px; background: rgba(255, 244, 220, 0.75); }
+  #scene .menu-board i:nth-child(2) { width: 70%; background: #ffd166; }
+  #scene .menu-board i:nth-child(3) { width: 85%; }
+
+  /* customer */
+  #cust-wrap {
+    position: absolute; left: 4%; bottom: 4%;
+    width: 132px; height: 138px;
+    z-index: 3;
+  }
+  @supports (width: 1cqh) {
+    #cust-wrap { height: clamp(118px, 44cqh, 205px); width: auto; aspect-ratio: 140 / 152; }
+  }
+  #cust-wrap svg { width: 100%; height: 100%; display: block; }
+  #cust-wrap.enter { animation: custIn 0.55s cubic-bezier(.35,1.4,.5,1) both; }
+  @keyframes custIn { from { transform: translateX(-160px); opacity: 0; } to { transform: none; opacity: 1; } }
+  #cust-wrap.idle svg { animation: custBob 2.6s ease-in-out infinite; }
+  @keyframes custBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+  #cust-wrap.hop { animation: custHop 0.45s ease-in-out 3; }
+  @keyframes custHop { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
+  #cust-wrap.grossed { animation: custGross 0.3s linear 4; }
+  @keyframes custGross { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px) rotate(-2deg); } 75% { transform: translateX(4px) rotate(2deg); } }
+  #cust-wrap.exit-happy { animation: custOutR 0.8s ease-in forwards; }
+  @keyframes custOutR { 25% { transform: translateY(-10px); } 100% { transform: translateX(420px) translateY(0); opacity: 0; } }
+  #cust-wrap.exit-yuck { animation: custOutL 0.7s ease-in forwards; }
+  @keyframes custOutL { 100% { transform: translateX(-260px); opacity: 0; } }
+
+  /* speech bubble */
+  #bubble {
+    position: absolute; left: 29%; top: 7%;
+    max-width: 60%;
+    background: #fff;
+    border: 3px solid var(--gold);
+    border-radius: 18px;
+    padding: 8px 13px;
+    font-size: 15px;
+    font-weight: 900;
+    line-height: 1.45;
+    box-shadow: 0 4px 0 var(--shadow);
+    z-index: 4;
+    transform-origin: 12% 100%;
+    display: none;
+  }
+  #bubble.pop { display: block; animation: bubblePop 0.35s cubic-bezier(.3,1.6,.5,1) both; }
+  @keyframes bubblePop { from { transform: scale(0); } to { transform: scale(1); } }
+  #bubble::after {
+    content: "";
+    position: absolute; left: 22px; bottom: -13px;
+    border: 8px solid transparent;
+    border-top: 10px solid var(--gold);
+  }
+  .want-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 999px;
+    padding: 2px 10px;
+    color: #fff;
+    font-size: 14px;
+    vertical-align: middle;
+    box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15);
+  }
+
+  /* chef station */
+  #station {
+    position: absolute; right: 3%; bottom: 4%;
+    width: 172px; height: 148px;
+    z-index: 2;
+  }
+  @supports (width: 1cqh) {
+    #station { height: clamp(126px, 48cqh, 215px); width: auto; aspect-ratio: 200 / 170; }
+  }
+  #station svg { width: 100%; height: 100%; display: block; }
+  #station .chef-g { animation: chefBob 3s ease-in-out infinite; transform-origin: center bottom; }
+  @keyframes chefBob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  #station.cooking .pan-g { animation: panShake 0.14s linear infinite; transform-origin: 62px 84px; }
+  @keyframes panShake { 0%,100% { transform: rotate(0); } 25% { transform: translateY(-2px) rotate(-2.4deg); } 75% { transform: translateY(1px) rotate(2deg); } }
+  #station .flame-g { animation: flick 0.32s ease-in-out infinite alternate; transform-origin: 62px 92px; }
+  @keyframes flick { from { transform: scaleY(0.85) scaleX(0.94); } to { transform: scaleY(1.12) scaleX(1.04); } }
+  #station.cooking .flame-g { animation-duration: 0.14s; }
+
+  .steam {
+    position: absolute;
+    font-size: 20px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  /* ============ Pot / plate zone ============ */
+  #pot-zone {
+    flex-shrink: 0;
+    margin-top: 8px;
+    display: flex; align-items: stretch; gap: 8px;
+  }
+  #pot {
+    flex: 1;
+    background: var(--panel);
+    border: 2.5px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 0 4px 0 var(--shadow);
+    padding: 7px 9px;
+    display: flex; flex-direction: column; gap: 3px;
+    min-width: 0;
+  }
+  #pot .pot-label {
+    font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+    color: var(--ink-soft);
+    display: flex; justify-content: space-between;
+  }
+  #pot-slots { display: flex; gap: 6px; justify-content: space-around; }
+  .pslot {
+    flex: 1;
+    max-width: 62px;
+    aspect-ratio: 1;
+    border: 2.5px dashed #ecd0ae;
+    border-radius: 14px;
+    background: #fff8ec;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px;
+    cursor: pointer;
+    position: relative;
+  }
+  .pslot.filled {
+    border-style: solid;
+    background: #fff;
+    animation: slotPop 0.3s cubic-bezier(.3,1.7,.5,1);
+  }
+  @keyframes slotPop { from { transform: scale(0.3); } to { transform: scale(1); } }
+  .pslot.filled:active { transform: scale(0.9); }
+  #cook-btn {
+    flex-shrink: 0;
+    width: 96px;
+    appearance: none;
+    border: none;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ff8b66, #ff6b4a);
+    color: #fff;
+    font-family: inherit;
+    font-size: 19px;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    box-shadow: 0 5px 0 #d14a30, 0 8px 14px rgba(209, 74, 48, 0.35);
+    cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.15);
+    transition: filter 0.15s;
+  }
+  #cook-btn .pan-ico { font-size: 26px; line-height: 1; }
+  #cook-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #d14a30; }
+  #cook-btn:disabled {
+    filter: grayscale(0.7) brightness(1.05);
+    box-shadow: 0 5px 0 #b9a894;
+    font-size: 13px;
+  }
+  #cook-btn.ready { animation: cookPulse 1s ease-in-out infinite; }
+  @keyframes cookPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  /* ============ Cooking table ============ */
+  #table-zone {
+    flex-shrink: 0;
+    margin-top: 8px;
+    background: linear-gradient(180deg, #d69a5d, var(--wood));
+    border: 2.5px solid var(--wood-dark);
+    border-radius: 20px;
+    box-shadow: 0 5px 0 rgba(122, 60, 20, 0.4), inset 0 3px 0 rgba(255,255,255,0.3);
+    padding: 8px 10px 10px;
+  }
+  #table-zone .table-label {
+    font-size: 10px; font-weight: 900; letter-spacing: 1.5px;
+    color: #6d4322;
+    text-align: center;
+    margin-bottom: 5px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.35);
+  }
+  #table-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+  }
+  .tile {
+    position: relative;
+    height: 64px;
+    border-radius: 14px;
+    background: var(--panel);
+    border-bottom-width: 4px !important;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0;
+    cursor: pointer;
+    box-shadow: 0 3px 5px rgba(90, 45, 10, 0.25);
+    transition: transform 0.1s;
+  }
+  .tile:active { transform: scale(0.92); }
+  .tile .t-emoji { font-size: 30px; line-height: 1.1; }
+  .tile .t-name { font-size: 9.5px; font-weight: 900; letter-spacing: 0.3px; color: var(--ink-soft); }
+  .tile.empty {
+    background: rgba(90, 45, 10, 0.22);
+    border: 2.5px dashed rgba(255, 240, 210, 0.4) !important;
+    box-shadow: inset 0 2px 5px rgba(60, 28, 5, 0.3);
+    cursor: default;
+  }
+  .tile.pop-in { animation: tileIn 0.4s cubic-bezier(.3,1.6,.5,1) both; }
+  @keyframes tileIn { from { transform: scale(0) rotate(-14deg); } to { transform: scale(1) rotate(0); } }
+
+  /* pointing finger hint */
+  #hint-finger {
+    position: fixed;
+    font-size: 34px;
+    z-index: 60;
+    pointer-events: none;
+    display: none;
+    animation: fingerBounce 0.7s ease-in-out infinite;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.25));
+  }
+  @keyframes fingerBounce { 0%,100% { transform: translateY(0) rotate(-15deg); } 50% { transform: translateY(-13px) rotate(-15deg); } }
+
+  /* ============ Flying bits & particles ============ */
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden; }
+  .fly { position: fixed; z-index: 71; pointer-events: none; line-height: 1; }
+  .part { position: fixed; z-index: 72; pointer-events: none; line-height: 1; }
+
+  /* ============ Dish reveal ============ */
+  #dish-overlay {
+    position: fixed; inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center; justify-content: center;
+    background: rgba(90, 50, 20, 0.18);
+  }
+  #dish-overlay.show { display: flex; }
+  #dish-card {
+    background: var(--panel);
+    border: 3px solid var(--gold);
+    border-radius: 26px;
+    box-shadow: 0 10px 30px rgba(90, 45, 10, 0.35);
+    padding: 18px 26px 16px;
+    text-align: center;
+    max-width: 82vw;
+    animation: dishIn 0.5s cubic-bezier(.3,1.5,.5,1) both;
+  }
+  @keyframes dishIn { from { transform: scale(0.2) rotate(-6deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+  #dish-card.out { animation: dishOut 0.35s ease-in both; }
+  @keyframes dishOut { to { transform: scale(0.25) translateY(-60px); opacity: 0; } }
+  #dish-plate {
+    width: 130px; height: 130px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 42%, #ffffff 0%, #f2ece2 62%, #ddd2c0 63%, #f7f2e9 72%);
+    box-shadow: 0 6px 0 #cbbfa8, 0 10px 16px rgba(90, 45, 10, 0.2);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  #dish-emoji { font-size: 58px; line-height: 1; filter: drop-shadow(0 4px 3px rgba(0,0,0,0.18)); }
+  #dish-garnish {
+    position: absolute; bottom: 8px; left: 0; right: 0;
+    font-size: 17px; letter-spacing: 2px;
+  }
+  #dish-name {
+    margin-top: 12px;
+    background: linear-gradient(180deg, #ff8b66, #ff6b4a);
+    color: #fff;
+    border-radius: 999px;
+    padding: 7px 18px;
+    font-size: 16px;
+    font-weight: 900;
+    box-shadow: 0 3px 0 #d14a30;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  }
+  #dish-name.buggy { background: linear-gradient(180deg, #b3c24f, #8fa032); box-shadow: 0 3px 0 #6d7a24; }
+
+  /* ============ Toast ============ */
+  #toast {
+    position: fixed;
+    left: 50%; top: 15%;
+    transform: translateX(-50%);
+    z-index: 80;
+    background: rgba(70, 40, 15, 0.92);
+    color: #ffedd6;
+    font-weight: 900;
+    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 999px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    display: none;
+    text-align: center;
+    max-width: 84vw;
+  }
+  #toast.show { display: block; animation: toastIn 0.35s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes toastIn { from { transform: translateX(-50%) scale(0.4); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+  /* ============ Screens (title / end) ============ */
+  .screen {
+    position: fixed; inset: 0;
+    z-index: 90;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    background:
+      radial-gradient(ellipse 120% 60% at 50% -10%, rgba(255, 200, 130, 0.7) 0%, transparent 55%),
+      linear-gradient(178deg, #fff4e0 0%, #ffdcae 100%);
+    text-align: center;
+    overflow: hidden;
+  }
+  .screen.hidden { display: none; }
+  .logo {
+    font-size: clamp(34px, 10vw, 52px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    line-height: 1.02;
+    margin: 0 0 4px;
+    color: #ff6b4a;
+    text-shadow: 0 3px 0 #ffffff, 0 6px 0 rgba(209, 74, 48, 0.3);
+  }
+  .logo .w2 { color: #58c24d; } .logo .w3 { color: #ffb648; }
+  .logo span { display: inline-block; animation: logoBounce 2.2s ease-in-out infinite; }
+  .logo .w2 { animation-delay: 0.18s; } .logo .w3 { animation-delay: 0.36s; }
+  @keyframes logoBounce { 0%,100% { transform: translateY(0) rotate(-1.5deg); } 50% { transform: translateY(-7px) rotate(1.5deg); } }
+  .subtitle { margin: 0; font-size: 13px; font-weight: 800; color: var(--ink-soft); letter-spacing: 0.5px; }
+  #title-chef { width: min(210px, 46vw); margin: 10px 0 4px; }
+  #title-chef svg { width: 100%; display: block; }
+  #title-chef .chef-g { animation: chefBob 2.6s ease-in-out infinite; }
+  #title-chef .spoon { animation: spoonStir 1.8s ease-in-out infinite; transform-origin: 186px 150px; }
+  @keyframes spoonStir { 0%,100% { transform: rotate(-14deg); } 50% { transform: rotate(10deg); } }
+
+  .howto {
+    display: flex; gap: 8px;
+    margin: 10px 0 16px;
+    max-width: 380px;
+  }
+  .howto .step {
+    flex: 1;
+    background: var(--panel);
+    border: 2.5px solid var(--line);
+    border-radius: 16px;
+    padding: 9px 6px 7px;
+    box-shadow: 0 3px 0 var(--shadow);
+  }
+  .howto .step .ic { font-size: 21px; line-height: 1.25; }
+  .howto .step .tx { font-size: 9.5px; font-weight: 900; letter-spacing: 1px; color: var(--ink-soft); margin-top: 3px; }
+
+  .big-btn {
+    appearance: none; border: none;
+    font-family: inherit;
+    background: linear-gradient(180deg, #6fd964, #4cb542);
+    color: #fff;
+    font-size: 23px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    border-radius: 999px;
+    padding: 15px 52px;
+    box-shadow: 0 6px 0 #35862d, 0 10px 18px rgba(53, 134, 45, 0.35);
+    cursor: pointer;
+    text-shadow: 0 2px 0 rgba(0,0,0,0.18);
+    animation: cookPulse 1.4s ease-in-out infinite;
+  }
+  .big-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #35862d; }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  .mini-btn {
+    appearance: none; border: 2.5px solid var(--line);
+    font-family: inherit;
+    background: var(--panel);
+    color: var(--ink);
+    font-size: 15px; font-weight: 900;
+    border-radius: 999px;
+    padding: 11px 24px;
+    box-shadow: 0 4px 0 var(--shadow);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .mini-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+  .best-line { margin-top: 14px; font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+
+  /* end screen */
+  #end-title { font-size: clamp(26px, 8vw, 38px); font-weight: 900; margin: 0 0 2px; color: #ff6b4a; text-shadow: 0 2px 0 #fff; }
+  #end-rating { font-size: 19px; font-weight: 900; margin: 4px 0 10px; color: var(--ink); }
+  #end-hats { font-size: 34px; letter-spacing: 4px; margin-bottom: 6px; }
+  .stat-card {
+    background: var(--panel);
+    border: 2.5px solid var(--line);
+    border-radius: 20px;
+    box-shadow: 0 4px 0 var(--shadow);
+    padding: 12px 22px;
+    display: flex; flex-direction: column; gap: 8px;
+    min-width: 250px;
+  }
+  .stat-row { display: flex; justify-content: space-between; gap: 26px; font-size: 17px; font-weight: 900; }
+  .stat-row .lbl { color: var(--ink-soft); font-size: 14px; align-self: center; }
+  .stat-row.sep { border-top: 2px dashed var(--line); padding-top: 8px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <a class="rbtn" href="index.html" aria-label="Home">🏠</a>
+    <div class="hud">
+      <span id="hud-gems">💎 <b id="gem-n">0</b></span>
+      <span id="hud-stars">⭐ <b id="star-n">0</b></span>
+      <span id="hud-basket">🧺 <em id="basket-n">30</em></span>
+    </div>
+    <button class="rbtn" id="snd-btn" aria-label="Sound">🔊</button>
+  </div>
+
+  <main>
+    <div id="scene">
+      <div class="floor"></div>
+      <div class="window"><div class="sun"></div><div class="cloud"></div></div>
+      <div class="lamp" style="left: 40%;"></div>
+      <div class="lamp" style="left: 56%; animation-delay: -2.5s;"></div>
+      <div class="menu-board"><i></i><i></i><i></i></div>
+      <div class="frame" style="left: 8%; top: 38%;">🍕</div>
+      <div class="frame f2" style="right: 10%; top: 34%;">🧁</div>
+      <div class="plant" style="left: 44%; bottom: 3%;">🪴</div>
+      <div id="cust-wrap"></div>
+      <div id="bubble"></div>
+      <div id="station"></div>
+    </div>
+
+    <div id="pot-zone">
+      <div id="pot">
+        <div class="pot-label"><span>THE POT</span><span id="pot-hint">TAP FOOD BELOW!</span></div>
+        <div id="pot-slots">
+          <div class="pslot" data-i="0"></div>
+          <div class="pslot" data-i="1"></div>
+          <div class="pslot" data-i="2"></div>
+          <div class="pslot" data-i="3"></div>
+        </div>
+      </div>
+      <button id="cook-btn" disabled><span class="pan-ico">🍳</span><span id="cook-txt">PICK 2!</span></button>
+    </div>
+
+    <div id="table-zone">
+      <div class="table-label">🧺 COOKING TABLE 🧺</div>
+      <div id="table-grid"></div>
+    </div>
+  </main>
+
+  <div id="dish-overlay">
+    <div id="dish-card">
+      <div id="dish-plate">
+        <div id="dish-emoji">🍲</div>
+        <div id="dish-garnish"></div>
+      </div>
+      <div id="dish-name">Yummy Soup</div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="hint-finger">👆</div>
+  <div id="fx"></div>
+
+  <!-- ============ Title screen ============ -->
+  <div class="screen" id="title-screen">
+    <h1 class="logo"><span>COOK</span> <span class="w2">COOK</span><br><span class="w3">CHEF!</span></h1>
+    <p class="subtitle">Invented by a 4-year-old master chef 🧒🍳</p>
+    <div id="title-chef"></div>
+    <div class="howto">
+      <div class="step"><div class="ic">🐰💭🥕</div><div class="tx">SEE THE WISH</div></div>
+      <div class="step"><div class="ic">🥕➕🥦</div><div class="tx">PICK &amp; COOK</div></div>
+      <div class="step"><div class="ic">😋💎⭐</div><div class="tx">GET GEMS</div></div>
+      <div class="step"><div class="ic">🐛🤢</div><div class="tx">NO BUGS!</div></div>
+    </div>
+    <button class="big-btn" id="play-btn">PLAY!</button>
+    <div class="best-line" id="best-line"></div>
+  </div>
+
+  <!-- ============ End screen ============ -->
+  <div class="screen hidden" id="end-screen">
+    <h2 id="end-title">RESTAURANT CLOSED! 🌙</h2>
+    <div id="end-hats">🧑‍🍳</div>
+    <div id="end-rating">Tasty Start!</div>
+    <div class="stat-card">
+      <div class="stat-row"><span class="lbl">GEMS</span><span id="end-gems">💎 0</span></div>
+      <div class="stat-row"><span class="lbl">STARS</span><span id="end-stars">⭐ 0</span></div>
+      <div class="stat-row sep"><span class="lbl">SUPER HAPPY</span><span id="end-extra">😍 0</span></div>
+      <div class="stat-row"><span class="lbl">HAPPY</span><span id="end-ok">🙂 0</span></div>
+      <div class="stat-row"><span class="lbl">PUKED…</span><span id="end-yuck">🤮 0</span></div>
+    </div>
+    <div class="btn-row">
+      <button class="big-btn" id="again-btn" style="animation: none; font-size: 19px; padding: 13px 34px;">PLAY AGAIN</button>
+      <a class="mini-btn" href="index.html">HOME</a>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Data
+============================================================ */
+const CATS = {
+  meat:  { icon: "🍖", color: "#ff6b6b", dark: "#d14a4a", label: "MEAT" },
+  veg:   { icon: "🥦", color: "#58c24d", dark: "#3f9a36", label: "VEGGIES" },
+  sweet: { icon: "🍭", color: "#ff8ad4", dark: "#d95fae", label: "SWEETS" },
+  bug:   { icon: "🐛", color: "#9aa93c", dark: "#77852b", label: "BUGS" },
+};
+
+const ING = {
+  chicken:    { e: "🍗", n: "Chicken",   c: "meat" },
+  steak:      { e: "🥩", n: "Steak",     c: "meat" },
+  bacon:      { e: "🥓", n: "Bacon",     c: "meat" },
+  sausage:    { e: "🌭", n: "Sausage",   c: "meat" },
+  shrimp:     { e: "🍤", n: "Shrimp",    c: "meat" },
+  fish:       { e: "🐟", n: "Fish",      c: "meat" },
+  carrot:     { e: "🥕", n: "Carrot",    c: "veg" },
+  broccoli:   { e: "🥦", n: "Broccoli",  c: "veg" },
+  tomato:     { e: "🍅", n: "Tomato",    c: "veg" },
+  corn:       { e: "🌽", n: "Corn",      c: "veg" },
+  mushroom:   { e: "🍄", n: "Mushroom",  c: "veg" },
+  potato:     { e: "🥔", n: "Potato",    c: "veg" },
+  strawberry: { e: "🍓", n: "Strawberry",c: "sweet" },
+  banana:     { e: "🍌", n: "Banana",    c: "sweet" },
+  choco:      { e: "🍫", n: "Chocolate", c: "sweet" },
+  honey:      { e: "🍯", n: "Honey",     c: "sweet" },
+  apple:      { e: "🍎", n: "Apple",     c: "sweet" },
+  cherry:     { e: "🍒", n: "Cherry",    c: "sweet" },
+  caterpillar:{ e: "🐛", n: "Caterpillar", c: "bug" },
+  cricket:    { e: "🦗", n: "Cricket",   c: "bug" },
+  worm:       { e: "🪱", n: "Worm",      c: "bug" },
+  ant:        { e: "🐜", n: "Ant",       c: "bug" },
+};
+const CAT_IDS = (c) => Object.keys(ING).filter((k) => ING[k].c === c);
+
+/* Two-ingredient combos that make famous real dishes (checked first). */
+const PAIR_DISHES = [
+  { a: "fish",   b: "potato",   name: "Fish & Chips",         e: "🍟" },
+  { a: "chicken",b: "potato",   name: "Chicken & Chips",      e: "🍗" },
+  { a: "steak",  b: "tomato",   name: "Spaghetti & Meatballs",e: "🍝" },
+  { a: "sausage",b: "tomato",   name: "Sausage Pizza",        e: "🍕" },
+  { a: "tomato", b: "mushroom", name: "Mushroom Pizza",       e: "🍕" },
+  { a: "chicken",b: "corn",     name: "Crunchy Tacos",        e: "🌮" },
+  { a: "fish",   b: "shrimp",   name: "Sushi Party Boat",     e: "🍣" },
+  { a: "chicken",b: "honey",    name: "Honey-Glazed Chicken", e: "🍗" },
+  { a: "bacon",  b: "choco",    name: "Silly Candy Bacon",    e: "🥓" },
+  { a: "banana", b: "choco",    name: "Choco-Banana Split",   e: "🍨" },
+  { a: "strawberry", b: "choco",name: "Choco-Berry Cake",     e: "🍰" },
+  { a: "apple",  b: "honey",    name: "Honey Apple Pie",      e: "🥧" },
+  { a: "corn",   b: "honey",    name: "Caramel Popcorn",      e: "🍿" },
+  { a: "carrot", b: "honey",    name: "Glazed Carrot Cake",   e: "🍰" },
+];
+
+const SPECIES = {
+  lion:   { pref: "meat",  head: "#f2a65a", muzzle: "#ffe8c9", ear: "round",  extra: "mane" },
+  fox:    { pref: "meat",  head: "#ff8f5a", muzzle: "#fff1e6", ear: "pointy", extra: null },
+  dog:    { pref: "meat",  head: "#c99162", muzzle: "#f2dcc0", ear: "floppy", extra: "patch" },
+  cat:    { pref: "meat",  head: "#a8b4c4", muzzle: "#ffffff", ear: "pointy", extra: "whiskers" },
+  bunny:  { pref: "veg",   head: "#f3ecff", muzzle: "#ffffff", ear: "tall",   extra: null },
+  panda:  { pref: "veg",   head: "#ffffff", muzzle: null,      ear: "round",  extra: "eyepatch", earColor: "#3d3d46" },
+  sheep:  { pref: "veg",   head: "#e8c39a", muzzle: "#f2d8b8", ear: "side",   extra: "wool" },
+  bear:   { pref: "sweet", head: "#b98156", muzzle: "#e8c9a0", ear: "round",  extra: null },
+  pig:    { pref: "sweet", head: "#ffb3c8", muzzle: null,      ear: "pointy", extra: "snout" },
+  monkey: { pref: "sweet", head: "#a5744a", muzzle: "#e8c9a0", ear: "side",   extra: "monkeyface" },
+  frog:   { pref: "bug",   head: "#7ed36f", muzzle: null,      ear: "none",   extra: "frogeyes" },
+  chick:  { pref: "bug",   head: "#ffd94d", muzzle: null,      ear: "none",   extra: "beak" },
+};
+const SPECIES_BY_PREF = {};
+for (const [k, v] of Object.entries(SPECIES)) (SPECIES_BY_PREF[v.pref] ??= []).push(k);
+
+const LINES = {
+  extra:    ["YUMMY YUM YUM!!", "THE BEST EVER!!", "SO DELICIOUS!!"],
+  extraBug: ["BUGS!! MY FAVORITE!!", "CRUNCHY MUNCHY YUM!!"],
+  ok:       ["Mmm, thank you!", "Pretty good!", "Yummy, thanks!"],
+  yuck:     ["BLEEEECH!!", "YUCKYYY!!", "EWWWW!!"],
+  yuckBug:  ["WHERE ARE MY BUGS?!", "NO BUGS?! BLEH!!"],
+};
+
+const BASKET_SIZE = 30, TABLE_SIZE = 6, POT_MAX = 4, POT_MIN = 2;
+
+/* ============================================================
+   Tiny helpers
+============================================================ */
+const $ = (s) => document.querySelector(s);
+const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const center = (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+
+/* ============================================================
+   Sound (tiny WebAudio synth)
+============================================================ */
+const Snd = {
+  ctx: null, muted: localStorage.getItem("ccc-muted") === "1",
+  init() {
+    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+  },
+  tone(f0, f1, dur, type = "sine", vol = 0.2, delay = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + delay;
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(this.ctx.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  },
+  noise(dur, vol = 0.12, freq = 1200, delay = 0) {
+    if (!this.ctx || this.muted) return;
+    const t = this.ctx.currentTime + delay;
+    const len = Math.floor(this.ctx.sampleRate * dur);
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = this.ctx.createBufferSource(); src.buffer = buf;
+    const f = this.ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = freq; f.Q.value = 0.8;
+    const g = this.ctx.createGain(); g.gain.setValueAtTime(vol, t);
+    src.connect(f).connect(g).connect(this.ctx.destination);
+    src.start(t);
+  },
+  blip()  { this.tone(520, 760, 0.08, "square", 0.08); },
+  plop()  { this.tone(420, 160, 0.14, "sine", 0.22); },
+  back()  { this.tone(300, 520, 0.1, "sine", 0.15); },
+  pop(i = 0) { this.tone(360 + i * 60, 620 + i * 60, 0.09, "triangle", 0.14, i * 0.06); },
+  whoosh(){ this.noise(0.25, 0.1, 900); },
+  sizzle(){ this.noise(0.9, 0.09, 4200); this.noise(0.7, 0.06, 2600, 0.15); },
+  ding()  { this.tone(880, 880, 0.3, "triangle", 0.16); this.tone(1320, 1320, 0.4, "sine", 0.1, 0.05); },
+  gem(i = 0) { this.tone(980 + i * 120, 1400 + i * 120, 0.16, "triangle", 0.13, i * 0.09); },
+  star()  { [1050, 1320, 1580, 2100].forEach((f, i) => this.tone(f, f, 0.22, "sine", 0.1, i * 0.06)); },
+  yay()   { [523, 659, 784, 1046].forEach((f, i) => this.tone(f, f, 0.18, "triangle", 0.16, i * 0.07)); },
+  meh()   { this.tone(500, 500, 0.14, "triangle", 0.12); this.tone(430, 430, 0.2, "triangle", 0.12, 0.15); },
+  yuck()  { this.tone(360, 90, 0.55, "sawtooth", 0.14); [0.1, 0.24, 0.4].forEach((d, i) => this.tone(220 - i * 40, 90, 0.12, "sine", 0.14, d)); },
+  splat() { this.noise(0.2, 0.22, 300); },
+  chomp() { this.tone(200, 90, 0.09, "square", 0.15); this.tone(180, 80, 0.09, "square", 0.15, 0.12); },
+  fanfare(){ [523, 659, 784, 1046, 784, 1046].forEach((f, i) => this.tone(f, f, 0.22, "triangle", 0.15, i * 0.11)); },
+};
+
+/* ============================================================
+   SVG characters
+============================================================ */
+function svgEyes(x1, x2, y) {
+  return `
+  <g class="e-idle">
+    <circle cx="${x1}" cy="${y}" r="5.6" fill="#2e2333"/><circle cx="${x2}" cy="${y}" r="5.6" fill="#2e2333"/>
+    <circle cx="${x1 + 2}" cy="${y - 2}" r="1.9" fill="#fff"/><circle cx="${x2 + 2}" cy="${y - 2}" r="1.9" fill="#fff"/>
+  </g>
+  <g class="e-happy" display="none" stroke="#2e2333" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M${x1 - 5} ${y + 2} q5 -7 10 0"/><path d="M${x2 - 5} ${y + 2} q5 -7 10 0"/>
+  </g>
+  <g class="e-star" display="none" fill="#ffb400" stroke="#e08900" stroke-width="1">
+    ${[x1, x2].map((x) => `<path d="M${x} ${y - 7} l2 4.5 5 .5 -3.7 3.4 1.1 5 -4.4-2.6 -4.4 2.6 1.1 -5 -3.7 -3.4 5 -.5 z"/>`).join("")}
+  </g>
+  <g class="e-x" display="none" stroke="#2e2333" stroke-width="3" stroke-linecap="round">
+    ${[x1, x2].map((x) => `<line x1="${x - 4}" y1="${y - 4}" x2="${x + 4}" y2="${y + 4}"/><line x1="${x + 4}" y1="${y - 4}" x2="${x - 4}" y2="${y + 4}"/>`).join("")}
+  </g>`;
+}
+
+function svgMouths(cx, cy) {
+  return `
+  <g class="m-idle"><path d="M${cx - 7} ${cy} q7 6 14 0" stroke="#2e2333" stroke-width="3" stroke-linecap="round" fill="none"/></g>
+  <g class="m-happy" display="none">
+    <path d="M${cx - 11} ${cy - 2} q11 15 22 0 z" fill="#7c3b47"/>
+    <path d="M${cx - 5} ${cy + 6} q5 4 10 0 l0 -3 q-5 3 -10 0 z" fill="#ff8a9e"/>
+  </g>
+  <g class="m-yuck" display="none"><path d="M${cx - 9} ${cy + 2} q3 -5 6 0 q3 5 6 0 q3 -5 6 0" stroke="#2e2333" stroke-width="3" stroke-linecap="round" fill="none"/></g>
+  <g class="m-puke" display="none">
+    <ellipse cx="${cx}" cy="${cy + 2}" rx="9" ry="10" fill="#7c3b47"/>
+    <path d="M${cx - 6} ${cy + 6} q6 7 12 0 l0 8 q-6 5 -12 0 z" fill="#8fd14f"/>
+  </g>`;
+}
+
+function buildAnimal(name) {
+  const s = SPECIES[name];
+  const H = s.head, EAR = s.earColor || H;
+  const eyeY = s.extra === "frogeyes" ? 26 : 56;
+  const [ex1, ex2] = s.extra === "frogeyes" ? [46, 94] : [54, 86];
+  let ears = "", extraBack = "", extraFront = "", nose = "";
+
+  if (s.ear === "round")  ears = `<circle cx="34" cy="30" r="15" fill="${EAR}"/><circle cx="106" cy="30" r="15" fill="${EAR}"/><circle cx="34" cy="30" r="7" fill="rgba(255,255,255,0.35)"/><circle cx="106" cy="30" r="7" fill="rgba(255,255,255,0.35)"/>`;
+  if (s.ear === "pointy") ears = `<path d="M26 44 L36 8 L58 30 Z" fill="${EAR}"/><path d="M114 44 L104 8 L82 30 Z" fill="${EAR}"/><path d="M33 36 L38 18 L50 30 Z" fill="#ffc9d9"/><path d="M107 36 L102 18 L90 30 Z" fill="#ffc9d9"/>`;
+  if (s.ear === "tall")   ears = `<ellipse cx="48" cy="14" rx="12" ry="26" fill="${EAR}" transform="rotate(-8 48 14)"/><ellipse cx="92" cy="14" rx="12" ry="26" fill="${EAR}" transform="rotate(8 92 14)"/><ellipse cx="48" cy="16" rx="6" ry="18" fill="#ffc9d9" transform="rotate(-8 48 16)"/><ellipse cx="92" cy="16" rx="6" ry="18" fill="#ffc9d9" transform="rotate(8 92 16)"/>`;
+  if (s.ear === "floppy") ears = `<ellipse cx="28" cy="52" rx="12" ry="22" fill="#8a5a34" transform="rotate(14 28 52)"/><ellipse cx="112" cy="52" rx="12" ry="22" fill="#8a5a34" transform="rotate(-14 112 52)"/>`;
+  if (s.ear === "side")   ears = `<circle cx="28" cy="58" r="11" fill="${EAR}"/><circle cx="112" cy="58" r="11" fill="${EAR}"/><circle cx="28" cy="58" r="5.5" fill="rgba(0,0,0,0.14)"/><circle cx="112" cy="58" r="5.5" fill="rgba(0,0,0,0.14)"/>`;
+
+  if (s.extra === "mane") extraBack = `<g fill="#d97b29">${Array.from({ length: 9 }, (_, i) => { const a = -Math.PI / 2 + (i / 9) * Math.PI * 2; return `<circle cx="${70 + Math.cos(a) * 43}" cy="${58 + Math.sin(a) * 41}" r="15"/>`; }).join("")}</g>`;
+  if (s.extra === "wool") extraBack = `<g fill="#fdf6ec">${Array.from({ length: 8 }, (_, i) => { const a = -Math.PI * 0.95 + (i / 7) * Math.PI * 0.9; return `<circle cx="${70 + Math.cos(a) * 38}" cy="${56 + Math.sin(a) * 34}" r="13"/>`; }).join("")}<circle cx="70" cy="16" r="13"/></g>`;
+  if (s.extra === "eyepatch") extraFront = `<ellipse cx="52" cy="56" rx="12" ry="14" fill="#3d3d46" transform="rotate(-12 52 56)"/><ellipse cx="88" cy="56" rx="12" ry="14" fill="#3d3d46" transform="rotate(12 88 56)"/>`;
+  if (s.extra === "patch") extraFront = `<ellipse cx="88" cy="54" rx="13" ry="15" fill="#8a5a34" opacity="0.85"/>`;
+  if (s.extra === "whiskers") extraFront = `<g stroke="#7d8894" stroke-width="2" stroke-linecap="round"><line x1="18" y1="66" x2="38" y2="69"/><line x1="18" y1="76" x2="38" y2="75"/><line x1="122" y1="66" x2="102" y2="69"/><line x1="122" y1="76" x2="102" y2="75"/></g>`;
+  if (s.extra === "snout") extraFront = `<ellipse cx="70" cy="72" rx="15" ry="11" fill="#ff8fb0"/><circle cx="64" cy="72" r="2.6" fill="#c2537b"/><circle cx="76" cy="72" r="2.6" fill="#c2537b"/>`;
+  if (s.extra === "monkeyface") extraBack = `<ellipse cx="70" cy="66" rx="28" ry="24" fill="#e8c9a0"/>`;
+  if (s.extra === "frogeyes") extraBack = `<circle cx="46" cy="26" r="14" fill="${H}"/><circle cx="94" cy="26" r="14" fill="${H}"/>`;
+  if (s.extra === "beak") nose = `<path d="M60 66 L80 66 L70 78 Z" fill="#ff9d3b"/>`;
+  else if (s.extra === "snout" || s.extra === "frogeyes") nose = "";
+  else nose = `<ellipse cx="70" cy="68" rx="5" ry="4" fill="${name === "bunny" || name === "cat" ? "#ff8fb0" : "#4a3328"}"/>`;
+
+  const muzzle = s.muzzle ? `<ellipse cx="70" cy="74" rx="19" ry="14" fill="${s.muzzle}"/>` : "";
+  const mouthY = s.extra === "snout" ? 88 : 84;
+
+  return `
+  <svg viewBox="0 0 140 152" class="animal exp-idle">
+    <ellipse cx="70" cy="146" rx="42" ry="6" fill="rgba(90,45,10,0.18)"/>
+    <ellipse cx="42" cy="140" rx="10" ry="7" fill="${H}" stroke="rgba(0,0,0,0.08)"/>
+    <ellipse cx="98" cy="140" rx="10" ry="7" fill="${H}" stroke="rgba(0,0,0,0.08)"/>
+    <ellipse cx="70" cy="120" rx="33" ry="26" fill="${H}"/>
+    <ellipse cx="70" cy="126" rx="19" ry="15" fill="rgba(255,255,255,0.45)"/>
+    ${extraBack}${ears}
+    <circle cx="70" cy="58" r="41" fill="${H}"/>
+    ${extraFront}${muzzle}
+    <circle cx="42" cy="70" r="6.5" fill="#ff9d90" opacity="0.55"/>
+    <circle cx="98" cy="70" r="6.5" fill="#ff9d90" opacity="0.55"/>
+    ${svgEyes(ex1, ex2, eyeY)}
+    ${nose}
+    ${svgMouths(70, mouthY)}
+    <circle class="green-tint" cx="70" cy="58" r="41" fill="#8fd14f" opacity="0"/>
+  </svg>`;
+}
+
+/* Chef in full whites: puffy toque, double-breasted coat, red neckerchief. */
+function buildChef(big) {
+  return `
+  <svg viewBox="0 0 200 170">
+    ${big ? "" : `
+    <rect x="10" y="88" width="104" height="66" rx="10" fill="#5a6472"/>
+    <rect x="10" y="88" width="104" height="10" rx="5" fill="#39414c"/>
+    <circle cx="34" cy="130" r="6" fill="#39414c"/><circle cx="58" cy="130" r="6" fill="#39414c"/>
+    <g class="pan-g">
+      <ellipse cx="62" cy="82" rx="30" ry="9" fill="#2e2333"/>
+      <ellipse cx="62" cy="79" rx="30" ry="9" fill="#4a3f55"/>
+      <ellipse cx="62" cy="79" rx="22" ry="6" fill="#2e2333"/>
+      <rect x="90" y="75" width="30" height="7" rx="3.5" fill="#2e2333"/>
+    </g>
+    <g class="flame-g">
+      <path d="M42 92 Q46 76 52 92 Q56 80 62 92 Q66 78 72 92 Q76 80 82 92 Z" fill="#ff9d3b"/>
+      <path d="M52 92 Q58 82 62 92 Q66 84 70 92 Z" fill="#ffe27a"/>
+    </g>`}
+    <g class="chef-g">
+      <ellipse cx="140" cy="164" rx="46" ry="5" fill="rgba(90,45,10,0.15)"/>
+      <path d="M104 168 L104 130 Q104 106 140 106 Q176 106 176 130 L176 168 Z" fill="#ffffff" stroke="#e3dcd2" stroke-width="2"/>
+      <line x1="140" y1="112" x2="140" y2="166" stroke="#e3dcd2" stroke-width="2"/>
+      <circle cx="128" cy="126" r="3.4" fill="#ffb648"/><circle cx="152" cy="126" r="3.4" fill="#ffb648"/>
+      <circle cx="128" cy="142" r="3.4" fill="#ffb648"/><circle cx="152" cy="142" r="3.4" fill="#ffb648"/>
+      <circle cx="128" cy="158" r="3.4" fill="#ffb648"/><circle cx="152" cy="158" r="3.4" fill="#ffb648"/>
+      ${big ? `<g><rect x="96" y="116" width="18" height="40" rx="9" fill="#ffffff" stroke="#e3dcd2" stroke-width="2" transform="rotate(18 105 120)"/><circle cx="94" cy="158" r="8.5" fill="#ffd9b3"/><rect x="166" y="116" width="18" height="40" rx="9" fill="#ffffff" stroke="#e3dcd2" stroke-width="2" transform="rotate(-18 175 120)"/><g class="spoon" transform="rotate(-14 186 150)"><rect x="182" y="112" width="7" height="44" rx="3.5" fill="#b98156"/><ellipse cx="185.5" cy="108" rx="10" ry="12" fill="#c99162"/><ellipse cx="185.5" cy="105" rx="6" ry="7" fill="#a5744a"/></g><circle cx="186" cy="158" r="8.5" fill="#ffd9b3"/></g>` : ""}
+      <path d="M118 104 Q124 96 140 96 Q156 96 162 104 L160 112 Q140 104 120 112 Z" fill="#e84545"/>
+      <path d="M136 108 l8 0 l-2 12 l-4 0 z" fill="#c22e2e"/>
+      <circle cx="140" cy="64" r="34" fill="#ffd9b3"/>
+      <circle cx="116" cy="72" r="5.5" fill="#ff9d90" opacity="0.6"/>
+      <circle cx="164" cy="72" r="5.5" fill="#ff9d90" opacity="0.6"/>
+      <g class="chef-eyes">
+        <circle cx="128" cy="60" r="4.6" fill="#2e2333"/><circle cx="152" cy="60" r="4.6" fill="#2e2333"/>
+        <circle cx="129.6" cy="58.4" r="1.5" fill="#fff"/><circle cx="153.6" cy="58.4" r="1.5" fill="#fff"/>
+      </g>
+      <path class="chef-smile" d="M130 76 q10 9 20 0" stroke="#2e2333" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <ellipse cx="140" cy="34" rx="30" ry="12" fill="#f6f1e8"/>
+      <path d="M112 36 Q108 8 132 12 Q136 0 152 6 Q170 2 168 22 Q176 30 168 36 Z" fill="#ffffff" stroke="#e3dcd2" stroke-width="2"/>
+      <rect x="112" y="30" width="56" height="12" rx="6" fill="#ffffff" stroke="#e3dcd2" stroke-width="2"/>
+    </g>
+  </svg>`;
+}
+
+/* ============================================================
+   Recipe engine — ingredient ids -> a real dish
+============================================================ */
+function makeDish(ids) {
+  const has = (id) => ids.includes(id);
+  const cats = { meat: 0, veg: 0, sweet: 0, bug: 0 };
+  ids.forEach((id) => cats[ING[id].c]++);
+  const n = ids.length, bugs = cats.bug;
+
+  if (bugs > 0 && bugs === n) {
+    const name = n >= 4 ? "Royal Bug Banquet" : n === 3 ? "Wiggly Bug Stew" : "Crunchy Bug Skewer";
+    return { name, e: n >= 3 ? "🍲" : "🍢", buggy: true };
+  }
+  if (bugs > 0) {
+    const base = makeDish(ids.filter((id) => ING[id].c !== "bug"));
+    return { name: base.name + " …with BUGS?!", e: base.e + "🐛", buggy: true };
+  }
+
+  for (const p of PAIR_DISHES) {
+    if (has(p.a) && has(p.b)) return { name: p.name, e: p.e, buggy: false };
+  }
+
+  const kinds = ["meat", "veg", "sweet"].filter((c) => cats[c] > 0);
+  if (kinds.length === 3) return { name: "The Everything Feast", e: "🍱", buggy: false };
+  if (kinds.length === 2) {
+    if (!cats.sweet) return { name: n >= 3 ? "Hearty Stir-Fry" : "Chef's Kebab", e: n >= 3 ? "🥘" : "🍢", buggy: false };
+    if (!cats.meat)  return { name: has("carrot") ? "Glazed Carrot Cake" : "Fruity Garden Fiesta", e: has("carrot") ? "🍰" : "🥗", buggy: false };
+    return { name: "Sweet & Sizzly Surprise", e: "🥞", buggy: false };
+  }
+  const only = kinds[0];
+  if (only === "meat") {
+    if (n === 1) return { name: has("fish") ? "Super Sushi" : "Grilled " + ING[ids[0]].n, e: has("fish") ? "🍣" : "🍖", buggy: false };
+    return { name: n >= 4 ? "MEGA Meat Mountain" : n === 3 ? "Sizzling BBQ Feast" : "Mixed Grill", e: "🍖", buggy: false };
+  }
+  if (only === "veg") {
+    if (n === 1) return has("potato") ? { name: "Golden Fries", e: "🍟", buggy: false }
+      : has("corn") ? { name: "Buttery Popcorn", e: "🍿", buggy: false }
+      : { name: "Roasted " + ING[ids[0]].n, e: "🍲", buggy: false };
+    return { name: n >= 4 ? "Great Garden Feast" : n === 3 ? "Rainbow Veggie Soup" : "Garden Salad", e: n === 3 ? "🍲" : "🥗", buggy: false };
+  }
+  if (n === 1) return { name: has("banana") ? "Banana Split" : has("apple") ? "Candy Apple" : ING[ids[0]].n + " Treat", e: has("banana") ? "🍨" : "🍭", buggy: false };
+  return { name: n >= 4 ? "Super Candy Tower" : n === 3 ? "Rainbow Birthday Cake" : "Fruity Sundae", e: n >= 3 ? "🎂" : "🍨", buggy: false };
+}
+
+/* ============================================================
+   Game state
+============================================================ */
+const G = {
+  phase: "title",
+  basket: [], table: [], pot: [], queue: [], custIdx: 0,
+  gems: 0, stars: 0, combo: 0,
+  stats: { extra: 0, ok: 0, yuck: 0 },
+  bugTipShown: false, servedCount: 0,
+};
+
+function buildBasket() {
+  const b = [];
+  ["meat", "veg", "sweet"].forEach((c) => CAT_IDS(c).forEach((id) => b.push(id)));
+  for (let i = 0; i < 3; i++) b.push(rnd(CAT_IDS("meat")));
+  for (let i = 0; i < 3; i++) b.push(rnd(CAT_IDS("veg")));
+  for (let i = 0; i < 2; i++) b.push(rnd(CAT_IDS("sweet")));
+  CAT_IDS("bug").forEach((id) => b.push(id));
+  return shuffle(b).slice(0, BASKET_SIZE);
+}
+
+function buildQueue() {
+  const q = [];
+  for (let i = 0; i < 24; i++) {
+    const r = Math.random();
+    const pref = r < 0.3 ? "meat" : r < 0.6 ? "veg" : r < 0.9 ? "sweet" : "bug";
+    q.push({ pref, species: rnd(SPECIES_BY_PREF[pref]) });
+  }
+  // "rarely someone likes bugs" — keep exactly 1-2 bug lovers in the first 10
+  const bugIdxs = q.slice(0, 10).map((c, i) => (c.pref === "bug" ? i : -1)).filter((i) => i >= 0);
+  if (bugIdxs.length === 0) {
+    const i = 3 + Math.floor(Math.random() * 5);
+    q[i] = { pref: "bug", species: rnd(SPECIES_BY_PREF.bug) };
+  } else {
+    bugIdxs.slice(2).forEach((i) => {
+      const pref = rnd(["meat", "veg", "sweet"]);
+      q[i] = { pref, species: rnd(SPECIES_BY_PREF[pref]) };
+    });
+  }
+  // never two bug lovers in a row (only 4 bugs in the basket)
+  for (let i = 1; i < q.length; i++) {
+    if (q[i].pref === "bug" && q[i - 1].pref === "bug") {
+      const pref = rnd(["meat", "veg", "sweet"]);
+      q[i] = { pref, species: rnd(SPECIES_BY_PREF[pref]) };
+    }
+  }
+  return q;
+}
+
+const remaining = () => G.basket.length + G.table.filter(Boolean).length + G.pot.length;
+const cust = () => G.queue[G.custIdx];
+
+/* ============================================================
+   Rendering
+============================================================ */
+const tableGrid = $("#table-grid"), potSlots = [...document.querySelectorAll(".pslot")];
+const cookBtn = $("#cook-btn"), cookTxt = $("#cook-txt");
+
+function renderTable(popIdxs = []) {
+  tableGrid.innerHTML = "";
+  G.table.forEach((id, i) => {
+    const d = document.createElement("div");
+    if (!id) {
+      d.className = "tile empty";
+    } else {
+      const ing = ING[id], cat = CATS[ing.c];
+      d.className = "tile" + (popIdxs.includes(i) ? " pop-in" : "");
+      d.style.border = `2.5px solid ${cat.color}`;
+      d.style.borderBottomColor = cat.dark;
+      d.innerHTML = `<div class="t-emoji">${ing.e}</div><div class="t-name">${ing.n.toUpperCase()}</div>`;
+      d.addEventListener("pointerdown", () => tapTile(i));
+    }
+    tableGrid.appendChild(d);
+  });
+}
+
+function renderPot() {
+  potSlots.forEach((slot, i) => {
+    const item = G.pot[i];
+    slot.className = "pslot" + (item ? " filled" : "");
+    slot.style.borderColor = item ? CATS[ING[item.id].c].color : "";
+    slot.textContent = item ? ING[item.id].e : "";
+  });
+  const n = G.pot.length;
+  const ok = n >= POT_MIN;
+  cookBtn.disabled = !ok || G.phase !== "pick";
+  cookBtn.classList.toggle("ready", ok && G.phase === "pick");
+  cookTxt.textContent = ok ? "COOK!" : n === 1 ? "1 MORE!" : "PICK 2!";
+}
+
+function setHud() {
+  $("#gem-n").textContent = G.gems;
+  $("#star-n").textContent = G.stars;
+  $("#basket-n").textContent = G.basket.length;
+}
+function bumpHud(sel) {
+  const el = $(sel);
+  el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+}
+
+function setExpression(exp) {
+  const svg = $("#cust-wrap svg");
+  if (!svg) return;
+  const show = {
+    idle:  { ".e-idle": 1, ".m-idle": 1 },
+    ok:    { ".e-happy": 1, ".m-happy": 1 },
+    extra: { ".e-star": 1, ".m-happy": 1 },
+    yuck:  { ".e-x": 1, ".m-yuck": 1 },
+    puke:  { ".e-x": 1, ".m-puke": 1 },
+  }[exp];
+  [".e-idle", ".e-happy", ".e-star", ".e-x", ".m-idle", ".m-happy", ".m-yuck", ".m-puke"]
+    .forEach((c) => svg.querySelector(c)?.setAttribute("display", show[c] ? "" : "none"));
+  svg.querySelector(".green-tint")?.setAttribute("opacity", exp === "yuck" || exp === "puke" ? "0.32" : "0");
+}
+
+function showBubble(html) {
+  const b = $("#bubble");
+  b.innerHTML = html;
+  b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+}
+function hideBubble() { $("#bubble").classList.remove("pop"); }
+
+function wantHTML(pref) {
+  const c = CATS[pref];
+  const chip = `<span class="want-chip" style="background:${c.color}">${c.icon} ${c.label}</span>`;
+  return pref === "bug" ? `I <u>ONLY</u> want ${chip}!` : `I want ${chip} please!`;
+}
+
+/* ============================================================
+   FX
+============================================================ */
+function flyEmoji(emoji, from, to, { dur = 550, size = 30, arc = -60, spin = 0 } = {}) {
+  const el = document.createElement("div");
+  el.className = "fly";
+  el.textContent = emoji;
+  el.style.fontSize = size + "px";
+  el.style.left = (from.x - size / 2) + "px";
+  el.style.top = (from.y - size / 2) + "px";
+  document.body.appendChild(el);
+  const dx = to.x - from.x, dy = to.y - from.y;
+  const anim = el.animate([
+    { transform: "translate(0,0) rotate(0) scale(1)" },
+    { transform: `translate(${dx * 0.5}px, ${dy * 0.5 + arc}px) rotate(${spin / 2}deg) scale(1.15)` },
+    { transform: `translate(${dx}px, ${dy}px) rotate(${spin}deg) scale(0.9)` },
+  ], { duration: dur, easing: "ease-in-out" });
+  return anim.finished.catch(() => {}).then(() => el.remove());
+}
+
+function burst(at, emojis, count = 8, spread = 90) {
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "part";
+    el.textContent = rnd(emojis);
+    el.style.fontSize = (13 + Math.random() * 13) + "px";
+    el.style.left = at.x + "px";
+    el.style.top = at.y + "px";
+    document.body.appendChild(el);
+    const a = Math.random() * Math.PI * 2, d = spread * (0.4 + Math.random() * 0.6);
+    el.animate([
+      { transform: "translate(0,0) scale(0.6)", opacity: 1 },
+      { transform: `translate(${Math.cos(a) * d}px, ${Math.sin(a) * d - 26}px) scale(1.2) rotate(${(Math.random() - 0.5) * 200}deg)`, opacity: 0 },
+    ], { duration: 650 + Math.random() * 350, easing: "cubic-bezier(.2,.7,.4,1)" }).finished.catch(() => {}).finally(() => el.remove());
+  }
+}
+
+function pukeArc(from) {
+  for (let i = 0; i < 11; i++) {
+    const el = document.createElement("div");
+    el.className = "part";
+    el.textContent = rnd(["💚", "🟢", "💦"]);
+    el.style.fontSize = (12 + Math.random() * 12) + "px";
+    el.style.left = from.x + "px";
+    el.style.top = from.y + "px";
+    document.body.appendChild(el);
+    const dx = -30 - Math.random() * 70, dy = 46 + Math.random() * 26;
+    el.animate([
+      { transform: "translate(0,0)", opacity: 1 },
+      { transform: `translate(${dx * 0.6}px, ${-24 - Math.random() * 22}px)`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${dx}px, ${dy}px)`, opacity: 0.1 },
+    ], { duration: 620 + i * 45, easing: "ease-in" }).finished.catch(() => {}).finally(() => el.remove());
+  }
+}
+
+function steamPuffs(n = 5) {
+  const st = $("#station").getBoundingClientRect();
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement("div");
+    el.className = "steam";
+    el.textContent = rnd(["♨️", "💨"]);
+    el.style.left = (st.left + st.width * 0.28 + Math.random() * 30) + "px";
+    el.style.top = (st.top + st.height * 0.42) + "px";
+    document.body.appendChild(el);
+    el.animate([
+      { transform: "translateY(0) scale(0.5)", opacity: 0.9 },
+      { transform: `translate(${(Math.random() - 0.5) * 20}px, -52px) scale(1.3)`, opacity: 0 },
+    ], { duration: 800, delay: i * 140, easing: "ease-out", fill: "forwards" }).finished.catch(() => {}).finally(() => el.remove());
+  }
+}
+
+let toastTimer = 0;
+function toast(msg, ms = 1500) {
+  const t = $("#toast");
+  t.innerHTML = msg;
+  t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+/* first-customers helping finger */
+let hintTimer = 0;
+function scheduleHint() {
+  clearTimeout(hintTimer);
+  $("#hint-finger").style.display = "none";
+  if (G.servedCount >= 2 || G.phase !== "pick" || G.pot.length > 0) return;
+  hintTimer = setTimeout(() => {
+    if (G.phase !== "pick" || G.pot.length > 0) return;
+    const pref = cust().pref;
+    let idx = G.table.findIndex((id) => id && ING[id].c === pref);
+    if (idx < 0) idx = G.table.findIndex((id) => id && ING[id].c !== "bug");
+    if (idx < 0) return;
+    const tile = tableGrid.children[idx];
+    if (!tile) return;
+    const c = center(tile);
+    const f = $("#hint-finger");
+    f.style.left = (c.x - 8) + "px";
+    f.style.top = (c.y + 6) + "px";
+    f.style.display = "block";
+  }, 1400);
+}
+
+/* ============================================================
+   Core flow
+============================================================ */
+function startGame() {
+  G.basket = buildBasket();
+  G.table = new Array(TABLE_SIZE).fill(null);
+  G.pot = [];
+  G.queue = buildQueue();
+  G.custIdx = -1;
+  G.gems = 0; G.stars = 0; G.combo = 0;
+  G.stats = { extra: 0, ok: 0, yuck: 0 };
+  G.servedCount = 0;
+  G.phase = "refill";
+  $("#title-screen").classList.add("hidden");
+  $("#end-screen").classList.add("hidden");
+  $("#pot-hint").textContent = "TAP FOOD BELOW!";
+  setHud(); renderPot(); renderTable();
+  refillTable().then(nextCustomer);
+}
+
+async function refillTable() {
+  const basketPt = center($("#hud-basket"));
+  const adds = [];
+  for (let i = 0; i < TABLE_SIZE; i++) {
+    if (!G.table[i] && G.basket.length) adds.push([i, G.basket.pop()]);
+  }
+  if (adds.length) {
+    renderTable(); // slots stay empty while their ingredient flies in
+    setHud();
+    await Promise.all(adds.map(([i, id], k) => {
+      Snd.pop(k);
+      return flyEmoji(ING[id].e, basketPt, center(tableGrid.children[i]), { dur: 420 + k * 60, size: 26, arc: 30 });
+    }));
+    adds.forEach(([i, id]) => (G.table[i] = id));
+  }
+  setHud();
+  renderTable(adds.map(([i]) => i));
+  if (!G.bugTipShown && G.table.some((id) => id && ING[id].c === "bug")) {
+    G.bugTipShown = true;
+    toast("🐛 Careful! Most tummies HATE bugs!", 2200);
+  }
+}
+
+async function nextCustomer() {
+  G.custIdx++;
+  const c = cust();
+  const wrap = $("#cust-wrap");
+  wrap.innerHTML = buildAnimal(c.species);
+  wrap.className = "enter";
+  Snd.whoosh();
+  await wait(560);
+  wrap.className = "idle";
+  showBubble(wantHTML(c.pref));
+  Snd.blip();
+  G.phase = "pick";
+  $("#pot-hint").textContent = "TAP FOOD BELOW!";
+  renderPot();
+  scheduleHint();
+}
+
+function tapTile(i) {
+  if (G.phase !== "pick") return;
+  const id = G.table[i];
+  if (!id || G.pot.length >= POT_MAX) {
+    if (G.pot.length >= POT_MAX) toast("The pot is full! COOK it! 🍳", 1100);
+    return;
+  }
+  $("#hint-finger").style.display = "none";
+  const tileEl = tableGrid.children[i];
+  const slotEl = potSlots[G.pot.length];
+  G.table[i] = null;
+  G.pot.push({ id, srcIdx: i });
+  Snd.plop();
+  flyEmoji(ING[id].e, center(tileEl), center(slotEl), { dur: 380, size: 30, arc: -46 });
+  renderTable(); renderPot();
+  if (G.pot.length >= POT_MIN) $("#pot-hint").textContent = "COOK WHEN READY!";
+}
+
+function tapPotSlot(i) {
+  if (G.phase !== "pick") return;
+  const item = G.pot[i];
+  if (!item) return;
+  G.pot.splice(i, 1);
+  G.table[item.srcIdx] = item.id;
+  Snd.back();
+  flyEmoji(ING[item.id].e, center(potSlots[i]), center(tableGrid.children[item.srcIdx]), { dur: 330, size: 28, arc: -30 });
+  renderTable(); renderPot();
+}
+
+async function cook() {
+  if (G.phase !== "pick" || G.pot.length < POT_MIN) return;
+  G.phase = "cooking";
+  clearTimeout(hintTimer);
+  $("#hint-finger").style.display = "none";
+  hideBubble();
+  renderPot(); // disables button
+
+  const ids = G.pot.map((p) => p.id);
+  const station = $("#station");
+  const st = station.getBoundingClientRect();
+  const panPt = { x: st.left + st.width * 0.31, y: st.top + st.height * 0.46 };
+
+  // toss ingredients into the pan
+  for (let i = 0; i < G.pot.length; i++) {
+    const slotEl = potSlots[i];
+    Snd.pop(i);
+    flyEmoji(ING[G.pot[i].id].e, center(slotEl), panPt, { dur: 430, size: 28, arc: -76, spin: 220 });
+    await wait(90);
+  }
+  G.pot = [];
+  renderPot();
+  await wait(320);
+
+  // sizzle!
+  station.classList.add("cooking");
+  Snd.sizzle();
+  steamPuffs(6);
+  await wait(950);
+  station.classList.remove("cooking");
+  burst(panPt, ["✨", "⭐"], 7, 60);
+  Snd.ding();
+
+  // reveal the dish
+  const dish = makeDish(ids);
+  $("#dish-emoji").textContent = dish.e;
+  $("#dish-garnish").textContent = ids.map((id) => ING[id].e).join(" ");
+  const nameEl = $("#dish-name");
+  nameEl.textContent = dish.name + "!";
+  nameEl.className = dish.buggy ? "buggy" : "";
+  nameEl.id = "dish-name";
+  const card = $("#dish-card");
+  card.classList.remove("out");
+  $("#dish-overlay").classList.add("show");
+  await wait(1500);
+
+  // serve it
+  card.classList.add("out");
+  const plateFrom = center($("#dish-plate"));
+  await wait(120);
+  $("#dish-overlay").classList.remove("show");
+  const mouthPt = center($("#cust-wrap"));
+  await flyEmoji(dish.e, plateFrom, { x: mouthPt.x, y: mouthPt.y - 8 }, { dur: 480, size: 44, arc: -40 });
+  Snd.chomp();
+  await react(ids, dish);
+}
+
+async function react(ids, dish) {
+  G.phase = "react";
+  const c = cust();
+  const wrap = $("#cust-wrap");
+  const custPt = center(wrap);
+  const hasBug = ids.some((id) => ING[id].c === "bug");
+  let mood, gems = 0, star = false, line;
+
+  if (c.pref === "bug") {
+    if (hasBug) { mood = "extra"; gems = 1 + ids.filter((id) => ING[id].c === "bug").length; star = true; line = rnd(LINES.extraBug); }
+    else { mood = "yuck"; line = rnd(LINES.yuckBug); }
+  } else if (hasBug) {
+    mood = "yuck"; line = rnd(LINES.yuck);
+  } else {
+    const fav = ids.filter((id) => ING[id].c === c.pref).length;
+    if (fav > 0) { mood = "extra"; gems = 1 + fav; star = true; line = rnd(LINES.extra); }
+    else { mood = "ok"; gems = 1; line = rnd(LINES.ok); }
+  }
+
+  await wait(360);
+
+  if (mood === "yuck") {
+    G.combo = 0;
+    G.stats.yuck++;
+    setExpression("yuck");
+    showBubble(line + " 🤢");
+    wrap.className = "grossed";
+    Snd.yuck();
+    await wait(700);
+    setExpression("puke");
+    pukeArc({ x: custPt.x + 8, y: custPt.y + 12 });
+    Snd.splat();
+    document.body.classList.add("shake");
+    setTimeout(() => document.body.classList.remove("shake"), 500);
+    await wait(750);
+    hideBubble();
+    wrap.className = "exit-yuck";
+    await wait(600);
+  } else {
+    const extra = mood === "extra";
+    G.stats[extra ? "extra" : "ok"]++;
+    setExpression(extra ? "extra" : "ok");
+    showBubble(line + (extra ? " 💖" : " 😊"));
+    if (extra) {
+      wrap.className = "hop";
+      Snd.yay();
+      burst(custPt, ["💖", "✨", "🌟"], 10, 100);
+      G.combo++;
+      if (G.combo >= 2) {
+        gems += 2;
+        toast(`🔥 COMBO ×${G.combo}! +2 BONUS 💎`, 1400);
+      }
+    } else {
+      G.combo = 0;
+      Snd.meh();
+    }
+    // gems + star fly to the HUD
+    const gemPt = center($("#hud-gems")), starPt = center($("#hud-stars"));
+    for (let i = 0; i < gems; i++) {
+      Snd.gem(i);
+      flyEmoji("💎", { x: custPt.x + (Math.random() - 0.5) * 40, y: custPt.y }, gemPt, { dur: 620, size: 22, arc: -70 })
+        .then(() => { G.gems++; setHud(); bumpHud("#hud-gems"); });
+      await wait(110);
+    }
+    if (star) {
+      Snd.star();
+      flyEmoji("⭐", { x: custPt.x, y: custPt.y - 30 }, starPt, { dur: 650, size: 26, arc: -90, spin: 320 })
+        .then(() => { G.stars++; setHud(); bumpHud("#hud-stars"); });
+    }
+    await wait(gems * 40 + 620);
+    hideBubble();
+    wrap.className = "exit-happy";
+    await wait(700);
+  }
+
+  wrap.innerHTML = "";
+  G.servedCount++;
+  G.phase = "refill";
+  await refillTable();
+
+  const left = remaining();
+  if (left <= 1) {
+    if (left === 1) {
+      const i = G.table.findIndex(Boolean);
+      const id = G.table[i];
+      G.table[i] = null;
+      renderTable();
+      toast(`Chef gobbles the last ${ING[id].e}! CHOMP!`, 1600);
+      Snd.chomp();
+      await flyEmoji(ING[id].e, center(tableGrid.children[i] || tableGrid), center($("#station")), { dur: 550, size: 30, arc: -70 });
+    }
+    await wait(900);
+    endGame();
+  } else {
+    nextCustomer();
+  }
+}
+
+function endGame() {
+  G.phase = "end";
+  Snd.fanfare();
+  $("#end-gems").textContent = "💎 " + G.gems;
+  $("#end-stars").textContent = "⭐ " + G.stars;
+  $("#end-extra").textContent = "😍 " + G.stats.extra;
+  $("#end-ok").textContent = "🙂 " + G.stats.ok;
+  $("#end-yuck").textContent = "🤮 " + G.stats.yuck;
+  const hats = G.stars >= 8 ? 3 : G.stars >= 4 ? 2 : 1;
+  $("#end-hats").textContent = "🧑‍🍳".repeat(hats);
+  $("#end-rating").textContent = hats === 3 ? "⭐ SUPER CHEF! ⭐" : hats === 2 ? "GREAT CHEF!" : "TASTY START!";
+  const bestG = Math.max(G.gems, +localStorage.getItem("ccc-best-gems") || 0);
+  const bestS = Math.max(G.stars, +localStorage.getItem("ccc-best-stars") || 0);
+  localStorage.setItem("ccc-best-gems", bestG);
+  localStorage.setItem("ccc-best-stars", bestS);
+  $("#end-screen").classList.remove("hidden");
+  const scr = $("#end-screen").getBoundingClientRect();
+  burst({ x: scr.width / 2, y: scr.height * 0.3 }, ["🎉", "✨", "💎", "⭐", "🍰"], 22, 190);
+}
+
+/* ============================================================
+   Wire-up
+============================================================ */
+$("#title-chef").innerHTML = buildChef(true);
+$("#station").innerHTML = buildChef(false);
+
+const bestG = +localStorage.getItem("ccc-best-gems") || 0;
+if (bestG) $("#best-line").textContent = `Best day: 💎 ${bestG} · ⭐ ${+localStorage.getItem("ccc-best-stars") || 0}`;
+
+potSlots.forEach((slot, i) => slot.addEventListener("pointerdown", () => tapPotSlot(i)));
+cookBtn.addEventListener("pointerdown", cook);
+$("#play-btn").addEventListener("pointerdown", () => { Snd.init(); Snd.yay(); startGame(); });
+$("#again-btn").addEventListener("pointerdown", () => { Snd.init(); startGame(); });
+
+const sndBtn = $("#snd-btn");
+sndBtn.textContent = Snd.muted ? "🔇" : "🔊";
+sndBtn.addEventListener("pointerdown", () => {
+  Snd.muted = !Snd.muted;
+  localStorage.setItem("ccc-muted", Snd.muted ? "1" : "0");
+  sndBtn.textContent = Snd.muted ? "🔇" : "🔊";
+  Snd.init(); Snd.blip();
+});
+document.addEventListener("pointerdown", () => Snd.init(), { once: true });
+document.addEventListener("gesturestart", (e) => e.preventDefault());
+</script>
+</body>
+</html>

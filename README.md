@@ -4,6 +4,7 @@ A small portal of mobile-first web games. No build step — open `index.html`.
 
 ## Games
 
+- **Cook Cook Chef** (`cook-cook-chef.html`) — invented by a 4-year-old: run a restaurant for animal customers who crave meat, veggies, sweets… or (rarely) bugs. Pick 2–4 ingredients from the cooking table and they turn into real dishes — match the craving for extra gems and stars, but serve bugs to the wrong customer and they puke. Ingredients stream in 6 at a time from a basket of 30; when the basket's empty, the restaurant closes.
 - **The Number Bakery** (`number-bakery.html`) — a mental-math puzzle for number-loving kids. Monster customers order a sum; drag a trail of numbered cookies that adds up exactly. Longer trails score more (rewards decomposing numbers), golden cookies double, berry cookies subtract, and every serve shows its equation.
 - **Bluey & Bingo: The Big Adventure** (`bluey-adventure.html`) — a gentle one-touch runner for young kids. Pick who leads; the other pup follows and helps. Tap to jump, hold to float, munch watermelons on the way to the picnic. No game over — just stars and a sticker book.
 

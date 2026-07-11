@@ -211,6 +211,50 @@
     color: #241208;
     font-weight: 800;
   }
+  .chefcook-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #fff0d8 0%, #ffd9a8 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .chefcook-art .hat {
+    position: absolute; left: 50%; top: 6px;
+    transform: translateX(-50%);
+    width: 26px; height: 12px;
+    background: #fff;
+    border-radius: 8px 8px 2px 2px;
+    box-shadow: -7px 2px 0 -2px #fff, 7px 2px 0 -2px #fff, 0 -4px 0 -1px #fff;
+  }
+  .chefcook-art .face {
+    position: absolute; left: 50%; top: 20px;
+    transform: translateX(-50%);
+    width: 22px; height: 20px;
+    background: #ffd9b3;
+    border-radius: 50%;
+  }
+  .chefcook-art .face::before {
+    content: ""; position: absolute; left: 4px; top: 7px;
+    width: 3px; height: 3px; border-radius: 50%;
+    background: #2e2333;
+    box-shadow: 11px 0 0 #2e2333;
+  }
+  .chefcook-art .face::after {
+    content: ""; position: absolute; left: 7px; top: 11px;
+    width: 8px; height: 5px;
+    border: 2px solid #2e2333;
+    border-top: none; border-left: none; border-right: none;
+    border-radius: 0 0 8px 8px;
+  }
+  .chefcook-art .pan {
+    position: absolute; right: 3px; bottom: 2px;
+    font-size: 15px;
+    transform: rotate(-12deg);
+  }
+  .chefcook-art .gem {
+    position: absolute; left: 4px; bottom: 3px;
+    font-size: 11px;
+  }
   .bakery-art {
     width: 54px; height: 54px;
     border-radius: 10px;
@@ -300,6 +344,22 @@
   </header>
 
   <main>
+    <a class="game-card" href="cook-cook-chef.html">
+      <div class="card-art">
+        <div class="chefcook-art">
+          <div class="hat"></div>
+          <div class="face"></div>
+          <span class="gem">💎</span>
+          <span class="pan">🍳</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Cook Cook Chef</h2>
+        <p>Run your own restaurant! Cook real dishes from the ingredients customers crave — but watch out for the bugs. Invented by a 4-year-old.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+
     <a class="game-card" href="diamond-2048.html">
       <div class="card-art">
         <div class="mini-board">

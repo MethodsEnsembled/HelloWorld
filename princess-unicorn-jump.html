@@ -69,6 +69,14 @@
     white-space: nowrap;
   }
   .stats .multi { color: var(--accent); }
+  .stats .multi.fever {
+    color: #ff2d78;
+    animation: feverpulse 0.5s infinite alternate;
+  }
+  @keyframes feverpulse {
+    from { text-shadow: 0 0 2px #ffd166; }
+    to   { text-shadow: 0 0 10px #ffd166; transform: scale(1.08); }
+  }
   .sunbar {
     flex: 1;
     height: 8px;
@@ -83,6 +91,11 @@
     background: linear-gradient(90deg, var(--gold), #ff8a3d);
     width: 100%;
     transition: width 0.2s linear;
+  }
+  .sunbar.low { animation: sunpulse 0.8s infinite; }
+  .sunbar.low > div { background: linear-gradient(90deg, #ff8a3d, #ff4d6d); }
+  @keyframes sunpulse {
+    50% { box-shadow: 0 0 10px #ff4d6d; }
   }
 
   /* Stage = canvas play area */
@@ -112,6 +125,7 @@
     z-index: 4;
     opacity: 0;
     transition: opacity 0.3s;
+    white-space: nowrap;
   }
   .hint.show { opacity: 1; }
 
@@ -134,7 +148,7 @@
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   }
   .modal h2 { margin: 0 0 8px; color: var(--accent); font-size: 24px; }
-  .modal p { margin: 0 0 14px; font-size: 14px; line-height: 1.4; }
+  .modal p { margin: 0 0 14px; font-size: 14px; line-height: 1.45; }
   .modal .scores {
     display: flex; justify-content: space-around;
     margin: 8px 0 16px;
@@ -166,8 +180,8 @@
     <a class="back" href="index.html" aria-label="Back to home">←</a>
     <div class="stats">
       <span class="pill">⭐ <span id="score">0</span></span>
-      <span class="pill multi">×<span id="multi">1</span></span>
-      <div class="sunbar" aria-label="Sun"><div id="sunFill"></div></div>
+      <span class="pill multi" id="multiPill">×<span id="multi">1</span></span>
+      <div class="sunbar" id="sunBar" aria-label="Sun"><div id="sunFill"></div></div>
     </div>
     <button class="mute" id="muteBtn" aria-label="Mute">🔊</button>
   </header>
@@ -199,7 +213,9 @@
         <path d="M 50 50 Q 58 58 66 50 L 64 64 L 52 64 Z" fill="#ff6fb5"/>
       </svg>
       <h2 id="modalTitle">Princess Unicorn Jump</h2>
-      <p id="modalText">Slide down hills, leap into the sky!<br><b>Hold</b> to dive — let go to fly. Land on the downslope just right for a sparkly speed boost.</p>
+      <p id="modalText"><b>Hold</b> to dive, let go to fly!<br>
+      Land smoothly on a downhill for a <b>Perfect</b> ✨ — chain 3 to go rainbow.<br>
+      Catch stars and reach the castles before the sun sets! 🏰</p>
       <div class="scores" id="scoreRow" style="display:none">
         <div><span>SCORE</span><span class="v" id="finalScore">0</span></div>
         <div><span>BEST</span><span class="v" id="bestScore">0</span></div>
@@ -209,1014 +225,1339 @@
   </div>
 
 <script>
-(() => {
-  // ---------------- Setup ----------------
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  const stage = document.getElementById('stage');
-  const scoreEl = document.getElementById('score');
-  const multiEl = document.getElementById('multi');
-  const sunFill = document.getElementById('sunFill');
-  const overlay = document.getElementById('overlay');
-  const modalBtn = document.getElementById('modalBtn');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalText = document.getElementById('modalText');
-  const scoreRow = document.getElementById('scoreRow');
-  const finalScoreEl = document.getElementById('finalScore');
-  const bestScoreEl = document.getElementById('bestScore');
-  const muteBtn = document.getElementById('muteBtn');
-  const hint = document.getElementById('hint');
+'use strict';
+// ---------------- Setup ----------------
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+const scoreEl = document.getElementById('score');
+const multiEl = document.getElementById('multi');
+const multiPill = document.getElementById('multiPill');
+const sunFill = document.getElementById('sunFill');
+const sunBar = document.getElementById('sunBar');
+const overlay = document.getElementById('overlay');
+const modalBtn = document.getElementById('modalBtn');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const scoreRow = document.getElementById('scoreRow');
+const finalScoreEl = document.getElementById('finalScore');
+const bestScoreEl = document.getElementById('bestScore');
+const muteBtn = document.getElementById('muteBtn');
+const hint = document.getElementById('hint');
 
-  // Logical (CSS) size; we'll multiply by DPR for the canvas backing store.
-  let W = 360, H = 600;
-  let DPR = Math.min(window.devicePixelRatio || 1, 2);
+// Logical (CSS) size; the backing store is multiplied by DPR.
+let W = 360, H = 600;
+let DPR = Math.min(window.devicePixelRatio || 1, 2);
 
-  function resize() {
-    const r = stage.getBoundingClientRect();
-    W = Math.max(280, r.width);
-    H = Math.max(360, r.height);
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(W * DPR);
-    canvas.height = Math.round(H * DPR);
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  }
-  window.addEventListener('resize', resize);
+function resize() {
+  const r = stage.getBoundingClientRect();
+  W = Math.max(280, r.width);
+  H = Math.max(360, r.height);
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  // Redraw a fresh frame if we're sitting behind an overlay so rotation
+  // doesn't leave a stale or blank canvas.
+  if (G.phase !== 'playing') render();
+}
+window.addEventListener('resize', resize);
 
-  // ---------------- Audio ----------------
-  // Tiny WebAudio blips — no asset loading, friendly on mobile.
-  let audioCtx = null;
-  let muted = false;
-  function ensureAudio() {
-    if (!audioCtx) {
-      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-      catch (e) { audioCtx = null; }
-    }
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+// ---------------- Audio ----------------
+// Tiny WebAudio blips — no asset loading, friendly on mobile.
+let audioCtx = null;
+let muted = false;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { audioCtx = null; }
   }
-  function blip(freq, dur, type='sine', vol=0.12) {
-    if (muted || !audioCtx) return;
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(t); o.stop(t + dur);
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function blip(freq, dur, type = 'sine', vol = 0.12) {
+  if (muted || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t + dur);
+}
+function chime(notes) {
+  if (muted || !audioCtx) return;
+  notes.forEach((n, i) => setTimeout(() => blip(n, 0.25, 'triangle', 0.15), i * 70));
+}
+// Star pickups climb a pentatonic ladder while the chain is alive.
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16];
+function ding(k) {
+  blip(523.25 * Math.pow(2, PENTA[Math.min(k, PENTA.length - 1)] / 12), 0.16, 'triangle', 0.11);
+}
+// Air whoosh for big launches: a short burst of band-passed noise.
+let noiseBuf = null;
+function whoosh() {
+  if (muted || !audioCtx) return;
+  if (!noiseBuf) {
+    noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.4, audioCtx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
-  function chime(notes) {
-    if (muted || !audioCtx) return;
-    notes.forEach((n, i) => setTimeout(() => blip(n, 0.25, 'triangle', 0.15), i * 70));
-  }
+  const t = audioCtx.currentTime;
+  const src = audioCtx.createBufferSource();
+  src.buffer = noiseBuf;
+  const f = audioCtx.createBiquadFilter();
+  f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(500, t);
+  f.frequency.exponentialRampToValueAtTime(1600, t + 0.3);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.14, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+  src.connect(f).connect(g).connect(audioCtx.destination);
+  src.start(t); src.stop(t + 0.4);
+}
 
-  // ---------------- Background music ----------------
-  // A simple cheerful loop: square-wave melody over a triangle bass line.
-  // Notes are scheduled against the AudioContext clock so timing stays tight
-  // even if the tab gets backgrounded briefly.
-  // Pitches in Hz. 0 = rest.
-  const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46,
-        G5 = 783.99, A5 = 880.00, B5 = 987.77, C6 = 1046.50;
-  const C3 = 130.81, F3 = 174.61, G3 = 196.00, A3 = 220.00;
-  // Each entry is [freq, beats]. One beat = 0.22s (≈136 BPM).
-  const MELODY = [
-    [E5, 1], [G5, 1], [C6, 1], [G5, 1],
-    [F5, 1], [A5, 1], [C6, 1], [A5, 1],
-    [G5, 1], [B5, 1], [C6, 1], [B5, 1],
-    [E5, 1], [G5, 1], [C6, 2], [0, 0.5], [G5, 0.5],
-    [E5, 1], [C5, 1], [E5, 1], [G5, 1],
-    [F5, 1], [D5, 1], [F5, 1], [A5, 1],
-    [G5, 1], [E5, 1], [G5, 1], [B5, 1],
-    [C6, 2], [G5, 1], [E5, 1],
-  ];
-  const BASS = [
-    [C3, 4], [F3, 4], [G3, 4], [C3, 4],
-    [C3, 4], [F3, 4], [G3, 4], [C3, 4],
-  ];
-  const BEAT = 0.22; // seconds per beat
-  let musicGain = null;
-  let musicTimer = null;
-  let musicScheduledUntil = 0;
-  let melodyIdx = 0, bassIdx = 0;
-  let musicBeatCursorMelody = 0, musicBeatCursorBass = 0;
-  function startMusic() {
-    if (!audioCtx || muted) return;
-    if (musicTimer) return;
-    if (!musicGain) {
-      musicGain = audioCtx.createGain();
-      musicGain.gain.value = 0.06;
-      musicGain.connect(audioCtx.destination);
-    }
-    melodyIdx = 0; bassIdx = 0;
-    musicScheduledUntil = audioCtx.currentTime + 0.05;
-    musicBeatCursorMelody = musicScheduledUntil;
-    musicBeatCursorBass = musicScheduledUntil;
-    pumpMusic();
-    musicTimer = setInterval(pumpMusic, 200);
+// ---------------- Background music ----------------
+// A simple cheerful loop: square-wave melody over a triangle bass line.
+// Notes are scheduled against the AudioContext clock so timing stays tight.
+const C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46,
+      G5 = 783.99, A5 = 880.00, B5 = 987.77, C6 = 1046.50;
+const C3 = 130.81, F3 = 174.61, G3 = 196.00;
+// Each entry is [freq, beats]. One beat = 0.22s (≈136 BPM). 0 = rest.
+const MELODY = [
+  [E5, 1], [G5, 1], [C6, 1], [G5, 1],
+  [F5, 1], [A5, 1], [C6, 1], [A5, 1],
+  [G5, 1], [B5, 1], [C6, 1], [B5, 1],
+  [E5, 1], [G5, 1], [C6, 2], [0, 0.5], [G5, 0.5],
+  [E5, 1], [C5, 1], [E5, 1], [G5, 1],
+  [F5, 1], [D5, 1], [F5, 1], [A5, 1],
+  [G5, 1], [E5, 1], [G5, 1], [B5, 1],
+  [C6, 2], [G5, 1], [E5, 1],
+];
+const BASS = [
+  [C3, 4], [F3, 4], [G3, 4], [C3, 4],
+  [C3, 4], [F3, 4], [G3, 4], [C3, 4],
+];
+const BEAT = 0.22;
+let musicGain = null;
+let musicTimer = null;
+let melodyIdx = 0, bassIdx = 0;
+let musicBeatCursorMelody = 0, musicBeatCursorBass = 0;
+function startMusic() {
+  if (!audioCtx || muted) return;
+  if (musicTimer) return;
+  if (!musicGain) {
+    musicGain = audioCtx.createGain();
+    musicGain.gain.value = 0.055;
+    musicGain.connect(audioCtx.destination);
   }
-  function stopMusic() {
-    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  melodyIdx = 0; bassIdx = 0;
+  const startAt = audioCtx.currentTime + 0.05;
+  musicBeatCursorMelody = startAt;
+  musicBeatCursorBass = startAt;
+  pumpMusic();
+  musicTimer = setInterval(pumpMusic, 200);
+}
+function stopMusic() {
+  if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+}
+function scheduleNote(track, freq, dur, startAt, type) {
+  if (freq === 0) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0, startAt);
+  g.gain.linearRampToValueAtTime(track === 'm' ? 0.5 : 0.4, startAt + 0.015);
+  g.gain.linearRampToValueAtTime(0, startAt + dur * 0.95);
+  o.connect(g).connect(musicGain);
+  o.start(startAt); o.stop(startAt + dur);
+}
+function pumpMusic() {
+  if (!audioCtx || muted) return;
+  const horizon = audioCtx.currentTime + 0.6;
+  while (musicBeatCursorMelody < horizon) {
+    const [f, b] = MELODY[melodyIdx % MELODY.length];
+    scheduleNote('m', f, b * BEAT * 0.95, musicBeatCursorMelody, 'square');
+    musicBeatCursorMelody += b * BEAT;
+    melodyIdx++;
   }
-  function scheduleNote(track, freq, dur, startAt, type) {
-    if (freq === 0) return;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.value = freq;
-    g.gain.setValueAtTime(0, startAt);
-    g.gain.linearRampToValueAtTime(track === 'm' ? 0.5 : 0.4, startAt + 0.015);
-    g.gain.linearRampToValueAtTime(0, startAt + dur * 0.95);
-    o.connect(g).connect(musicGain);
-    o.start(startAt); o.stop(startAt + dur);
+  while (musicBeatCursorBass < horizon) {
+    const [f, b] = BASS[bassIdx % BASS.length];
+    scheduleNote('b', f, b * BEAT * 0.95, musicBeatCursorBass, 'triangle');
+    musicBeatCursorBass += b * BEAT;
+    bassIdx++;
   }
-  function pumpMusic() {
-    if (!audioCtx || muted) return;
-    const horizon = audioCtx.currentTime + 0.6; // schedule ~600ms ahead
-    while (musicBeatCursorMelody < horizon) {
-      const [f, b] = MELODY[melodyIdx % MELODY.length];
-      scheduleNote('m', f, b * BEAT * 0.95, musicBeatCursorMelody, 'square');
-      musicBeatCursorMelody += b * BEAT;
-      melodyIdx++;
-    }
-    while (musicBeatCursorBass < horizon) {
-      const [f, b] = BASS[bassIdx % BASS.length];
-      scheduleNote('b', f, b * BEAT * 0.95, musicBeatCursorBass, 'triangle');
-      musicBeatCursorBass += b * BEAT;
-      bassIdx++;
-    }
-  }
+}
 
-  muteBtn.addEventListener('click', () => {
-    muted = !muted;
-    muteBtn.textContent = muted ? '🔇' : '🔊';
-    if (muted) {
-      stopMusic();
-      if (musicGain) musicGain.gain.value = 0;
-    } else {
-      if (musicGain) musicGain.gain.value = 0.06;
-      if (running) startMusic();
-    }
-  });
-
-  // ---------------- Terrain ----------------
-  // World coordinates: x increases as the world scrolls. The visible window
-  // is [cameraX, cameraX + W]. The hill height function maps worldX -> y
-  // (where smaller y = higher in the sky, i.e. canvas convention).
-  // We sum a few sines for rolling Tiny-Wings-style hills with varying size.
-  const GROUND_BASE = () => H * 0.78;          // average hill height (canvas y)
-  const HILL_AMP_1  = () => H * 0.16;          // big rolling waves
-  const HILL_AMP_2  = () => H * 0.06;          // smaller bumps on top
-  const HILL_LEN_1  = 360;                     // wavelength of big waves (world px)
-  const HILL_LEN_2  = 130;                     // wavelength of small bumps
-
-  function terrainY(x) {
-    // Phase offsets keep the curve from being mirror-symmetric.
-    const a = Math.sin((x / HILL_LEN_1) * Math.PI * 2);
-    const b = Math.sin((x / HILL_LEN_2) * Math.PI * 2 + 1.3);
-    return GROUND_BASE() - a * HILL_AMP_1() - b * HILL_AMP_2();
+muteBtn.addEventListener('click', () => {
+  muted = !muted;
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+  if (muted) {
+    stopMusic();
+    if (musicGain) musicGain.gain.value = 0;
+  } else {
+    if (musicGain) musicGain.gain.value = 0.055;
+    if (G.phase === 'playing') startMusic();
   }
+});
 
-  // Slope (dy/dx). Used for landing alignment + perfect-slide detection.
-  // Positive slope = going downhill (y increases as x increases in screen space).
-  function terrainSlope(x) {
-    const eps = 1.5;
-    return (terrainY(x + eps) - terrainY(x - eps)) / (2 * eps);
-  }
-
-  // ---------------- Player ----------------
-  const player = {
-    worldX: 0,         // x position in world coords (camera follows)
-    y: 0,              // canvas y
-    vy: 0,             // vertical velocity (px/s)
-    vx: 340,           // horizontal velocity (px/s) — also the world scroll speed
-    onGround: false,
-    angle: 0,          // visual rotation (radians)
-    diving: false,     // input held
-    perfectStreak: 0,  // consecutive perfect slides
-    boostTimer: 0,     // remaining boost time in s
+// ---------------- Seeded RNG ----------------
+// Each run gets its own hills; pass ?seed=123 for a reproducible course.
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+const urlSeed = parseInt(new URLSearchParams(location.search).get('seed') || '', 10);
 
-  // Input is tracked independently of "running" so the very first press
-  // (even one held through the splash) registers the moment play begins.
-  let inputHeld = false;
+// ---------------- Game state ----------------
+// All mutable state lives on G (also handy for headless testing).
+const G = {
+  phase: 'title',      // title | playing | paused | over
+  held: false,         // input held right now
+  time: 0,             // seconds since run start
+  score: 0,
+  best: 0,
+  bestMeters: 0,
+  streak: 0,           // consecutive perfect slides
+  multiplier: 1,
+  fever: false,        // streak >= 3 → rainbow mode
+  sun: 1,              // 1 = noon … 0 = sunset (game over)
+  islandsDone: 0,      // castles crossed this run
+  shake: 0,            // screen-shake time remaining
+  starChain: 0,        // pickups in quick succession (audio ladder)
+  lastStarAt: -9,
+  hadPerfect: false,   // for the tutorial hint
+  hintFlags: {},
+  seed: 0,
+  rng: Math.random,
+  // Terrain
+  pts: [],             // control points {x, y}, cosine-interpolated
+  castles: [],         // {x, n}
+  castleIdx: 0,        // next castle to cross
+  stars: [],           // {x, y, got}
+  starLo: 0,           // index of first star still relevant
+  hillIdx: 0,
+  islandGen: 1,        // island currently being generated
+  nextIslandEnd: 9500,
+  // Player
+  p: {
+    x: 0, y: 0, vx: 0, vy: 0,
+    gs: 0,             // speed along the ground while grounded
+    grounded: false,
+    angle: 0,
+    airTime: 0,
+  },
+  cam: { x: 0, y: 0, z: 1 },
+  trail: [],
+};
+try {
+  G.best = parseInt(localStorage.getItem('puj_best') || '0', 10) || 0;
+  G.bestMeters = parseInt(localStorage.getItem('puj_bestm') || '0', 10) || 0;
+} catch (e) {}
 
-  // ---------------- Game state ----------------
-  let running = false;
-  let lastT = 0;
-  let cameraX = 0;
-  let distanceTraveled = 0;
-  let score = 0;
-  let multiplier = 1;
-  let sun = 1.0;            // 1 = full daylight, 0 = night → game over
-  const SUN_DRAIN = 1 / 40; // depletes in ~40 seconds of slow travel
-  // Set properly in reset(); MILESTONE_STEP is declared further down.
-  let nextMilestone = 0;
-  let level = 1;
-  let won = false;
-  let best = 0;
-  try { best = parseInt(localStorage.getItem('puj_best') || '0', 10) || 0; } catch (e) {}
+// ---------------- Terrain ----------------
+// World y: smaller = higher. Hills live around y=0 (valleys ~+40, crests up
+// to ~-330) so nothing depends on screen size. Control points alternate
+// valley/crest and are joined with cosine ease — smooth, with flat tops and
+// bottoms, zero jitter. Physics + drawing both read terrainY/terrainSlope.
+function introPoints() {
+  // A fixed friendly opening so the first 5 seconds teach the dive.
+  return [
+    { x: -1400, y: 40 }, { x: -420, y: 30 },
+    { x: 40, y: -120 },     // first crest — we spawn falling onto its downslope
+    { x: 470, y: 35 },
+    { x: 830, y: -150 },
+    { x: 1240, y: 40 },
+  ];
+}
 
-  // Visual sparkles emitted on perfect slides + boosts.
-  const sparkles = [];
-  function spawnSparkle(x, y, color='#ffd166') {
+function lastPt() { return G.pts[G.pts.length - 1]; }
+
+function islandLen(n) { return 9500 + n * 3000; }
+
+// One rolling hill: valley → crest → valley. Upslopes are a touch shorter
+// (steeper = better ski jumps), downslopes longer (easier perfect landings).
+function genHill() {
+  const prev = lastPt();
+  const prog = Math.min(1, G.hillIdx / 26);
+  const baseL = 560 + G.islandGen * 70 + prog * 300;
+  const baseA = 150 + G.islandGen * 45 + prog * 150;
+  const L = baseL * (0.8 + G.rng() * 0.5);
+  const A = Math.min(380, baseA * (0.75 + G.rng() * 0.55));
+  const valleyY = 20 + G.rng() * 40;
+  const crest = { x: prev.x + L * 0.42, y: Math.min(prev.y, valleyY) - A };
+  const valley = { x: crest.x + L * 0.58, y: valleyY };
+  G.pts.push(crest, valley);
+  G.hillIdx++;
+
+  // Stars hugging the downslope (the place we want kids aiming for).
+  if (G.rng() < 0.62) {
+    for (const f of [0.2, 0.36, 0.52, 0.68]) {
+      const x = crest.x + f * (valley.x - crest.x);
+      const y = crest.y + (valley.y - crest.y) * (1 - Math.cos(Math.PI * f)) / 2;
+      G.stars.push({ x, y: y - 30, got: false });
+    }
+  }
+  // An arc of stars tracing a launch parabola off the crest.
+  if (G.rng() < 0.38) {
+    for (const t of [0.14, 0.28, 0.42, 0.56, 0.7]) {
+      G.stars.push({ x: crest.x + 620 * t, y: crest.y - 600 * t + 850 * t * t, got: false });
+    }
+  }
+}
+
+// Island finale: rise to a flat plateau with the castle, then a big cliff
+// dive into the next island.
+function genIslandEnd() {
+  const prev = lastPt();
+  const a = { x: prev.x + 340, y: -60 };
+  const b = { x: a.x + 460, y: -60 };
+  const cliff = { x: b.x + 470, y: 110 };
+  G.pts.push(a, b, cliff);
+  const cx = (a.x + b.x) / 2;
+  G.castles.push({ x: cx, n: G.islandGen });
+  for (let i = 0; i < 5; i++) {
+    G.stars.push({ x: a.x + 60 + i * 80, y: -100, got: false });
+  }
+  G.islandGen++;
+  G.nextIslandEnd += islandLen(G.islandGen);
+}
+
+function ensureTerrain(upToX) {
+  while (lastPt().x < upToX) {
+    if (lastPt().x >= G.nextIslandEnd) genIslandEnd();
+    else genHill();
+  }
+}
+
+// Binary search for the segment containing x.
+function segAt(x) {
+  const pts = G.pts;
+  let lo = 0, hi = pts.length - 2;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (pts[mid].x <= x) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+function terrainY(x) {
+  const i = segAt(x);
+  const a = G.pts[i], b = G.pts[i + 1];
+  const t = Math.min(1, Math.max(0, (x - a.x) / (b.x - a.x)));
+  return a.y + (b.y - a.y) * (1 - Math.cos(Math.PI * t)) / 2;
+}
+function terrainSlope(x) {
+  const i = segAt(x);
+  const a = G.pts[i], b = G.pts[i + 1];
+  const t = Math.min(1, Math.max(0, (x - a.x) / (b.x - a.x)));
+  return (b.y - a.y) * Math.PI * Math.sin(Math.PI * t) / (2 * (b.x - a.x));
+}
+
+// ---------------- Sparkles & popups ----------------
+const sparkles = [];
+function spawnSparkle(x, y, color = '#ffd166') {
+  sparkles.push({
+    x, y,
+    vx: (Math.random() - 0.5) * 120,
+    vy: -60 - Math.random() * 80,
+    life: 0.6 + Math.random() * 0.4,
+    age: 0, color,
+    size: 3 + Math.random() * 3,
+  });
+}
+function spawnBurst(x, y, n = 12, palette = ['#ffd166', '#ff6fb5', '#a06cd5', '#ffffff']) {
+  for (let i = 0; i < n; i++) {
     sparkles.push({
       x, y,
-      vx: (Math.random() - 0.5) * 120,
-      vy: -60 - Math.random() * 80,
-      life: 0.6 + Math.random() * 0.4,
+      vx: (Math.random() - 0.5) * 280,
+      vy: -120 - Math.random() * 160,
+      life: 0.7 + Math.random() * 0.5,
       age: 0,
-      color,
-      size: 3 + Math.random() * 3,
+      color: palette[Math.floor(Math.random() * palette.length)],
+      size: 3 + Math.random() * 4,
     });
   }
-  function spawnBurst(x, y, n=12, palette=['#ffd166','#ff6fb5','#a06cd5','#ffffff']) {
-    for (let i = 0; i < n; i++) {
-      sparkles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 280,
-        vy: -120 - Math.random() * 160,
-        life: 0.7 + Math.random() * 0.5,
-        age: 0,
-        color: palette[Math.floor(Math.random() * palette.length)],
-        size: 3 + Math.random() * 4,
-      });
+}
+// mode: 'world' floats where it happened (star pickups), 'player' rides
+// above the unicorn (rewards), 'screen' is a fixed center banner — world-
+// anchored text would race off-screen at speed.
+const popups = [];
+function spawnPopup(x, y, text, color = '#ff6fb5', size = 18, life = 0.9, mode = 'world') {
+  popups.push({ x, y, text, color, size, life, mode, age: 0 });
+}
+
+// ---------------- Unicorn sprites ----------------
+// Three pre-rendered poses: two gallop frames + a tucked dive pose.
+const SPRITE_W = 130, SPRITE_H = 110;
+const sprites = {};
+function buildSprite(pose) {
+  const c = document.createElement('canvas');
+  c.width = SPRITE_W * 2; c.height = SPRITE_H * 2;
+  const g = c.getContext('2d');
+  g.scale(2, 2);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+
+  // Tail — streams straight back when diving.
+  g.strokeStyle = '#ff6fb5';
+  g.lineWidth = 7;
+  g.beginPath();
+  if (pose === 'tuck') { g.moveTo(28, 68); g.quadraticCurveTo(2, 62, -6, 78); }
+  else { g.moveTo(28, 70); g.quadraticCurveTo(8, 64, 14, 96); }
+  g.stroke();
+
+  // Body
+  g.fillStyle = '#ffffff';
+  g.strokeStyle = '#dcd0e8';
+  g.lineWidth = 1.2;
+  g.beginPath();
+  g.ellipse(60, 70, 34, 15, 0, 0, Math.PI * 2);
+  g.fill(); g.stroke();
+
+  // Legs. Gallop frames alternate lift; the tuck pose folds them up.
+  function leg(x, lift, len) {
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#dcd0e8';
+    g.beginPath();
+    g.rect(x, 80 + lift, 6, len - lift);
+    g.fill(); g.stroke();
+    g.fillStyle = '#6a4a2a';
+    g.fillRect(x, 80 + lift + (len - lift) - 3, 6, 3);
+  }
+  if (pose === 'tuck') {
+    leg(38, 5, 8); leg(50, 6, 8); leg(62, 6, 8); leg(74, 5, 8);
+  } else if (pose === 'runA') {
+    leg(34, 0, 16); leg(46, 3, 16); leg(64, 3, 16); leg(76, 0, 16);
+  } else { // runB
+    leg(34, 3, 16); leg(46, 0, 16); leg(64, 0, 16); leg(76, 3, 16);
+  }
+
+  // Neck
+  g.fillStyle = '#ffffff';
+  g.strokeStyle = '#dcd0e8';
+  g.beginPath();
+  g.moveTo(82, 64); g.lineTo(94, 50); g.lineTo(100, 52); g.lineTo(90, 68);
+  g.closePath();
+  g.fill(); g.stroke();
+
+  // Head
+  g.beginPath();
+  g.ellipse(100, 50, 13, 10, 0, 0, Math.PI * 2);
+  g.fill(); g.stroke();
+
+  // Mane — longer streaks in the dive pose.
+  const maneColors = ['#ff6fb5', '#ffd166', '#a06cd5', '#5aa9d6'];
+  const stretch = pose === 'tuck' ? 8 : 0;
+  for (let i = 0; i < 4; i++) {
+    g.strokeStyle = maneColors[i];
+    g.lineWidth = 5;
+    g.beginPath();
+    g.moveTo(88 - i * 4, 44 + i);
+    g.quadraticCurveTo(80 - i * 4 - stretch, 36 + i, 76 - i * 4 - stretch, 48 + i);
+    g.stroke();
+  }
+
+  // Horn
+  g.fillStyle = '#ffd166';
+  g.strokeStyle = '#c89d36';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  g.moveTo(102, 22); g.lineTo(96, 42); g.lineTo(106, 42);
+  g.closePath();
+  g.fill(); g.stroke();
+  g.beginPath();
+  g.moveTo(99, 28); g.lineTo(103, 38);
+  g.stroke();
+
+  // Eye + smile
+  g.fillStyle = '#1b1230';
+  g.beginPath(); g.arc(104, 50, 1.6, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'white';
+  g.beginPath(); g.arc(104.5, 49.5, 0.6, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#1b1230';
+  g.lineWidth = 0.9;
+  g.beginPath(); g.moveTo(106, 56); g.quadraticCurveTo(109, 58, 111, 55); g.stroke();
+
+  // ---------- Princess on top ----------
+  g.fillStyle = '#ff6fb5';
+  g.beginPath();
+  g.moveTo(50, 56); g.quadraticCurveTo(58, 64, 66, 56);
+  g.lineTo(70, 72); g.lineTo(46, 72); g.closePath();
+  g.fill();
+  g.fillStyle = '#ffd166';
+  g.beginPath(); g.arc(54, 64, 1.2, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(60, 68, 1.0, 0, Math.PI * 2); g.fill();
+
+  // Arm + rein
+  g.strokeStyle = '#fce0c2';
+  g.lineWidth = 3.5;
+  g.beginPath(); g.moveTo(60, 56); g.quadraticCurveTo(70, 54, 78, 52); g.stroke();
+  g.strokeStyle = '#7a4d24';
+  g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(78, 52); g.lineTo(96, 52); g.stroke();
+
+  // Head
+  g.fillStyle = '#fce0c2';
+  g.beginPath();
+  g.ellipse(58, 46, 6.5, 7.5, 0, 0, Math.PI * 2);
+  g.fill();
+
+  // Hair — streams further back while diving.
+  g.fillStyle = '#f4d35e';
+  g.beginPath();
+  g.moveTo(52, 42); g.quadraticCurveTo(58, 34, 65, 42);
+  g.quadraticCurveTo(66, 50, 58, 50); g.quadraticCurveTo(50, 50, 52, 42);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  if (pose === 'tuck') {
+    g.moveTo(52, 44); g.quadraticCurveTo(34, 46, 26, 58);
+    g.quadraticCurveTo(42, 54, 52, 50);
+  } else {
+    g.moveTo(52, 46); g.quadraticCurveTo(40, 56, 44, 68);
+    g.quadraticCurveTo(50, 60, 52, 52);
+  }
+  g.closePath();
+  g.fill();
+
+  // Crown
+  g.fillStyle = '#ffd166';
+  g.strokeStyle = '#c89d36';
+  g.lineWidth = 0.6;
+  g.beginPath();
+  g.moveTo(53, 38); g.lineTo(55, 32); g.lineTo(58, 36); g.lineTo(61, 32); g.lineTo(63, 38);
+  g.closePath();
+  g.fill(); g.stroke();
+  g.fillStyle = '#ff6fb5';
+  g.beginPath(); g.arc(58, 36, 1.2, 0, Math.PI * 2); g.fill();
+
+  // Face
+  g.fillStyle = '#1b1230';
+  g.beginPath(); g.arc(56, 46, 0.9, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(60, 46, 0.9, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#d62c5b';
+  g.lineWidth = 0.8;
+  g.beginPath(); g.moveTo(56, 50); g.quadraticCurveTo(58, 52, 60, 50); g.stroke();
+
+  return c;
+}
+function buildSprites() {
+  sprites.runA = buildSprite('runA');
+  sprites.runB = buildSprite('runB');
+  sprites.tuck = buildSprite('tuck');
+}
+
+// ---------------- Physics ----------------
+// The real Tiny Wings model: always integrate ballistically; when the
+// parabola dips below the terrain, snap to it and project velocity onto the
+// slope. Launches off crests happen naturally when the hill curves away
+// faster than gravity can pull you down — and holding (dive) adds gravity,
+// which both glues you to downslopes and slams you down out of the air.
+const STEP = 1 / 240;          // fixed physics substep (no tunneling)
+const GRAV = 1600;             // px/s², airborne
+const DIVE_GRAV = 4400;        // airborne while held: slam down
+const GROUND_DIVE_GRAV = 2600; // held on the ground: hug + drive the slope
+const LIGHT_GRAV = 700;        // unheld on the ground: light and floaty
+const MIN_GS = 150;            // the unicorn always trots forward
+const FRICTION = 45;           // rolling friction, px/s²
+const DRAG = 0.000012;         // mild quadratic drag → soft top speed
+function maxGs() { return G.fever ? 1350 : 1150; }
+
+function substep(dt) {
+  const p = G.p;
+  ensureTerrain(p.x + 2600);
+
+  if (p.grounded) {
+    // Holding makes the unicorn heavy: she hugs the hill and the slope
+    // drives her hard. Released, she's light — little free speed, and she
+    // floats off every crest. That contrast IS the game. (The drive gravity
+    // is a feel/balance knob; detachment below uses the real air gravity.)
+    const gDrive = G.held ? GROUND_DIVE_GRAV : LIGHT_GRAV;
+    const m = terrainSlope(p.x);
+    const inv = 1 / Math.sqrt(1 + m * m);
+    // Gravity along the slope: downhill (+m) accelerates, uphill brakes.
+    p.gs += (gDrive * m * inv - FRICTION - DRAG * p.gs * p.gs) * dt;
+    p.gs = Math.min(maxGs(), Math.max(MIN_GS, p.gs));
+    p.vx = p.gs * inv;
+    p.vy = p.gs * m * inv;
+    p.x += p.vx * dt;
+    // Stay on the hill only if gravity can bend our path as fast as the
+    // surface curves away (v²·κ ≤ g). Compared in velocity space so the
+    // test is independent of the substep size, and using the gravity that
+    // will actually apply once airborne — otherwise the parabola gets
+    // slammed straight back down and the launch dissolves into micro-hops.
+    const gAir = G.held ? DIVE_GRAV : GRAV;
+    const m2 = terrainSlope(p.x);
+    const surfVy = p.gs * m2 / Math.sqrt(1 + m2 * m2);
+    const ballVy = p.vy + gAir * dt;
+    if (surfVy > ballVy + 1.5) {
+      p.grounded = false;
+      // Leave from the surface at the CURRENT x — p.y still holds the old
+      // column's height, which on a steep upslope is inside the hill and
+      // would swallow the launch on the very next substep.
+      p.y = terrainY(p.x);
+      p.airTime = 0;
+      if (p.gs > 700) whoosh();
+      spawnSparkle(p.x, p.y + 4, '#ffffff');
+    } else {
+      p.y = terrainY(p.x);
+      p.vy = surfVy;
+    }
+  } else {
+    p.vy += (G.held ? DIVE_GRAV : GRAV) * dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.airTime += dt;
+    const yg = terrainY(p.x);
+    if (p.y >= yg) land(yg);
+  }
+}
+
+function land(yg) {
+  const p = G.p;
+  const m = terrainSlope(p.x);
+  const slopeAngle = Math.atan(m);
+  const flightAngle = Math.atan2(p.vy, Math.max(60, p.vx));
+  const align = Math.abs(flightAngle - slopeAngle);
+  const speed = Math.hypot(p.vx, p.vy);
+  const impact = p.vy;
+  const airTime = p.airTime;
+
+  p.grounded = true;
+  p.y = yg;
+  p.airTime = 0;
+  // Keep the velocity component along the slope; the rest is absorbed.
+  // Landing without diving is a belly-flop, not a surf — it bleeds extra.
+  const keep = Math.max(0.25, Math.cos(align)) * (G.held ? 1 : 0.85);
+  p.gs = Math.min(maxGs(), Math.max(MIN_GS, speed * keep));
+
+  // Perfect = diving onto a genuine downhill face after real air time.
+  // The window is generous (this is for kids), but you must actually dive:
+  // m > 0.15 already excludes faceplants, so align only rejects the truly
+  // wild angles (slow dives are always steep — don't punish beginners).
+  const isPerfect = G.held && m > 0.15 && align < 1.0 && impact > 350 && airTime > 0.22;
+  if (isPerfect) {
+    G.streak++;
+    G.multiplier = Math.min(10, 1 + G.streak);
+    const wasFever = G.fever;
+    G.fever = G.streak >= 3;
+    G.sun = Math.min(1, G.sun + 0.07);
+    p.gs = Math.min(maxGs(), p.gs + 130 + Math.min(90, impact * 0.12));
+    const pts = 50 * G.multiplier;
+    G.score += pts;
+    spawnPopup(0, -64, 'Perfect! +' + pts, '#ffd166', 20, 0.9, 'player');
+    spawnBurst(p.x, p.y, 18);
+    chime([880, 1100, 1320 + G.streak * 60]);
+    if (G.fever && !wasFever) {
+      G.sun = Math.min(1, G.sun + 0.12);
+      spawnPopup(0, 0, 'RAINBOW FEVER! 🌈', '#ff2d78', 24, 1.4, 'screen');
+      spawnBurst(p.x, p.y - 40, 26);
+      showHint('Rainbow fever! Keep the rhythm! 🌈', 1800);
+    } else if (!G.hadPerfect) {
+      showHint('Perfect! ✨ Chain 3 for rainbow fever!', 2000);
+    }
+    G.hadPerfect = true;
+  } else if (m < -0.08 && impact > 620) {
+    // Face-plant into an upslope: big speed loss, streak over.
+    p.gs = Math.max(MIN_GS, p.gs * 0.5);
+    breakStreak();
+    G.shake = 0.28;
+    spawnPopup(0, -54, 'Oof!', '#a06cd5', 18, 0.9, 'player');
+    blip(140, 0.18, 'sawtooth', 0.12);
+  } else if (impact > 300) {
+    // Ordinary flat-ish landing: streak ends quietly.
+    breakStreak();
+    blip(260, 0.08, 'sine', 0.06);
+  }
+  // Soft touches (small hops) don't break the streak — kind to little hands.
+
+  if (airTime > 1.1 && align <= 0.95) {
+    const bonus = 30 * G.multiplier;
+    G.score += bonus;
+    spawnPopup(0, -88, 'Big Air! +' + bonus, '#5aa9d6', 16, 0.9, 'player');
+  }
+}
+
+function breakStreak() {
+  G.streak = 0;
+  G.multiplier = 1;
+  G.fever = false;
+  G.trail.length = 0;
+}
+
+// ---------------- Per-frame update ----------------
+function update(dt) {
+  const p = G.p;
+  G.time += dt;
+
+  // Physics at a fixed timestep.
+  let acc = update.acc = (update.acc || 0) + dt;
+  let n = 0;
+  while (acc >= STEP && n < 16) { substep(STEP); acc -= STEP; n++; }
+  update.acc = acc;
+
+  // Star pickups (generous radius — this is a kids' game).
+  const cx = p.x, cy = p.y - 26;
+  while (G.starLo < G.stars.length && G.stars[G.starLo].x < G.cam.x - 300) G.starLo++;
+  for (let i = G.starLo; i < Math.min(G.stars.length, G.starLo + 90); i++) {
+    const s = G.stars[i];
+    if (s.got || s.x > cx + 700) continue;
+    if (Math.abs(s.x - cx) < 48 && Math.abs(s.y - cy) < 48) {
+      s.got = true;
+      G.starChain = (G.time - G.lastStarAt < 1.2) ? G.starChain + 1 : 0;
+      G.lastStarAt = G.time;
+      const v = 5 * G.multiplier;
+      G.score += v;
+      ding(G.starChain);
+      spawnPopup(s.x, s.y - 14, '+' + v, '#ffd166', 13, 0.55);
+      spawnBurst(s.x, s.y, 5, ['#ffd166', '#ffffff']);
     }
   }
 
-  // Floating "+score" numbers for feedback.
-  const popups = [];
-  function spawnPopup(x, y, text, color='#ff6fb5') {
-    popups.push({ x, y, text, color, age: 0, life: 0.9 });
+  // Castle crossings: island complete → full sun + fanfare, play on.
+  const nextCastle = G.castles[G.castleIdx];
+  if (nextCastle && p.x >= nextCastle.x) {
+    G.castleIdx++;
+    G.islandsDone = nextCastle.n;
+    G.sun = 1;
+    G.score += 250;
+    spawnPopup(0, 0, 'Castle ' + nextCastle.n + ' reached! +250', '#ff6fb5', 24, 1.6, 'screen');
+    spawnBurst(p.x, p.y - 60, 30);
+    chime([523, 659, 784, 1046, 1319]);
+    showHint('Island ' + (nextCastle.n + 1) + ' — bigger hills! ⛰️', 2000);
   }
 
-  // ---------------- Drawing ----------------
-  // Decorative parallax clouds placed in world space — they scroll slowly.
-  const clouds = [];
-  function seedClouds() {
-    clouds.length = 0;
-    for (let i = 0; i < 14; i++) {
-      clouds.push({
-        x: Math.random() * 1400,
-        y: 40 + Math.random() * (H * 0.45),
-        scale: 0.6 + Math.random() * 0.9,
-        speed: 0.15 + Math.random() * 0.2,
-      });
+  // The sun sinks steadily; skill (perfects, castles) buys it back.
+  G.sun -= dt / 34;
+  if (G.sun <= 0) { G.sun = 0; gameOver(); return; }
+  if (G.sun < 0.22 && !G.hintFlags.sunset) {
+    G.hintFlags.sunset = true;
+    showHint('Hurry — the sun is setting! 🌅', 2000);
+  }
+  if (G.time > 12 && !G.hadPerfect && !G.hintFlags.teach) {
+    G.hintFlags.teach = true;
+    showHint('Hold ⬇ while falling onto a downhill!', 2600);
+  }
+
+  // Visual rotation: follow the slope on the ground, the velocity in the air.
+  if (p.grounded) {
+    const target = Math.atan(terrainSlope(p.x));
+    p.angle += (target - p.angle) * Math.min(1, dt * 14);
+  } else {
+    const target = Math.max(-0.9, Math.min(1.25, Math.atan2(p.vy, Math.max(60, p.vx)) * 0.9));
+    p.angle += (target - p.angle) * Math.min(1, dt * (G.held ? 12 : 7));
+  }
+
+  // Camera: zoom out with speed and altitude, keep the action framed.
+  const gy = terrainY(p.x);
+  const speed = p.grounded ? p.gs : Math.hypot(p.vx, p.vy);
+  const airH = Math.max(0, gy - p.y);
+  const zt = Math.min(1, Math.max(0.62, 1.06 - speed / 3000 - airH / 1600));
+  G.cam.z += (zt - G.cam.z) * Math.min(1, dt * 2.5);
+  const vh = H / G.cam.z;
+  const cyT = Math.min(gy - vh * 0.66, p.y - vh * 0.14);
+  G.cam.y += (cyT - G.cam.y) * Math.min(1, dt * 5);
+  G.cam.x = p.x - (W * 0.34) / G.cam.z;
+
+  // Fever trail
+  if (G.fever) {
+    G.trail.push({ x: p.x, y: p.y - 26 });
+    if (G.trail.length > 26) G.trail.shift();
+  }
+
+  // Boost sparkles while fast
+  if (speed > 900 && Math.random() < 0.5) {
+    spawnSparkle(p.x - 30, p.y - 30, ['#ffd166', '#ff6fb5', '#ffffff'][Math.floor(Math.random() * 3)]);
+  }
+
+  if (G.shake > 0) G.shake = Math.max(0, G.shake - dt);
+
+  // Sparkles + popups age out.
+  for (let i = sparkles.length - 1; i >= 0; i--) {
+    const s = sparkles[i];
+    s.age += dt;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    s.vy += 600 * dt;
+    if (s.age >= s.life) sparkles.splice(i, 1);
+  }
+  for (let i = popups.length - 1; i >= 0; i--) {
+    popups[i].age += dt;
+    if (popups[i].age >= popups[i].life) popups.splice(i, 1);
+  }
+
+  updateHUD();
+}
+
+function updateHUD() {
+  scoreEl.textContent = Math.floor(G.score);
+  multiEl.textContent = G.multiplier + (G.fever ? ' 🔥' : '');
+  multiPill.classList.toggle('fever', G.fever);
+  sunFill.style.width = (G.sun * 100).toFixed(1) + '%';
+  sunBar.classList.toggle('low', G.sun < 0.25);
+}
+
+// ---------------- Drawing ----------------
+function hexLerp(c1, c2, t) {
+  const a = parseInt(c1.slice(1), 16), b = parseInt(c2.slice(1), 16);
+  const r = Math.round(((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+  const g2 = Math.round(((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+  const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+  return 'rgb(' + r + ',' + g2 + ',' + bl + ')';
+}
+const SKY_DAY = ['#ffe0f0', '#d6c2ff', '#b3e3ff'];
+const SKY_SET = ['#ffd9a8', '#ffa0c0', '#b8a0f0'];
+const SKY_DUSK = ['#3b2f6b', '#5a4a99', '#8a7ac9'];
+function skyStops() {
+  const s = G.sun;
+  if (s > 0.5) {
+    const t = (1 - s) * 2;
+    return SKY_DAY.map((c, i) => hexLerp(c, SKY_SET[i], t));
+  }
+  const t = (0.5 - s) * 2;
+  return SKY_SET.map((c, i) => hexLerp(c, SKY_DUSK[i], t));
+}
+function nightAmount() { return Math.min(1, Math.max(0, (0.45 - G.sun) / 0.45)); }
+
+// Per-island hill palettes (Tiny Wings striped candy hills).
+const PALS = [
+  { hi: '#a06cd5', mid: '#7e4fc0', lo: '#4a2871', edge: '#ffd6f5' },
+  { hi: '#5fc9b8', mid: '#3ba393', lo: '#1e5f56', edge: '#d8fff2' },
+  { hi: '#ffb26b', mid: '#f08c3e', lo: '#9c4f1e', edge: '#ffe8c8' },
+  { hi: '#7fb8f0', mid: '#4f88cf', lo: '#25477e', edge: '#d8ecff' },
+];
+
+// Decorative clouds + night stars in screen space.
+const clouds = [];
+function seedClouds() {
+  clouds.length = 0;
+  for (let i = 0; i < 12; i++) {
+    clouds.push({
+      x: Math.random() * 1400,
+      y: 30 + Math.random() * 0.42 * 600,
+      scale: 0.6 + Math.random() * 0.9,
+      speed: 0.15 + Math.random() * 0.2,
+    });
+  }
+}
+const nightStars = [];
+for (let i = 0; i < 46; i++) {
+  nightStars.push({ fx: Math.random(), fy: Math.random() * 0.55, ph: Math.random() * 6.3 });
+}
+
+function drawSky() {
+  const stops = skyStops();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, stops[0]);
+  grad.addColorStop(0.55, stops[1]);
+  grad.addColorStop(1, stops[2]);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // The sun slides toward the horizon as the meter drains.
+  const sx = W * 0.78;
+  const sy = H * 0.15 + (H * 0.5) * (1 - G.sun);
+  const warm = hexLerp('#fff3a0', '#ff9a5c', 1 - G.sun);
+  const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 150);
+  glow.addColorStop(0, 'rgba(255,220,140,0.85)');
+  glow.addColorStop(1, 'rgba(255,220,140,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(sx - 160, sy - 160, 320, 320);
+  ctx.fillStyle = warm;
+  ctx.beginPath(); ctx.arc(sx, sy, 28, 0, Math.PI * 2); ctx.fill();
+
+  // Stars fade in at dusk.
+  const night = nightAmount();
+  if (night > 0.02) {
+    const t = performance.now() / 1000;
+    ctx.fillStyle = 'white';
+    for (const s of nightStars) {
+      ctx.globalAlpha = night * (0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2 + s.ph)));
+      ctx.fillRect(s.fx * W, s.fy * H, 2, 2);
     }
+    ctx.globalAlpha = 1;
   }
-  function drawClouds() {
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    for (const c of clouds) {
-      // Each cloud has its own scroll speed for parallax.
-      const screenX = c.x - cameraX * c.speed;
-      // Wrap horizontally so clouds keep appearing.
-      const wrapWidth = W + 200;
-      let sx = ((screenX % wrapWidth) + wrapWidth) % wrapWidth - 100;
-      const s = c.scale;
-      ctx.fillStyle = 'white';
-      ctx.beginPath();
-      ctx.ellipse(sx, c.y, 28 * s, 12 * s, 0, 0, Math.PI * 2);
-      ctx.ellipse(sx + 18 * s, c.y - 6 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2);
-      ctx.ellipse(sx + 36 * s, c.y, 26 * s, 11 * s, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
+}
 
-  // Distant rolling hill silhouettes for depth (parallax background).
-  function drawBackdrop() {
-    // Soft sun
-    const sunX = W * 0.78;
-    const sunY = H * 0.18;
-    const grad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 140);
-    grad.addColorStop(0, 'rgba(255,243,160,0.9)');
-    grad.addColorStop(0.5, 'rgba(255,243,160,0.25)');
-    grad.addColorStop(1, 'rgba(255,243,160,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H * 0.6);
-    ctx.fillStyle = '#fff3a0';
-    ctx.beginPath(); ctx.arc(sunX, sunY, 28, 0, Math.PI * 2); ctx.fill();
-
-    // Far hills (slow parallax)
-    drawFarHills(0.25, '#cdb4ff', H * 0.62, 22, 220);
-    drawFarHills(0.45, '#b6e3ff', H * 0.70, 32, 180);
+function drawClouds() {
+  ctx.save();
+  ctx.globalAlpha = 0.8;
+  for (const c of clouds) {
+    const screenX = c.x - G.cam.x * c.speed * 0.5;
+    const wrapWidth = W + 200;
+    const sx = ((screenX % wrapWidth) + wrapWidth) % wrapWidth - 100;
+    const s = c.scale;
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.ellipse(sx, c.y, 28 * s, 12 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx + 18 * s, c.y - 6 * s, 22 * s, 14 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(sx + 36 * s, c.y, 26 * s, 11 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
-  function drawFarHills(parallax, color, baseY, amp, len) {
-    ctx.fillStyle = color;
+  ctx.restore();
+}
+
+function drawFarHills() {
+  const night = nightAmount();
+  const layers = [
+    { par: 0.22, day: '#cdb4ff', dusk: '#4a3a78', baseY: H * 0.60, amp: 22, len: 260 },
+    { par: 0.4, day: '#b6e3ff', dusk: '#3a2f66', baseY: H * 0.68, amp: 30, len: 190 },
+  ];
+  for (const L of layers) {
+    ctx.fillStyle = hexLerp(L.day, L.dusk, night);
     ctx.beginPath();
     ctx.moveTo(0, H);
-    const offset = cameraX * parallax;
-    for (let x = 0; x <= W; x += 8) {
-      const wx = x + offset;
-      const y = baseY - Math.sin((wx / len) * Math.PI * 2) * amp;
+    const off = G.cam.x * L.par;
+    for (let x = 0; x <= W; x += 10) {
+      const y = L.baseY - Math.sin(((x + off) / L.len) * Math.PI * 2) * L.amp;
       ctx.lineTo(x, y);
     }
     ctx.lineTo(W, H);
     ctx.closePath();
     ctx.fill();
   }
+}
 
-  // Foreground hill (the playable terrain).
-  function drawTerrain() {
-    // Striped hill — base color + lighter cap, with a contrast shadow line.
-    const grad = ctx.createLinearGradient(0, GROUND_BASE() - HILL_AMP_1(), 0, H);
-    grad.addColorStop(0, '#a06cd5');
-    grad.addColorStop(0.4, '#7e4fc0');
-    grad.addColorStop(1, '#4a2871');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(0, H);
-    const step = 4;
-    for (let x = 0; x <= W; x += step) {
-      const wx = x + cameraX;
-      ctx.lineTo(x, terrainY(wx));
+// The playable hill, drawn in world space (call inside the camera transform).
+function drawTerrain(x0, x1, bottomY) {
+  const pal = PALS[G.islandsDone % PALS.length];
+  const hill = new Path2D();
+  hill.moveTo(x0, bottomY);
+  const step = 6;
+  for (let x = x0; x <= x1 + step; x += step) {
+    hill.lineTo(x, terrainY(x));
+  }
+  hill.lineTo(x1 + step, bottomY);
+  hill.closePath();
+
+  const grad = ctx.createLinearGradient(0, G.cam.y, 0, bottomY);
+  grad.addColorStop(0, pal.hi);
+  grad.addColorStop(0.45, pal.mid);
+  grad.addColorStop(1, pal.lo);
+  ctx.fillStyle = grad;
+  ctx.fill(hill);
+
+  // Signature slanted candy stripes, clipped to the hill.
+  ctx.save();
+  ctx.clip(hill);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 46;
+  const spacing = 130;
+  const first = Math.floor((x0 - 400) / spacing) * spacing;
+  ctx.beginPath();
+  for (let wx = first; wx < x1 + 400; wx += spacing) {
+    ctx.moveTo(wx, G.cam.y - 100);
+    ctx.lineTo(wx - 320, bottomY + 100);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // Bright surface stripe + soft inner highlight.
+  ctx.strokeStyle = pal.edge;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let x = x0; x <= x1 + step; x += step) {
+    const y = terrainY(x);
+    if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  for (let x = x0; x <= x1 + step; x += step) {
+    const y = terrainY(x) + 10;
+    if (x === x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+function drawStarShape(cx, cy, r, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  for (let i = 0; i < 5; i++) {
+    const a1 = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+    const a2 = a1 + Math.PI / 5;
+    ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
+    ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
+  }
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawStars(x0, x1) {
+  const t = performance.now() / 1000;
+  for (let i = G.starLo; i < G.stars.length; i++) {
+    const s = G.stars[i];
+    if (s.x > x1 + 60) {
+      // Star groups can interleave slightly; scan a little past the edge.
+      if (s.x > x1 + 800) break;
+      continue;
     }
-    ctx.lineTo(W, H);
-    ctx.closePath();
-    ctx.fill();
+    if (s.got || s.x < x0 - 60) continue;
+    ctx.globalAlpha = 0.8 + 0.2 * Math.sin(t * 3 + s.x * 0.05);
+    drawStarShape(s.x, s.y, 12, '#ffd166');
+    drawStarShape(s.x, s.y, 5, '#fff7dd');
+  }
+  ctx.globalAlpha = 1;
+}
 
-    // Bright candy stripe along the surface.
-    ctx.strokeStyle = '#ffd6f5';
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
+function drawCastle(c) {
+  const baseY = terrainY(c.x);
+  ctx.save();
+  ctx.translate(c.x, baseY);
+  ctx.fillStyle = '#fff3f8';
+  ctx.fillRect(-30, -70, 60, 70);
+  ctx.fillStyle = '#e8c8e8';
+  ctx.fillRect(-30, -70, 60, 8);
+  ctx.fillStyle = '#fff3f8';
+  for (let i = -30; i < 30; i += 12) ctx.fillRect(i, -82, 6, 12);
+  ctx.fillRect(-44, -90, 14, 90);
+  ctx.fillRect(30, -90, 14, 90);
+  ctx.fillStyle = '#ff6fb5';
+  ctx.beginPath();
+  ctx.moveTo(-44, -90); ctx.lineTo(-30, -90); ctx.lineTo(-37, -110); ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(30, -90); ctx.lineTo(44, -90); ctx.lineTo(37, -110); ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#7a4d24';
+  ctx.beginPath();
+  ctx.moveTo(-7, 0); ctx.lineTo(-7, -16); ctx.quadraticCurveTo(0, -22, 7, -16); ctx.lineTo(7, 0); ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#7a4d24';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(-37, -110); ctx.lineTo(-37, -125); ctx.stroke();
+  ctx.fillStyle = '#ffd166';
+  ctx.beginPath();
+  ctx.moveTo(-37, -125); ctx.lineTo(-25, -120); ctx.lineTo(-37, -115); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawTrail() {
+  if (G.trail.length < 3) return;
+  const cols = ['#ff5f8f', '#ffd166', '#7ce0a0', '#6fb8ff'];
+  ctx.save();
+  ctx.lineCap = 'round';
+  for (let k = 0; k < 4; k++) {
+    ctx.strokeStyle = cols[k];
+    ctx.lineWidth = 7;
+    ctx.globalAlpha = 0.4;
     ctx.beginPath();
-    for (let x = 0; x <= W; x += step) {
-      const wx = x + cameraX;
-      const y = terrainY(wx);
-      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    for (let i = 0; i < G.trail.length; i++) {
+      const q = G.trail[i];
+      const dy = (k - 1.5) * 7;
+      if (i === 0) ctx.moveTo(q.x, q.y + dy); else ctx.lineTo(q.x, q.y + dy);
     }
     ctx.stroke();
-
-    // Subtle inner highlight a few px below the stripe.
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let x = 0; x <= W; x += step) {
-      const wx = x + cameraX;
-      const y = terrainY(wx) + 8;
-      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Sprinkle little stars on the hill for whimsy. Use worldX for stable
-    // placement so they stay on the terrain rather than flickering.
-    const starSpacing = 90;
-    const firstStarX = Math.floor(cameraX / starSpacing) * starSpacing;
-    for (let wx = firstStarX; wx < cameraX + W + starSpacing; wx += starSpacing) {
-      const sx = wx - cameraX;
-      const sy = terrainY(wx) + 22;
-      // Pseudo-random by x: pick a color and skip some.
-      const seed = Math.abs(Math.sin(wx * 0.13)) * 100;
-      if ((seed | 0) % 3 === 0) continue;
-      const colors = ['#ffd166', '#ffffff', '#ff6fb5'];
-      drawTinyStar(sx, sy, 4, colors[(seed | 0) % colors.length]);
-    }
   }
-  function drawTinyStar(cx, cy, r, color) {
-    ctx.fillStyle = color;
+  ctx.restore();
+}
+
+function drawPlayer() {
+  const p = G.p;
+  let img;
+  if (!p.grounded) img = G.held ? sprites.tuck : sprites.runA;
+  else img = (Math.floor(p.x / 60) % 2 === 0) ? sprites.runA : sprites.runB;
+  const S = 0.66;
+  const speed = p.grounded ? p.gs : Math.hypot(p.vx, p.vy);
+  const st = Math.min(0.16, Math.max(0, (speed - 750) / 2800));
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.angle);
+  ctx.scale(1 + st, 1 - st * 0.75);
+  ctx.drawImage(img, -60 * S, -94 * S, SPRITE_W * S, SPRITE_H * S);
+  if (G.fever) {
+    ctx.globalAlpha = 0.45 + 0.3 * Math.sin(performance.now() / 70);
+    ctx.strokeStyle = '#ffd166';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const a1 = -Math.PI / 2 + (i * Math.PI * 2) / 5;
-      const a2 = a1 + Math.PI / 5;
-      ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
-      ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
-    }
-    ctx.closePath();
+    ctx.ellipse(0, -32, 42, 36, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSparkles() {
+  for (const s of sparkles) {
+    const t = 1 - s.age / s.life;
+    ctx.globalAlpha = Math.max(0, t);
+    ctx.fillStyle = s.color;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size * t, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.globalAlpha = 1;
+}
 
-  // Render the princess+unicorn at (x, y) facing right with rotation.
-  // Uses a pre-rendered offscreen canvas for performance.
-  let unicornSprite = null;
-  function buildUnicornSprite() {
-    const w = 130, h = 110;
-    const c = document.createElement('canvas');
-    c.width = w * 2; c.height = h * 2;
-    const g = c.getContext('2d');
-    g.scale(2, 2);
-
-    // Unicorn body (pastel pink + white)
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-
-    // Tail
-    g.strokeStyle = '#ff6fb5';
-    g.lineWidth = 7;
-    g.beginPath(); g.moveTo(28, 70); g.quadraticCurveTo(8, 64, 14, 96); g.stroke();
-
-    // Body
-    g.fillStyle = '#ffffff';
-    g.strokeStyle = '#dcd0e8';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.ellipse(60, 70, 34, 15, 0, 0, Math.PI * 2);
-    g.fill(); g.stroke();
-
-    // Legs (front pair lifted slightly to suggest gallop)
-    function leg(x, lift) {
-      g.fillStyle = '#ffffff';
-      g.strokeStyle = '#dcd0e8';
-      g.beginPath();
-      g.rect(x, 80 + lift, 6, 16 - lift);
-      g.fill(); g.stroke();
-      g.fillStyle = '#6a4a2a';
-      g.fillRect(x, 94 + lift / 2, 6, 3);
-    }
-    leg(34, 0); leg(46, 2); leg(64, 2); leg(76, 0);
-
-    // Neck
-    g.fillStyle = '#ffffff';
-    g.strokeStyle = '#dcd0e8';
-    g.beginPath();
-    g.moveTo(82, 64); g.lineTo(94, 50); g.lineTo(100, 52); g.lineTo(90, 68);
-    g.closePath();
-    g.fill(); g.stroke();
-
-    // Head
-    g.beginPath();
-    g.ellipse(100, 50, 13, 10, 0, 0, Math.PI * 2);
-    g.fill(); g.stroke();
-
-    // Mane (multi-color for rainbow vibes)
-    const maneColors = ['#ff6fb5', '#ffd166', '#a06cd5', '#5aa9d6'];
-    for (let i = 0; i < 4; i++) {
-      g.strokeStyle = maneColors[i];
-      g.lineWidth = 5;
-      g.beginPath();
-      g.moveTo(88 - i * 4, 44 + i);
-      g.quadraticCurveTo(82 - i * 4, 36 + i, 78 - i * 4, 48 + i);
-      g.stroke();
-    }
-
-    // Horn
-    g.fillStyle = '#ffd166';
-    g.strokeStyle = '#c89d36';
-    g.lineWidth = 0.8;
-    g.beginPath();
-    g.moveTo(102, 22); g.lineTo(96, 42); g.lineTo(106, 42);
-    g.closePath();
-    g.fill(); g.stroke();
-    g.beginPath();
-    g.moveTo(99, 28); g.lineTo(103, 38);
-    g.stroke();
-
-    // Eye + smile
-    g.fillStyle = '#1b1230';
-    g.beginPath(); g.arc(104, 50, 1.6, 0, Math.PI * 2); g.fill();
-    g.fillStyle = 'white';
-    g.beginPath(); g.arc(104.5, 49.5, 0.6, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#1b1230';
-    g.lineWidth = 0.9;
-    g.beginPath(); g.moveTo(106, 56); g.quadraticCurveTo(109, 58, 111, 55); g.stroke();
-
-    // ---------- Princess on top ----------
-    // Dress (centered roughly over the saddle area)
-    g.fillStyle = '#ff6fb5';
-    g.beginPath();
-    g.moveTo(50, 56); g.quadraticCurveTo(58, 64, 66, 56);
-    g.lineTo(70, 72); g.lineTo(46, 72); g.closePath();
-    g.fill();
-    // Dress sparkle
-    g.fillStyle = '#ffd166';
-    g.beginPath(); g.arc(54, 64, 1.2, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(60, 68, 1.0, 0, Math.PI * 2); g.fill();
-
-    // Arms (one holding a tiny rein forward)
-    g.strokeStyle = '#fce0c2';
-    g.lineWidth = 3.5;
-    g.beginPath(); g.moveTo(60, 56); g.quadraticCurveTo(70, 54, 78, 52); g.stroke();
-    // Rein
-    g.strokeStyle = '#7a4d24';
-    g.lineWidth = 1.2;
-    g.beginPath(); g.moveTo(78, 52); g.lineTo(96, 52); g.stroke();
-
-    // Head
-    g.fillStyle = '#fce0c2';
-    g.beginPath();
-    g.ellipse(58, 46, 6.5, 7.5, 0, 0, Math.PI * 2);
-    g.fill();
-
-    // Hair (long blonde flow)
-    g.fillStyle = '#f4d35e';
-    g.beginPath();
-    g.moveTo(52, 42); g.quadraticCurveTo(58, 34, 65, 42);
-    g.quadraticCurveTo(66, 50, 58, 50); g.quadraticCurveTo(50, 50, 52, 42);
-    g.closePath();
-    g.fill();
-    // Trailing hair behind
-    g.beginPath();
-    g.moveTo(52, 46); g.quadraticCurveTo(40, 56, 44, 68);
-    g.quadraticCurveTo(50, 60, 52, 52);
-    g.closePath();
-    g.fill();
-
-    // Crown
-    g.fillStyle = '#ffd166';
-    g.strokeStyle = '#c89d36';
-    g.lineWidth = 0.6;
-    g.beginPath();
-    g.moveTo(53, 38); g.lineTo(55, 32); g.lineTo(58, 36); g.lineTo(61, 32); g.lineTo(63, 38);
-    g.closePath();
-    g.fill(); g.stroke();
-    // Crown gem
-    g.fillStyle = '#ff6fb5';
-    g.beginPath(); g.arc(58, 36, 1.2, 0, Math.PI * 2); g.fill();
-
-    // Face dot eyes + smile
-    g.fillStyle = '#1b1230';
-    g.beginPath(); g.arc(56, 46, 0.9, 0, Math.PI * 2); g.fill();
-    g.beginPath(); g.arc(60, 46, 0.9, 0, Math.PI * 2); g.fill();
-    g.strokeStyle = '#d62c5b';
-    g.lineWidth = 0.8;
-    g.beginPath(); g.moveTo(56, 50); g.quadraticCurveTo(58, 52, 60, 50); g.stroke();
-
-    unicornSprite = c;
-  }
-
-  function drawPlayer() {
-    if (!unicornSprite) buildUnicornSprite();
-    // Sprite is 130x110 but anchored so the unicorn's hooves sit at (x, y+0).
-    const w = 130, h = 110;
-    ctx.save();
-    ctx.translate(player.screenX, player.y);
-    ctx.rotate(player.angle);
-    // Anchor: feet roughly at the bottom-center of the unicorn body.
-    // The hooves in the sprite are around y=94, body center x=60.
-    ctx.drawImage(unicornSprite, -60, -94, w, h);
-
-    // Glow when boosted
-    if (player.boostTimer > 0) {
-      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(performance.now() / 60);
-      ctx.strokeStyle = '#ffd166';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(0, -50, 56, 50, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawSparkles() {
-    for (const s of sparkles) {
-      const t = 1 - s.age / s.life;
-      ctx.globalAlpha = Math.max(0, t);
-      ctx.fillStyle = s.color;
-      ctx.beginPath();
-      ctx.arc(s.x - cameraX, s.y, s.size * t, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function drawPopups() {
-    for (const p of popups) {
-      const t = p.age / p.life;
-      ctx.globalAlpha = Math.max(0, 1 - t);
-      ctx.fillStyle = p.color;
-      ctx.font = 'bold 18px -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(p.text, p.x - cameraX, p.y - t * 40);
-    }
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'start';
-  }
-
-  // ---------------- Physics + game loop ----------------
-  // Player.screenX is fixed (the camera follows them). Set during reset.
-  function reset() {
-    cameraX = 0;
-    // Start airborne above a known downhill section so the first press
-    // immediately produces a satisfying nose-dive onto the slope.
-    player.worldX = 180;
-    player.screenX = W * 0.3;
-    player.y = terrainY(player.worldX) - 160;
-    player.vy = 0;
-    player.vx = 360;
-    player.onGround = false;
-    player.angle = 0;
-    player.diving = false;
-    player.perfectStreak = 0;
-    player.boostTimer = 0;
-    distanceTraveled = 0;
-    score = 0;
-    multiplier = 1;
-    sun = 1.0;
-    nextMilestone = MILESTONE_STEP + player.worldX;
-    level = 1;
-    won = false;
-    sparkles.length = 0;
-    popups.length = 0;
-    seedClouds();
-    updateHUD();
-  }
-
-  function updateHUD() {
-    scoreEl.textContent = Math.floor(score);
-    multiEl.textContent = multiplier;
-    sunFill.style.width = (sun * 100).toFixed(1) + '%';
-  }
-
-  const GRAVITY = 1100;     // px/s^2
-  const DIVE_GRAVITY = 3200; // when input held in the air
-  const MAX_VX = 620;
-  const MIN_VX = 220;
-  const FRICTION_UPHILL = 70;   // vx loss while sliding up without diving
-  const SLOPE_GAIN = 1500;       // vx gain factor when diving down a slope (per slope unit per s)
-  const GROUND_DIVE_THRUST = 380; // px/s^2 forward when diving on the ground regardless of slope
-  const GOAL_DISTANCE = 6000;
-  const MILESTONE_STEP = 1500;
-
-  function step(dt) {
-    // Sync per-frame input → player state. Doing this every step avoids any
-    // edge cases where the press happens during the splash/transition.
-    player.diving = inputHeld;
-    // Forward speed gradually settles toward base when on ground without input.
-    // Apply gravity / dive-gravity.
-    if (!player.onGround) {
-      player.vy += (player.diving ? DIVE_GRAVITY : GRAVITY) * dt;
-    }
-
-    // Integrate vertical position.
-    player.y += player.vy * dt;
-    // Horizontal position in world.
-    player.worldX += player.vx * dt;
-    distanceTraveled += player.vx * dt;
-
-    const ground = terrainY(player.worldX);
-    const slope = terrainSlope(player.worldX);  // pos = downhill
-
-    if (player.y >= ground) {
-      // Landed / sliding.
-      const wasAirborne = !player.onGround;
-      const verticalImpact = player.vy;
-      player.y = ground;
-      player.onGround = true;
-
-      // Decompose impact relative to slope. If diving and the slope is going
-      // down, treat as a "perfect slide" — convert downward velocity into
-      // forward speed.
-      if (wasAirborne) {
-        // Direction of the surface tangent (unit-ish, slope is dy/dx).
-        // A landing aligned with slope means smooth; misaligned = lose speed.
-        const surfaceAngle = Math.atan(slope);
-        const flightAngle = Math.atan2(player.vy, Math.max(50, player.vx));
-        const misalign = Math.abs(flightAngle - surfaceAngle);
-
-        if (player.diving && slope > 0.15 && misalign < 0.55 && verticalImpact > 280) {
-          // PERFECT SLIDE
-          player.perfectStreak++;
-          multiplier = Math.min(8, 1 + player.perfectStreak);
-          player.boostTimer = 1.2;
-          // Convert vertical energy into horizontal speed.
-          const gained = Math.min(220, verticalImpact * 0.45);
-          player.vx = Math.min(MAX_VX, player.vx + gained);
-          score += 50 * multiplier;
-          spawnPopup(player.worldX, player.y - 30, '+' + (50 * multiplier), '#ffd166');
-          spawnBurst(player.worldX, player.y, 18);
-          chime([880, 1100, 1320]);
-          // Reward: extend daylight a bit for nailing it.
-          sun = Math.min(1, sun + 0.06);
-        } else {
-          // Normal landing: dampen vertical, bleed some forward speed if hard.
-          if (verticalImpact > 600) {
-            player.vx = Math.max(MIN_VX, player.vx - 60);
-            player.perfectStreak = 0;
-            multiplier = 1;
-            blip(180, 0.15, 'sawtooth', 0.08);
-          } else if (verticalImpact > 300) {
-            // Mild landing — small thump, no streak break.
-            blip(260, 0.08, 'sine', 0.06);
-          }
-        }
-        player.vy = 0;
-      }
-
-      // While grounded: terrain-following + slope-based speed.
-      // Re-snap y to surface (terrain shifts as worldX advances).
-      player.y = ground;
-
-      // Apply gravity-along-slope: downhill accelerates, uphill decelerates.
-      // Diving on downhill = bigger boost.
-      if (slope > 0) {
-        const boost = player.diving ? SLOPE_GAIN : SLOPE_GAIN * 0.45;
-        player.vx = Math.min(MAX_VX, player.vx + slope * boost * dt);
-      } else if (slope < 0) {
-        // Uphill: scrub speed.
-        player.vx = Math.max(MIN_VX, player.vx + slope * 700 * dt);
-        if (!player.diving) {
-          player.vx = Math.max(MIN_VX, player.vx - FRICTION_UPHILL * dt);
-        }
-      }
-
-      // Holding while grounded gives a baseline forward thrust, so the dive
-      // input feels responsive even on flat or uphill terrain.
-      if (player.diving) {
-        player.vx = Math.min(MAX_VX, player.vx + GROUND_DIVE_THRUST * dt);
-        // A few dust sparkles at the hooves while pushing.
-        if (Math.random() < 0.35) {
-          spawnSparkle(player.worldX - 8, player.y - 2, 'rgba(255,255,255,0.8)');
-        }
-      }
-
-      // Check: if we just crested and the ground is dropping away faster
-      // than we'd naturally follow, fly off. Looser thresholds = more air.
-      const aheadSlope = terrainSlope(player.worldX + 8);
-      const cresting = slope < 0.05 && aheadSlope > slope + 0.04;
-      if (cresting && player.vx > 240) {
-        const launchPower = Math.min(620, (player.vx - 200) * 1.5);
-        player.vy = -launchPower;
-        player.onGround = false;
-        spawnSparkle(player.worldX, player.y, '#ffffff');
-        spawnSparkle(player.worldX - 4, player.y, '#ffd166');
-      }
-
-      // Visual rotation = slope angle (capped).
-      const targetAngle = Math.atan(slope);
-      player.angle += (targetAngle - player.angle) * Math.min(1, dt * 12);
+// Popups render in screen space at constant size, whatever the zoom.
+function drawPopups() {
+  const { x: camX, y: camY, z } = G.cam;
+  for (const p of popups) {
+    const t = p.age / p.life;
+    let sx, sy;
+    if (p.mode === 'screen') {
+      sx = W / 2;
+      sy = H * 0.3 - t * 24;
+    } else if (p.mode === 'player') {
+      sx = (G.p.x - camX) * z;
+      sy = (G.p.y - camY) * z + p.y - t * 44;
     } else {
-      // Airborne — diving rotates nose-down quickly so the press is visible.
-      const vAngle = Math.atan2(player.vy, Math.max(50, player.vx));
-      const target = player.diving ? Math.max(vAngle, 0.7) : vAngle;
-      const lerp = player.diving ? Math.min(1, dt * 14) : Math.min(1, dt * 6);
-      player.angle += (target - player.angle) * lerp;
+      sx = (p.x - camX) * z;
+      sy = (p.y - camY) * z - t * 44;
     }
-
-    // Camera follows player horizontally with a fixed screen offset.
-    cameraX = player.worldX - player.screenX;
-
-    // Boost timer countdown
-    if (player.boostTimer > 0) {
-      player.boostTimer = Math.max(0, player.boostTimer - dt);
-      // Trail sparkles
-      if (Math.random() < 0.6) {
-        spawnSparkle(player.worldX - 20, player.y - 30, ['#ffd166','#ff6fb5','#ffffff'][Math.floor(Math.random()*3)]);
-      }
-    }
-
-    // Sun drains over time; faster if you're slow.
-    const slowness = Math.max(0, 1 - (player.vx - MIN_VX) / (MAX_VX - MIN_VX));
-    sun -= dt * SUN_DRAIN * (0.6 + slowness * 1.4);
-    if (sun <= 0) {
-      sun = 0;
-      gameOver();
-      return;
-    }
-
-    // Milestones — every MILESTONE_STEP world units, refill some sun and
-    // celebrate. Reaching the goal distance triggers a win.
-    if (player.worldX >= nextMilestone && !won) {
-      level++;
-      sun = Math.min(1, sun + 0.25);
-      score += 200;
-      spawnPopup(player.worldX, player.y - 60, 'Level ' + level + '!', '#ffd166');
-      spawnBurst(player.worldX, player.y - 30, 22);
-      chime([523, 659, 783, 1046]);
-      nextMilestone += MILESTONE_STEP;
-      if (player.worldX >= GOAL_DISTANCE) {
-        win();
-        return;
-      }
-    }
-
-    // Distance score (small, steady) — keeps the number ticking even without
-    // perfect slides.
-    score += dt * (player.vx / 30);
-
-    // Update sparkles + popups.
-    for (let i = sparkles.length - 1; i >= 0; i--) {
-      const s = sparkles[i];
-      s.age += dt;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 600 * dt;
-      if (s.age >= s.life) sparkles.splice(i, 1);
-    }
-    for (let i = popups.length - 1; i >= 0; i--) {
-      popups[i].age += dt;
-      if (popups[i].age >= popups[i].life) popups.splice(i, 1);
-    }
-
-    updateHUD();
-  }
-
-  function drawCastle() {
-    // Draw the goal castle on the terrain at GOAL_DISTANCE. Only visible
-    // when the camera is within range.
-    const sx = GOAL_DISTANCE - cameraX;
-    if (sx < -120 || sx > W + 120) return;
-    const baseY = terrainY(GOAL_DISTANCE);
-    ctx.save();
-    ctx.translate(sx, baseY);
-    // Main keep
-    ctx.fillStyle = '#fff3f8';
-    ctx.fillRect(-30, -70, 60, 70);
-    ctx.fillStyle = '#e8c8e8';
-    ctx.fillRect(-30, -70, 60, 8);
-    // Crenellations
-    ctx.fillStyle = '#fff3f8';
-    for (let i = -30; i < 30; i += 12) {
-      ctx.fillRect(i, -82, 6, 12);
-    }
-    // Towers
-    ctx.fillStyle = '#fff3f8';
-    ctx.fillRect(-44, -90, 14, 90);
-    ctx.fillRect(30, -90, 14, 90);
-    // Tower roofs
-    ctx.fillStyle = '#ff6fb5';
-    ctx.beginPath();
-    ctx.moveTo(-44, -90); ctx.lineTo(-30, -90); ctx.lineTo(-37, -110); ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(30, -90); ctx.lineTo(44, -90); ctx.lineTo(37, -110); ctx.closePath();
-    ctx.fill();
-    // Door
-    ctx.fillStyle = '#7a4d24';
-    ctx.beginPath();
-    ctx.moveTo(-7, 0); ctx.lineTo(-7, -16); ctx.quadraticCurveTo(0, -22, 7, -16); ctx.lineTo(7, 0); ctx.closePath();
-    ctx.fill();
-    // Flag
-    ctx.strokeStyle = '#7a4d24';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(-37, -110); ctx.lineTo(-37, -125); ctx.stroke();
-    ctx.fillStyle = '#ffd166';
-    ctx.beginPath();
-    ctx.moveTo(-37, -125); ctx.lineTo(-25, -120); ctx.lineTo(-37, -115); ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawDistanceMarker() {
-    // Small "to castle" arrow + distance pill near the top of the canvas.
-    const remaining = Math.max(0, GOAL_DISTANCE - player.worldX);
-    const text = remaining > 0 ? Math.ceil(remaining / 100) + 'm to 🏰' : '🏰';
-    ctx.save();
-    ctx.font = 'bold 12px -apple-system, sans-serif';
-    const w = ctx.measureText(text).width + 16;
-    const x = W - w - 8;
-    const y = 8;
-    ctx.fillStyle = 'rgba(255,255,255,0.78)';
-    ctx.beginPath();
-    if (ctx.roundRect) { ctx.roundRect(x, y, w, 22, 11); } else { ctx.rect(x, y, w, 22); }
-    ctx.fill();
-    ctx.fillStyle = '#4a2871';
+    ctx.globalAlpha = Math.max(0, 1 - t);
+    ctx.fillStyle = p.color;
+    ctx.font = 'bold ' + p.size + 'px -apple-system, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x + w / 2, y + 11);
-    ctx.restore();
+    ctx.fillText(p.text, sx, sy);
   }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'start';
+}
 
-  function render() {
-    ctx.clearRect(0, 0, W, H);
-    drawBackdrop();
-    drawClouds();
-    drawTerrain();
-    drawCastle();
-    drawSparkles();
-    drawPopups();
-    drawPlayer();
-    drawDistanceMarker();
+function drawDistancePill() {
+  const meters = Math.floor(G.p.x / 100);
+  const nextCastle = G.castles[G.castleIdx];
+  let text;
+  if (nextCastle && nextCastle.x - G.p.x < 1800) {
+    text = Math.max(0, Math.ceil((nextCastle.x - G.p.x) / 100)) + 'm to 🏰';
+  } else {
+    text = '🏰 ' + (G.islandsDone + 1) + ' · ' + Math.max(0, meters) + 'm';
   }
+  ctx.save();
+  ctx.font = 'bold 12px -apple-system, sans-serif';
+  const w = ctx.measureText(text).width + 16;
+  const x = W - w - 8;
+  const y = 8;
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, 22, 11); } else { ctx.rect(x, y, w, 22); }
+  ctx.fill();
+  ctx.fillStyle = '#4a2871';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, x + w / 2, y + 11);
+  ctx.restore();
+}
 
-  function loop(t) {
-    if (!running) return;
-    if (!lastT) lastT = t;
-    let dt = (t - lastT) / 1000;
-    lastT = t;
-    if (dt > 0.05) dt = 0.05; // clamp big frame gaps (tab switch)
-    step(dt);
-    render();
-    requestAnimationFrame(loop);
+function render() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  drawSky();
+  drawFarHills();
+  drawClouds();
+
+  // World pass under the camera transform.
+  const { x: camX, y: camY, z } = G.cam;
+  let shX = 0, shY = 0;
+  if (G.shake > 0) {
+    const mag = G.shake * 16;
+    shX = (Math.random() * 2 - 1) * mag;
+    shY = (Math.random() * 2 - 1) * mag;
   }
+  ctx.setTransform(DPR * z, 0, 0, DPR * z, DPR * (-camX * z + shX), DPR * (-camY * z + shY));
+  const x0 = camX - 20, x1 = camX + W / z + 20;
+  const bottomY = camY + H / z + 60;
+  ensureTerrain(x1 + 200);
+  drawTerrain(x0, x1, bottomY);
+  for (const c of G.castles) {
+    if (c.x > x0 - 150 && c.x < x1 + 150) drawCastle(c);
+  }
+  drawStars(x0, x1);
+  drawTrail();
+  drawSparkles();
+  drawPlayer();
 
-  // ---------------- Input ----------------
-  // Listen broadly: pointerdown anywhere in the stage, releases on window so
-  // a finger that drifts off the canvas (e.g. onto the header) doesn't drop
-  // the press. We also capture the pointer so the same finger keeps fueling
-  // the dive even while sliding.
-  function pressDown(e) {
+  // Screen-space pass: dusk tint, popups, HUD pill.
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const night = nightAmount();
+  if (night > 0.02) {
+    ctx.fillStyle = 'rgba(27,18,64,' + (night * 0.28).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+  drawPopups();
+  drawDistancePill();
+}
+
+// ---------------- Loop ----------------
+let lastT = 0;
+function loop(t) {
+  if (G.phase !== 'playing') return;
+  if (!lastT) lastT = t;
+  let dt = (t - lastT) / 1000;
+  lastT = t;
+  if (dt > 0.05) dt = 0.05; // clamp big frame gaps (tab switch)
+  update(dt);
+  if (G.phase === 'playing') render();
+  requestAnimationFrame(loop);
+}
+
+// ---------------- Input ----------------
+// pointerdown anywhere on the stage = dive; release anywhere ends it.
+function pressDown(e) {
+  e.preventDefault();
+  G.held = true;
+  ensureAudio();
+  if (G.phase === 'playing') startMusic();
+  if (e.pointerId !== undefined && stage.setPointerCapture) {
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+}
+function pressUp() { G.held = false; }
+stage.addEventListener('pointerdown', pressDown);
+window.addEventListener('pointerup', pressUp);
+window.addEventListener('pointercancel', pressUp);
+// Fallbacks for browsers without pointer events:
+stage.addEventListener('touchstart', (e) => { e.preventDefault(); G.held = true; ensureAudio(); if (G.phase === 'playing') startMusic(); }, { passive: false });
+window.addEventListener('touchend', pressUp);
+window.addEventListener('touchcancel', pressUp);
+stage.addEventListener('mousedown', (e) => { e.preventDefault(); G.held = true; ensureAudio(); if (G.phase === 'playing') startMusic(); });
+window.addEventListener('mouseup', pressUp);
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowDown') {
     e.preventDefault();
-    inputHeld = true;
+    G.held = true;
     ensureAudio();
-    startMusic();
-    if (e.pointerId !== undefined && stage.setPointerCapture) {
-      try { stage.setPointerCapture(e.pointerId); } catch (_) {}
-    }
+    if (G.phase === 'playing') startMusic();
   }
-  function pressUp(e) {
-    inputHeld = false;
+});
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowDown') { e.preventDefault(); G.held = false; }
+});
+
+// ---------------- Start / pause / game over ----------------
+function showHint(msg, ms = 1600) {
+  hint.textContent = msg;
+  hint.classList.add('show');
+  clearTimeout(showHint._t);
+  showHint._t = setTimeout(() => hint.classList.remove('show'), ms);
+}
+
+function reset() {
+  G.seed = Number.isFinite(urlSeed) ? urlSeed : (Math.random() * 1e9) | 0;
+  G.rng = mulberry32(G.seed);
+  G.pts = introPoints();
+  G.castles = [];
+  G.castleIdx = 0;
+  G.stars = [];
+  G.starLo = 0;
+  G.hillIdx = 0;
+  G.islandGen = 1;
+  G.nextIslandEnd = 9500;
+  ensureTerrain(3000);
+
+  // Spawn just past the first crest, falling onto its friendly downslope.
+  const p = G.p;
+  p.x = 60;
+  p.y = terrainY(60) - 120;
+  p.vx = 380; p.vy = 0;
+  p.gs = 380;
+  p.grounded = false;
+  p.angle = 0;
+  p.airTime = 0;
+
+  G.time = 0;
+  G.score = 0;
+  G.streak = 0;
+  G.multiplier = 1;
+  G.fever = false;
+  G.sun = 1;
+  G.islandsDone = 0;
+  G.shake = 0;
+  G.starChain = 0;
+  G.lastStarAt = -9;
+  G.hadPerfect = false;
+  G.hintFlags = {};
+  G.trail.length = 0;
+  sparkles.length = 0;
+  popups.length = 0;
+  update.acc = 0;
+
+  G.cam.z = 1;
+  G.cam.x = p.x - W * 0.34;
+  G.cam.y = terrainY(p.x) - H * 0.66;
+
+  seedClouds();
+  updateHUD();
+}
+
+function gameOver() {
+  G.phase = 'over';
+  stopMusic();
+  const finalScore = Math.floor(G.score);
+  const meters = Math.max(0, Math.floor(G.p.x / 100));
+  let newBest = false;
+  if (finalScore > G.best) {
+    G.best = finalScore;
+    newBest = true;
+    try { localStorage.setItem('puj_best', String(G.best)); } catch (e) {}
   }
-  stage.addEventListener('pointerdown', pressDown);
-  window.addEventListener('pointerup', pressUp);
-  window.addEventListener('pointercancel', pressUp);
-  // Fallback for browsers without pointer events:
-  stage.addEventListener('touchstart', (e) => { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); }, { passive: false });
-  window.addEventListener('touchend', () => { inputHeld = false; });
-  window.addEventListener('touchcancel', () => { inputHeld = false; });
-  stage.addEventListener('mousedown', (e) => { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); });
-  window.addEventListener('mouseup', () => { inputHeld = false; });
-  // Keyboard (space) for desktop play.
-  window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space') { e.preventDefault(); inputHeld = true; ensureAudio(); startMusic(); }
-  });
-  window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space') { e.preventDefault(); inputHeld = false; }
-  });
-
-  // ---------------- Game over / start ----------------
-  function showHint(msg, ms=1600) {
-    hint.textContent = msg;
-    hint.classList.add('show');
-    clearTimeout(showHint._t);
-    showHint._t = setTimeout(() => hint.classList.remove('show'), ms);
+  if (meters > G.bestMeters) {
+    G.bestMeters = meters;
+    try { localStorage.setItem('puj_bestm', String(meters)); } catch (e) {}
   }
+  finalScoreEl.textContent = finalScore;
+  bestScoreEl.textContent = G.best;
+  scoreRow.style.display = 'flex';
+  modalTitle.textContent = 'The sun set! 🌙';
+  modalText.innerHTML = 'You flew <b>' + meters + 'm</b>' +
+    (G.islandsDone > 0 ? ' and reached castle ' + G.islandsDone + '! 🏰' : '.') +
+    '<br>' + (newBest ? '🎉 New best score!' : 'Farthest flight: ' + G.bestMeters + 'm.') +
+    '<br>Hold ⬇ on the downhills to go faster!';
+  modalBtn.textContent = 'Fly Again';
+  overlay.classList.remove('hidden');
+  chime([520, 392, 330]);
+}
 
-  function gameOver() {
-    running = false;
-    stopMusic();
-    const finalScore = Math.floor(score);
-    if (finalScore > best) {
-      best = finalScore;
-      try { localStorage.setItem('puj_best', String(best)); } catch (e) {}
-    }
-    finalScoreEl.textContent = finalScore;
-    bestScoreEl.textContent = best;
-    scoreRow.style.display = 'flex';
-    const pct = Math.min(99, Math.floor(player.worldX / GOAL_DISTANCE * 100));
-    modalTitle.textContent = 'The sun set! 🌙';
-    modalText.innerHTML = 'You made it ' + pct + '% of the way to the castle. Try again to fly farther!';
-    modalBtn.textContent = 'Fly Again';
-    overlay.classList.remove('hidden');
-    chime([520, 392, 330]);
-  }
-
-  function win() {
-    running = false;
-    stopMusic();
-    const finalScore = Math.floor(score) + 1000; // bonus for finishing
-    score = finalScore;
-    if (finalScore > best) {
-      best = finalScore;
-      try { localStorage.setItem('puj_best', String(best)); } catch (e) {}
-    }
-    finalScoreEl.textContent = finalScore;
-    bestScoreEl.textContent = best;
-    scoreRow.style.display = 'flex';
-    modalTitle.textContent = 'You reached the castle! 🏰';
-    modalText.innerHTML = 'The princess and unicorn made it home before sunset. ✨';
-    modalBtn.textContent = 'Fly Again';
-    overlay.classList.remove('hidden');
-    chime([523, 659, 784, 1047, 1319]);
-  }
-
-  function start() {
-    overlay.classList.add('hidden');
-    resize();
-    reset();
-    running = true;
-    lastT = 0;
-    requestAnimationFrame(loop);
-    showHint('Hold to dive!', 2200);
-    ensureAudio();
-    startMusic();
-  }
-
-  // Resume a paused run without wiping progress.
-  function resume() {
-    paused = false;
-    overlay.classList.add('hidden');
-    resize();
-    running = true;
-    lastT = 0;
-    requestAnimationFrame(loop);
-    ensureAudio();
-    startMusic();
-  }
-
-  let paused = false;
-  modalBtn.addEventListener('click', () => (paused ? resume() : start()));
-
-  // Pause on tab hide so the dt clamp doesn't matter and the sun doesn't drain.
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && running) {
-      running = false;
-      paused = true;
-      stopMusic();
-      overlay.classList.remove('hidden');
-      modalTitle.textContent = 'Paused';
-      modalText.innerHTML = 'Take a break — your princess will wait.';
-      modalBtn.textContent = 'Resume';
-      scoreRow.style.display = 'none';
-    }
-  });
-
-  // Initial sizing + sprite build (so first paint behind splash isn't blank).
+function start() {
+  overlay.classList.add('hidden');
   resize();
-  buildUnicornSprite();
-  // Pre-render a static frame behind the splash for visual polish.
   reset();
-  render();
-})();
+  G.phase = 'playing';
+  lastT = 0;
+  requestAnimationFrame(loop);
+  showHint('Hold to dive! ⬇', 2200);
+  ensureAudio();
+  startMusic();
+}
+
+function resume() {
+  overlay.classList.add('hidden');
+  G.phase = 'playing';
+  lastT = 0;
+  requestAnimationFrame(loop);
+  ensureAudio();
+  startMusic();
+}
+
+modalBtn.addEventListener('click', () => (G.phase === 'paused' ? resume() : start()));
+
+// Pause when the tab hides so the sun doesn't drain while unseen.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && G.phase === 'playing') {
+    G.phase = 'paused';
+    stopMusic();
+    overlay.classList.remove('hidden');
+    modalTitle.textContent = 'Paused';
+    modalText.innerHTML = 'Take a break — your princess will wait.';
+    modalBtn.textContent = 'Resume';
+    scoreRow.style.display = 'none';
+  }
+});
+
+// Initial sizing + sprites + a pretty static frame behind the splash.
+buildSprites();
+reset();
+resize();
+render();
 </script>
 </body>
 </html>

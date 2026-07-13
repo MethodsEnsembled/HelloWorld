@@ -14,7 +14,7 @@ A small portal of mobile-first web games. No build step — open `index.html`.
 - **Making Dessert** (`dessert-game.html`) — memorize the recipe, then tap the steps in order. Mess it up and the kid gets a pile of suspicious goop.
 - **Pantry Panic** (`pantry-panic.html`) — a ground-up reimagining of Shelf Organization: hand-drawn SVG pantry goods, gliding drag-and-drop, and a time-chain (every match adds seconds). Chain combos, pop open boarded slots, hunt golden goods, earn stars.
 - **Shelf Organization** (`shelf-organization.html`) — slide pantry items into empty spots; three in a row clears the shelf. Beat the timer as levels add deeper shelves, locked shelves, and more clutter.
-- **Princess Unicorn Jump** (`princess-unicorn-jump.html`) — Tiny-Wings-style hills. Hold to dive, nail the downslope for a speed boost, and reach the castle before sunset.
+- **Princess Unicorn Jump** (`princess-unicorn-jump.html`) — a real Tiny-Wings-style one-touch flyer. Hold to dive and hug the hills, release to launch off the lips. Perfect dive landings chain into rainbow fever, stars line the slopes, and each island ends at a castle — keep flying as long as you can outrace the sunset.
 
 ## Run it
 

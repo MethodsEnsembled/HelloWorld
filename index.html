@@ -211,6 +211,35 @@
     color: #241208;
     font-weight: 800;
   }
+  .zap-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #101540, #070a24);
+    border: 1px solid rgba(46,230,210,0.35);
+    padding: 5px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+    position: relative;
+  }
+  .zap-art .zc {
+    border-radius: 4px;
+    background: linear-gradient(180deg, #17305c, #0f1f44);
+    border: 1px solid rgba(46,230,210,0.5);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 900; color: #bff7ef;
+  }
+  .zap-art .zc.on {
+    background: linear-gradient(180deg, #ffe66d, #ff9f1c);
+    border-color: #fff3ae;
+    color: #4a2c00;
+  }
+  .zap-art .zbolt {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    filter: drop-shadow(0 0 4px rgba(255,217,59,0.9));
+  }
   .chefcook-art {
     width: 54px; height: 54px;
     border-radius: 10px;
@@ -344,6 +373,21 @@
   </header>
 
   <main>
+    <a class="game-card" href="zapatron.html">
+      <div class="card-art">
+        <div class="zap-art">
+          <span class="zc">1</span><span class="zc on">2</span>
+          <span class="zc">4</span><span class="zc on">8</span>
+          <span class="zbolt">⚡</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Zap-a-tron</h2>
+        <p>Aliens attack with number shields! Charge the cannon with doubling power cells — 1, 2, 4, 8, 16, 32, 64 — and zap the EXACT number.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+
     <a class="game-card" href="cook-cook-chef.html">
       <div class="card-art">
         <div class="chefcook-art">

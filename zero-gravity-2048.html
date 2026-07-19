@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1033">
+<title>Zero Gravity 2048</title>
+<style>
+  :root {
+    --bg: #1a1033;
+    --panel: #2a1a4a;
+    --text: #f6f3ff;
+    --accent: #ffd166;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, var(--bg) 60%, #0a0520 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    height: 100vh;
+  }
+  header {
+    width: 100%; max-width: 520px;
+    padding: 14px 18px 6px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .back, .icon-btn {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+  }
+  .back:active, .icon-btn:active { background: var(--accent); color: #1a1033; transform: scale(0.94); }
+  h1 {
+    margin: 0; font-size: clamp(17px, 4.5vw, 25px);
+    letter-spacing: 2px; font-weight: 800;
+    background: linear-gradient(90deg, #ff5e7a, #ffd166, #06d6a0, #00b7d4, #c77dff, #ff5e7a);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: rainbowflow 7s linear infinite;
+    white-space: nowrap;
+  }
+  @keyframes rainbowflow { to { background-position: 300% 0; } }
+  .stats { display: flex; align-items: center; gap: 8px; }
+  .stat {
+    background: var(--panel); border-radius: 10px;
+    padding: 6px 12px; font-size: 11px; text-align: center;
+    min-width: 56px; line-height: 1.2;
+    opacity: 0.95;
+  }
+  .stat b { display: block; font-size: 16px; color: var(--accent); }
+
+  .play {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    min-height: 0;
+    touch-action: none;
+  }
+  #game {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  footer {
+    width: 100%; max-width: 520px;
+    padding: 8px 18px 14px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+    flex-shrink: 0;
+  }
+  .help {
+    font-size: 12px; opacity: 0.7; text-align: center; line-height: 1.45;
+  }
+  button.primary {
+    background: var(--accent); color: #1a1033;
+    border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  button.primary:active { transform: scale(0.97); }
+  button.ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  button.ghost:active { transform: scale(0.97); border-color: var(--accent); }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(10, 5, 30, 0.8);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 24px 28px;
+    text-align: center;
+    max-width: 320px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal h2 {
+    margin: 0 0 10px;
+    background: linear-gradient(90deg, #ff5e7a, #ffd166, #06d6a0, #00b7d4, #c77dff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .modal p { margin: 0 0 16px; opacity: 0.85; font-size: 14px; }
+  .modal .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a class="back" href="index.html" aria-label="Back to arcade">←</a>
+      <h1>ZERO-G 2048</h1>
+    </div>
+    <div class="stats">
+      <button class="icon-btn" id="soundBtn" aria-label="Toggle sound">🔊</button>
+      <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="stat">BEST<b id="best">0</b></div>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <canvas id="game"></canvas>
+  </div>
+
+  <footer>
+    <div class="help">
+      Swipe or use arrow keys to fire thrusters. Twins merge on contact — but the gravity is <b>off</b>,
+      so after every move tiles drift across the rows on their own. Floating <b>zero-g merges score ×2</b>. Reach <b>2048</b>!
+    </div>
+    <button class="primary" id="newGameBtn">New Game</button>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Game Over</h2>
+      <p id="modalText">No more moves.</p>
+      <div class="btn-row">
+        <button class="primary" id="modalBtn">Play Again</button>
+        <button class="ghost" id="modalAlt" style="display:none">Keep Floating</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+/* ============================================================
+   ZERO GRAVITY 2048
+   2048 with the gravity switched off: swipes slide + merge as
+   usual, but afterwards every tile may drift one cell across
+   the perpendicular axis on its own. A drift that lands on a
+   twin is a "zero-g merge" and scores double.
+   All rendering is one canvas: starfield, floating tiles,
+   rainbow particle explosions. State lives in top-level
+   bindings so it is scriptable from devtools/tests.
+   ============================================================ */
+
+const SIZE = 4;
+const WIN_VALUE = 2048;
+const DRIFT_CHANCE = 0.4;         // per-tile chance to drift after a move
+const SLIDE_MS = 130;
+const DRIFT_MS = 340;
+const PULSE_MS = 180;
+const SPAWN_MS = 190;
+const BEST_KEY = 'zg2048_best';
+const MUTE_KEY = 'zg2048_muted';
+
+const DIRS = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
+
+const G = {
+  grid: [],            // SIZE x SIZE of tile refs (or null)
+  tiles: [],
+  score: 0, best: 0,
+  over: false, won: false, keepPlaying: false,
+  phase: 'idle',       // idle | slide | drift
+  moveDir: 'left',
+  moves: 0,
+  driftCount: 0,       // lifetime tiles drifted (for curiosity/tests)
+  zeroGMerges: 0,
+  mergesThisMove: 0,
+  comboShown: false,
+  slideMerges: [],
+  driftMerges: [],
+  overAt: 0, winAt: 0, // modal timers (seconds on the anim clock)
+};
+let nextId = 1;
+let nowSec = 0;
+
+// ---------- DOM ----------
+const playEl = document.getElementById('play');
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const overlay = document.getElementById('overlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const modalBtn = document.getElementById('modalBtn');
+const modalAlt = document.getElementById('modalAlt');
+const soundBtn = document.getElementById('soundBtn');
+
+// ---------- layout / board metrics ----------
+let W = 0, H = 0, DPR = 1;
+let bS = 0, bX = 0, bY = 0, pad = 0, gap = 0, cell = 64, pitch = 0;
+let bgCv = null, boardCv = null, boardM = 0;
+const faceCache = new Map();
+
+function layout() {
+  const r = playEl.getBoundingClientRect();
+  W = Math.max(1, Math.floor(r.width));
+  H = Math.max(1, Math.floor(r.height));
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cvs.width = W * DPR;
+  cvs.height = H * DPR;
+  bS = Math.min(W * 0.94, H * 0.94, 470);
+  bX = (W - bS) / 2;
+  bY = (H - bS) / 2;
+  pad = bS * 0.032;
+  gap = bS * 0.026;
+  cell = (bS - pad * 2 - gap * (SIZE - 1)) / SIZE;
+  pitch = cell + gap;
+  faceCache.clear();
+  buildBg();
+  buildBoard();
+}
+
+function cellCenter(rr, cc) {
+  return [bX + pad + cc * pitch + cell / 2, bY + pad + rr * pitch + cell / 2];
+}
+function tileCenter(t) { return cellCenter(t.ar, t.ac); }
+
+// ---------- helpers ----------
+function rr(c, x, y, w, h, rad) {
+  const r2 = Math.min(rad, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r2, y);
+  c.arcTo(x + w, y, x + w, y + h, r2);
+  c.arcTo(x + w, y + h, x, y + h, r2);
+  c.arcTo(x, y + h, x, y, r2);
+  c.arcTo(x, y, x + w, y, r2);
+  c.closePath();
+}
+const easeCubicOut = t => 1 - Math.pow(1 - t, 3);
+function easeBackOut(t) { // gentle overshoot: the floaty zero-g settle
+  const c1 = 0.9, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ---------- prerendered background (gradient + nebulae) ----------
+function buildBg() {
+  bgCv = document.createElement('canvas');
+  bgCv.width = W * DPR; bgCv.height = H * DPR;
+  const c = bgCv.getContext('2d');
+  c.scale(DPR, DPR);
+  const g = c.createRadialGradient(W / 2, -H * 0.25, H * 0.2, W / 2, H * 0.35, H * 1.25);
+  g.addColorStop(0, '#2c1b4e');
+  g.addColorStop(0.55, '#190f33');
+  g.addColorStop(1, '#070213');
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+  // nebula blobs
+  const blobs = [
+    [0.18, 0.20, 0.45, '114,9,183', 0.16],
+    [0.85, 0.30, 0.40, '247,37,133', 0.10],
+    [0.30, 0.85, 0.42, '6,214,160', 0.09],
+    [0.75, 0.78, 0.38, '58,134,255', 0.12],
+  ];
+  c.globalCompositeOperation = 'screen';
+  for (const [nx, ny, nr, col, a] of blobs) {
+    const rad = nr * Math.max(W, H);
+    const ng = c.createRadialGradient(nx * W, ny * H, 0, nx * W, ny * H, rad);
+    ng.addColorStop(0, `rgba(${col},${a})`);
+    ng.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = ng;
+    c.fillRect(nx * W - rad, ny * H - rad, rad * 2, rad * 2);
+  }
+  c.globalCompositeOperation = 'source-over';
+  const v = c.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+  v.addColorStop(0, 'rgba(0,0,10,0)');
+  v.addColorStop(1, 'rgba(0,0,10,0.45)');
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, H);
+}
+
+// ---------- prerendered board panel + slots ----------
+function buildBoard() {
+  boardM = Math.ceil(bS * 0.06);
+  boardCv = document.createElement('canvas');
+  const size = bS + boardM * 2;
+  boardCv.width = Math.ceil(size * DPR);
+  boardCv.height = Math.ceil(size * DPR);
+  const c = boardCv.getContext('2d');
+  c.scale(DPR, DPR);
+  c.save();
+  c.shadowColor = 'rgba(123,44,191,0.55)';
+  c.shadowBlur = boardM * 0.9;
+  c.fillStyle = 'rgba(24,12,52,0.85)';
+  rr(c, boardM, boardM, bS, bS, bS * 0.05);
+  c.fill();
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,0.10)';
+  c.lineWidth = 1.5;
+  rr(c, boardM, boardM, bS, bS, bS * 0.05);
+  c.stroke();
+  for (let r = 0; r < SIZE; r++) {
+    for (let cc = 0; cc < SIZE; cc++) {
+      const x = boardM + pad + cc * pitch;
+      const y = boardM + pad + r * pitch;
+      c.fillStyle = 'rgba(255,255,255,0.05)';
+      rr(c, x, y, cell, cell, cell * 0.16);
+      c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.04)';
+      c.lineWidth = 1;
+      rr(c, x + 0.5, y + 0.5, cell - 1, cell - 1, cell * 0.16);
+      c.stroke();
+    }
+  }
+}
+
+// ---------- tile faces (cached per value) ----------
+function paletteFor(v) {
+  switch (v) {
+    case 2:    return ['#ff5e7a', '#ffb3c1', '#47041a'];
+    case 4:    return ['#ff9f1c', '#ffd166', '#3d2200'];
+    case 8:    return ['#a8e000', '#e2f88f', '#1e2e00'];
+    case 16:   return ['#06d6a0', '#7ef2cf', '#00301f'];
+    case 32:   return ['#00b7d4', '#7ee8fa', '#00272e'];
+    case 64:   return ['#3a86ff', '#8ab8ff', '#ffffff'];
+    case 128:  return ['#7209b7', '#c77dff', '#ffffff'];
+    case 256:  return ['#f72585', '#ff70ab', '#ffffff'];
+    case 512:  return ['#ff2e4d', '#ff7a8a', '#ffffff'];
+    case 1024: return ['#ff6d00', '#ffd166', '#ffffff'];
+    case 2048: return ['#ffd700', '#fff3a0', '#4a3800'];
+    default:   return ['#241b5e', '#8b5cf6', '#ffffff']; // 4096+
+  }
+}
+function hueFor(v) {
+  const m = { 2: 348, 4: 35, 8: 75, 16: 160, 32: 190, 64: 220, 128: 275, 256: 322, 512: 352, 1024: 28, 2048: 48 };
+  return m[v] !== undefined ? m[v] : (Math.log2(v) * 47) % 360;
+}
+function tileFace(v) {
+  let f = faceCache.get(v);
+  if (f) return f;
+  const m = Math.ceil(cell * 0.32);
+  const size = cell + m * 2;
+  const cv2 = document.createElement('canvas');
+  cv2.width = Math.ceil(size * DPR);
+  cv2.height = Math.ceil(size * DPR);
+  const c = cv2.getContext('2d');
+  c.scale(DPR, DPR);
+  const [g1, g2, txtCol] = paletteFor(v);
+  const rad = cell * 0.17;
+  c.save();
+  c.shadowColor = g1;
+  c.shadowBlur = cell * 0.26;
+  c.fillStyle = g1;
+  rr(c, m, m, cell, cell, rad);
+  c.fill();
+  c.restore();
+  const gr = c.createLinearGradient(m, m, m + cell, m + cell);
+  gr.addColorStop(0, g1);
+  gr.addColorStop(1, g2);
+  c.fillStyle = gr;
+  rr(c, m, m, cell, cell, rad);
+  c.fill();
+  // gloss
+  const gl = c.createLinearGradient(0, m, 0, m + cell * 0.6);
+  gl.addColorStop(0, 'rgba(255,255,255,0.34)');
+  gl.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = gl;
+  rr(c, m + cell * 0.06, m + cell * 0.05, cell * 0.88, cell * 0.52, rad * 0.85);
+  c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.28)';
+  c.lineWidth = 1.5;
+  rr(c, m + 0.75, m + 0.75, cell - 1.5, cell - 1.5, rad);
+  c.stroke();
+  const s = String(v);
+  const fs = cell * (s.length <= 2 ? 0.44 : s.length === 3 ? 0.36 : s.length === 4 ? 0.30 : 0.24);
+  c.font = '900 ' + fs + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.shadowColor = 'rgba(0,0,0,0.35)';
+  c.shadowBlur = 4;
+  c.shadowOffsetY = 1.5;
+  c.fillStyle = txtCol;
+  c.fillText(s, m + cell / 2, m + cell / 2 + fs * 0.05);
+  f = { cv: cv2, m, size };
+  faceCache.set(v, f);
+  return f;
+}
+
+// ---------- starfield ----------
+const stars = [];
+(function initStars() {
+  const cols = ['#ffffff', '#ffffff', '#ffffff', '#ffd6f5', '#b3f0ff'];
+  for (let i = 0; i < 110; i++) {
+    stars.push({
+      x: Math.random(), y0: Math.random(),
+      l: 1 + Math.random() * 2,             // parallax layer
+      s: 0.6 + Math.random() * 1.5,
+      tw: 1.5 + Math.random() * 3,
+      ph: Math.random() * Math.PI * 2,
+      col: cols[Math.floor(Math.random() * cols.length)],
+    });
+  }
+})();
+let shootTimer = 4;
+let shoot = null; // {x,y,vx,vy,life,max}
+
+function drawStars(now) {
+  for (const st of stars) {
+    // zero-g: stars drift slowly upward and wrap
+    const y = ((st.y0 - now * 0.0035 * st.l) % 1 + 1) % 1 * H;
+    const x = st.x * W;
+    const a = (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now * st.tw + st.ph))) * (0.25 + 0.18 * st.l);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = st.col;
+    const sz = st.s * (0.5 + st.l * 0.4);
+    if (sz < 1.4) ctx.fillRect(x, y, sz, sz);
+    else { ctx.beginPath(); ctx.arc(x, y, sz / 2, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+  if (shoot) {
+    const k = shoot.life / shoot.max;
+    const tx = shoot.x - shoot.vx * 0.16, ty = shoot.y - shoot.vy * 0.16;
+    const lg = ctx.createLinearGradient(shoot.x, shoot.y, tx, ty);
+    lg.addColorStop(0, 'rgba(255,255,255,' + (0.9 * (1 - k)) + ')');
+    lg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = lg;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(shoot.x, shoot.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+  }
+}
+function updateStars(dt) {
+  shootTimer -= dt;
+  if (shootTimer <= 0 && !shoot) {
+    shootTimer = 6 + Math.random() * 8;
+    const fromLeft = Math.random() < 0.5;
+    shoot = {
+      x: fromLeft ? -20 : W + 20,
+      y: Math.random() * H * 0.4,
+      vx: (fromLeft ? 1 : -1) * (380 + Math.random() * 220),
+      vy: 120 + Math.random() * 120,
+      life: 0, max: 0.9,
+    };
+  }
+  if (shoot) {
+    shoot.life += dt;
+    shoot.x += shoot.vx * dt;
+    shoot.y += shoot.vy * dt;
+    if (shoot.life >= shoot.max) shoot = null;
+  }
+}
+
+// ---------- particles ----------
+const parts = [];
+const MAXP = 380;
+const glowSprites = [];
+(function buildGlowSprites() {
+  for (let i = 0; i <= 12; i++) { // 12 hue buckets + white at [12]
+    const cv2 = document.createElement('canvas');
+    cv2.width = cv2.height = 32;
+    const c = cv2.getContext('2d');
+    const col = i === 12 ? '255,255,255' : hslToRgbStr(i * 30, 100, 68);
+    const g = c.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, `rgba(${col},0.9)`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = g;
+    c.fillRect(0, 0, 32, 32);
+    glowSprites.push(cv2);
+  }
+})();
+function hslToRgbStr(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)].join(',');
+}
+function addPart(p) {
+  if (parts.length >= MAXP) parts.shift();
+  p.life = 0;
+  parts.push(p);
+}
+function explode(x, y, hue, power) {
+  addPart({ kind: 'ring', x, y, r0: cell * 0.18, grow: cell * (0.8 + 0.4 * power), max: 0.45, hue });
+  const n = Math.min(56, 13 + power * 11);
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = (60 + Math.random() * 190) * (0.75 + power * 0.3);
+    const hj = (power >= 2 && Math.random() < 0.5)
+      ? Math.random() * 360
+      : (hue + Math.random() * 44 - 22 + 360) % 360;
+    addPart({
+      kind: 'glow', x, y,
+      vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      s: cell * (0.14 + Math.random() * 0.22) * (0.9 + 0.18 * power),
+      max: 0.45 + Math.random() * 0.5,
+      hue: hj, a: 0.9,
+    });
+  }
+  for (let i = 0; i < 3 + power * 2; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 40 + Math.random() * 130;
+    addPart({
+      kind: 'cross', x, y,
+      vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      s: cell * (0.16 + Math.random() * 0.14),
+      max: 0.5 + Math.random() * 0.35,
+      hue: (hue + Math.random() * 60 - 30 + 360) % 360,
+      rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 6,
+    });
+  }
+  if (power >= 2) {
+    addPart({ kind: 'rainbow', x, y, r0: cell * 0.22, grow: cell * 1.7, max: 0.7 });
+  }
+  shakeMag = Math.min(14, shakeMag + 1.1 * power + (power >= 3 ? 2.5 : 0));
+}
+function spawnSparkle(x, y) {
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 20 + Math.random() * 60;
+    addPart({
+      kind: 'glow', x, y,
+      vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      s: cell * (0.08 + Math.random() * 0.1),
+      max: 0.4 + Math.random() * 0.3,
+      hue: -1, a: 0.7, // white
+    });
+  }
+}
+function spawnConfetti(n) {
+  for (let i = 0; i < n; i++) {
+    addPart({
+      kind: 'confetti',
+      x: bX + Math.random() * bS,
+      y: bY - 20 - Math.random() * 60,
+      vx: (Math.random() - 0.5) * 50,
+      vy: 55 + Math.random() * 95,
+      w: 5 + Math.random() * 4, h: 8 + Math.random() * 5,
+      rot: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 7,
+      hue: Math.random() * 360,
+      max: 2.4 + Math.random() * 1.8,
+      ph: Math.random() * 6,
+    });
+  }
+}
+function spawnTrail(t) {
+  const [x, y] = tileCenter(t);
+  addPart({
+    kind: 'glow',
+    x: x + (Math.random() - 0.5) * cell * 0.4,
+    y: y + (Math.random() - 0.5) * cell * 0.4,
+    vx: (Math.random() - 0.5) * 24, vy: (Math.random() - 0.5) * 24,
+    s: cell * 0.1, max: 0.45, hue: hueFor(t.v), a: 0.5,
+  });
+}
+function updateParts(dt) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life += dt;
+    if (p.life >= p.max) { parts.splice(i, 1); continue; }
+    if (p.kind === 'glow' || p.kind === 'cross') {
+      const damp = Math.max(0, 1 - 1.9 * dt); // zero-g: drift and fade, no fall
+      p.vx *= damp; p.vy *= damp;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.kind === 'cross') p.rot += p.vr * dt;
+    } else if (p.kind === 'confetti') {
+      p.x += p.vx * dt + Math.sin(p.life * 2.5 + p.ph) * 32 * dt;
+      p.y += p.vy * dt;
+      p.rot += p.vr * dt;
+    }
+  }
+}
+function drawParts(now) {
+  // additive pass: glows, crosses, rings, rainbows
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of parts) {
+    const k = p.life / p.max;
+    if (p.kind === 'glow') {
+      const a = (1 - k) * (p.a || 0.9);
+      const s = p.s * (1 - k * 0.35);
+      const spr = p.hue < 0 ? glowSprites[12] : glowSprites[Math.floor(((p.hue % 360) + 360) % 360 / 30)];
+      ctx.globalAlpha = a;
+      ctx.drawImage(spr, p.x - s / 2, p.y - s / 2, s, s);
+    } else if (p.kind === 'cross') {
+      const a = (1 - k);
+      ctx.globalAlpha = a;
+      ctx.strokeStyle = 'hsl(' + p.hue + ',100%,80%)';
+      ctx.lineWidth = 1.6;
+      const s = p.s * (1 - k * 0.3);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.beginPath();
+      ctx.moveTo(-s / 2, 0); ctx.lineTo(s / 2, 0);
+      ctx.moveTo(0, -s / 2); ctx.lineTo(0, s / 2);
+      ctx.stroke();
+      ctx.restore();
+    } else if (p.kind === 'ring') {
+      const r2 = p.r0 + easeCubicOut(k) * p.grow;
+      ctx.globalAlpha = (1 - k) * 0.85;
+      ctx.strokeStyle = 'hsl(' + p.hue + ',100%,75%)';
+      ctx.lineWidth = 3 * (1 - k) + 1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r2, 0, 7);
+      ctx.stroke();
+    } else if (p.kind === 'rainbow') {
+      const base = p.r0 + easeCubicOut(k) * p.grow;
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 7; i++) {
+        ctx.globalAlpha = (1 - k) * 0.5;
+        ctx.strokeStyle = 'hsl(' + (i * 45) + ',100%,62%)';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, base + i * 3.2, 0, 7);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  // confetti pass
+  for (const p of parts) {
+    if (p.kind !== 'confetti') continue;
+    const k = p.life / p.max;
+    ctx.globalAlpha = k > 0.75 ? (1 - k) / 0.25 : 1;
+    ctx.fillStyle = 'hsl(' + ((p.hue + now * 60) % 360) + ',95%,62%)';
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- floating score popups ----------
+const pops = [];
+function addPopup(x, y, txt, opt) {
+  opt = opt || {};
+  pops.push({ x, y, txt, sub: opt.sub || null, hue: opt.hue || 0, rainbow: !!opt.rainbow, big: !!opt.big, life: 0, max: opt.big ? 1.2 : 0.95 });
+  if (pops.length > 14) pops.shift();
+}
+function updatePops(dt) {
+  for (let i = pops.length - 1; i >= 0; i--) {
+    pops[i].life += dt;
+    if (pops[i].life >= pops[i].max) pops.splice(i, 1);
+  }
+}
+function drawPops(now) {
+  for (const p of pops) {
+    const k = p.life / p.max;
+    const a = 1 - k * k;
+    const y = p.y - easeCubicOut(k) * cell * 0.7;
+    const sc = k < 0.12 ? 0.4 + 0.6 * (k / 0.12) : 1;
+    const fs = (p.big ? cell * 0.34 : cell * 0.26) * sc;
+    ctx.font = '900 ' + fs + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = a;
+    if (p.rainbow) {
+      const w2 = ctx.measureText(p.txt).width / 2 + 4;
+      const lg = ctx.createLinearGradient(p.x - w2, y, p.x + w2, y);
+      for (let i = 0; i <= 4; i++) lg.addColorStop(i / 4, 'hsl(' + ((now * 160 + i * 70) % 360) + ',100%,64%)');
+      ctx.fillStyle = lg;
+      ctx.shadowColor = 'rgba(255,255,255,0.6)';
+      ctx.shadowBlur = 14;
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'hsl(' + p.hue + ',100%,60%)';
+      ctx.shadowBlur = 12;
+    }
+    ctx.fillText(p.txt, p.x, y);
+    if (p.sub) {
+      ctx.font = '800 ' + (fs * 0.55) + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillText(p.sub, p.x, y + fs * 0.8);
+    }
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- screen shake ----------
+let shakeMag = 0;
+function shakeOffset(dt) {
+  shakeMag *= Math.pow(0.002, dt);
+  if (shakeMag < 0.05) { shakeMag = 0; return [0, 0]; }
+  return [(Math.random() - 0.5) * 2 * shakeMag, (Math.random() - 0.5) * 2 * shakeMag];
+}
+
+// ---------- tiles ----------
+function makeTile(r, c, v) {
+  return {
+    id: nextId++, r, c, v,
+    ar: r, ac: c,
+    fromR: r, fromC: c, toR: r, toC: c,
+    t: 1, dur: 1, kind: null, curve: 0,
+    spawnT: -1, pulseT: -1,
+    phase: Math.random() * Math.PI * 2,
+    bobAmp: 1,
+    trailAcc: 0,
+    merged: false, driftMerged: false, dying: false,
+  };
+}
+function startAnim(t, toR, toC, kind) {
+  t.fromR = t.ar; t.fromC = t.ac;
+  t.toR = toR; t.toC = toC;
+  t.t = 0;
+  t.kind = kind;
+  if (kind === 'drift') {
+    t.dur = DRIFT_MS * (0.85 + Math.random() * 0.4);
+    t.curve = Math.random() * 0.26 - 0.13;
+  } else {
+    t.dur = SLIDE_MS;
+    t.curve = 0;
+  }
+}
+function updateTiles(dt) {
+  let active = false;
+  for (const t of G.tiles) {
+    if (t.kind) {
+      t.t = Math.min(1, t.t + (dt * 1000) / t.dur);
+      const e = t.kind === 'slide' ? easeCubicOut(t.t) : easeBackOut(t.t);
+      t.ar = t.fromR + (t.toR - t.fromR) * e;
+      t.ac = t.fromC + (t.toC - t.fromC) * e;
+      if (t.kind === 'drift') {
+        const b = Math.sin(Math.PI * t.t) * t.curve;
+        if (t.toR !== t.fromR) t.ac += b; else t.ar += b;
+        t.trailAcc += dt;
+        if (t.trailAcc > 0.05) { t.trailAcc = 0; spawnTrail(t); }
+      }
+      if (t.t >= 1) { t.kind = null; t.ar = t.toR; t.ac = t.toC; }
+      else active = true;
+    }
+    t.bobAmp += ((t.kind ? 0 : 1) - t.bobAmp) * Math.min(1, dt * 5);
+    if (t.pulseT >= 0) { t.pulseT += dt * 1000; if (t.pulseT > PULSE_MS) t.pulseT = -1; }
+    if (t.spawnT >= 0) { t.spawnT += dt * 1000; if (t.spawnT > SPAWN_MS) t.spawnT = -1; }
+  }
+  if (!active) {
+    if (G.phase === 'slide') completeSlide();
+    else if (G.phase === 'drift') completeDrift();
+  }
+}
+function drawTiles(now) {
+  const list = G.tiles.length > 1
+    ? [...G.tiles].sort((a, b) => (a.dying ? 0 : 1) - (b.dying ? 0 : 1) || a.id - b.id)
+    : G.tiles;
+  for (const t of list) {
+    const [x, y] = tileCenter(t);
+    const bob = t.bobAmp;
+    const ox = Math.sin(now * 1.35 + t.phase) * 2.3 * bob;
+    const oy = Math.cos(now * 1.75 + t.phase * 1.3) * 2.6 * bob;
+    let rot = Math.sin(now * 0.9 + t.phase) * 0.035 * bob;
+    if (t.kind === 'drift') rot += Math.sin(t.t * Math.PI * 2) * 0.09;
+    let sc = 1;
+    if (t.spawnT >= 0) {
+      const k = t.spawnT / SPAWN_MS;
+      sc = k < 0.6 ? 0.25 + 0.87 * easeCubicOut(k / 0.6) : 1.12 - 0.12 * ((k - 0.6) / 0.4);
+    }
+    if (t.pulseT >= 0) {
+      const k = t.pulseT / PULSE_MS;
+      sc *= 1 + 0.26 * Math.sin(Math.PI * k);
+    }
+    ctx.save();
+    ctx.translate(x + ox, y + oy);
+    ctx.rotate(rot);
+    ctx.scale(sc, sc);
+    const f = tileFace(t.v);
+    ctx.drawImage(f.cv, -cell / 2 - f.m, -cell / 2 - f.m, f.size, f.size);
+    if (t.v >= 1024) {
+      // live rainbow halo for the top tiles
+      const h0 = (now * 140 + t.phase * 57) % 360;
+      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(now * 4 + t.phase);
+      ctx.strokeStyle = 'hsl(' + h0 + ',100%,65%)';
+      ctx.lineWidth = 2.5;
+      rr(ctx, -cell / 2 - 2, -cell / 2 - 2, cell + 4, cell + 4, cell * 0.19);
+      ctx.stroke();
+      if (t.v >= 2048) {
+        ctx.strokeStyle = 'hsl(' + ((h0 + 120) % 360) + ',100%,65%)';
+        ctx.lineWidth = 1.5;
+        rr(ctx, -cell / 2 - 5.5, -cell / 2 - 5.5, cell + 11, cell + 11, cell * 0.22);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+}
+
+// ---------- game logic ----------
+function linesFor(dir) {
+  const lines = [];
+  for (let i = 0; i < SIZE; i++) {
+    const line = [];
+    for (let j = 0; j < SIZE; j++) {
+      if (dir === 'up') line.push([j, i]);
+      else if (dir === 'down') line.push([SIZE - 1 - j, i]);
+      else if (dir === 'left') line.push([i, j]);
+      else line.push([i, SIZE - 1 - j]);
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+function move(dir) {
+  if (!DIRS[dir]) return false;
+  if (G.phase !== 'idle') fastForward();
+  if (G.over || G.phase !== 'idle') return false;
+  for (const t of G.tiles) { t.merged = false; t.driftMerged = false; }
+  G.moveDir = dir;
+  G.mergesThisMove = 0;
+  G.comboShown = false;
+  G.slideMerges = [];
+  let moved = false;
+  for (const line of linesFor(dir)) {
+    const placed = [];
+    for (const [r, c] of line) {
+      const t = G.grid[r][c];
+      if (!t) continue;
+      const prev = placed[placed.length - 1];
+      if (prev && prev.v === t.v && !prev.merged) {
+        prev.merged = true;
+        t.dying = true;
+        G.grid[r][c] = null;
+        startAnim(t, prev.r, prev.c, 'slide');
+        G.slideMerges.push({ survivor: prev, value: t.v * 2 });
+        moved = true;
+      } else {
+        const [nr, nc] = line[placed.length];
+        placed.push(t);
+        if (nr !== r || nc !== c) {
+          G.grid[r][c] = null;
+          G.grid[nr][nc] = t;
+          t.r = nr; t.c = nc;
+          startAnim(t, nr, nc, 'slide');
+          moved = true;
+        }
+      }
+    }
+  }
+  if (!moved) {
+    shakeMag = Math.min(shakeMag + 2.5, 5);
+    sndInvalid();
+    return false;
+  }
+  sndSlide();
+  G.phase = 'slide';
+  return true;
+}
+
+function completeSlide() {
+  if (G.phase !== 'slide') return;
+  applyMerges(G.slideMerges, false);
+  G.slideMerges = [];
+  planDrift();
+}
+
+function applyMerges(list, isDrift) {
+  for (const m of list) {
+    const s = m.survivor;
+    s.v = m.value;
+    s.pulseT = 0;
+    const gained = isDrift ? m.value * 2 : m.value;
+    G.score += gained;
+    G.mergesThisMove++;
+    const [x, y] = tileCenter(s);
+    const power = m.value >= 512 ? 3 : m.value >= 64 ? 2 : 1;
+    explode(x, y, hueFor(m.value), isDrift ? Math.min(3, power + 1) : power);
+    addPopup(x, y - cell * 0.25, '+' + gained, {
+      hue: hueFor(m.value),
+      sub: isDrift ? '✦ ZERO-G ×2 ✦' : null,
+      big: isDrift,
+    });
+    sndMerge(m.value, isDrift);
+  }
+  if (list.length) {
+    G.tiles = G.tiles.filter(t => !t.dying);
+    if (G.score > G.best) {
+      G.best = G.score;
+      try { localStorage.setItem(BEST_KEY, String(G.best)); } catch (e) {}
+    }
+    updateHud();
+    if (G.mergesThisMove >= 2 && !G.comboShown) {
+      G.comboShown = true;
+      addPopup(bX + bS / 2, bY + bS * 0.16, 'COMBO ×' + G.mergesThisMove, { rainbow: true, big: true });
+      spawnConfetti(22);
+    }
+  }
+}
+
+// The zero-gravity twist: after the slide settles, every tile may drift
+// one cell along the axis PERPENDICULAR to the swipe. Drifting onto a
+// twin merges it for double points.
+function planDrift() {
+  const [, mdc] = DIRS[G.moveDir];
+  const pr = mdc !== 0 ? 1 : 0; // horizontal swipe -> tiles change rows
+  const pc = mdc !== 0 ? 0 : 1; // vertical swipe -> tiles change columns
+  G.driftMerges = [];
+  let any = false;
+  const order = shuffle([...G.tiles]);
+  for (const t of order) {
+    if (t.dying) continue;
+    if (Math.random() >= DRIFT_CHANCE) continue;
+    const s0 = Math.random() < 0.5 ? -1 : 1;
+    for (const s of [s0, -s0]) {
+      const nr = t.r + pr * s, nc = t.c + pc * s;
+      if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE) continue;
+      const occ = G.grid[nr][nc];
+      if (!occ) {
+        G.grid[t.r][t.c] = null;
+        G.grid[nr][nc] = t;
+        t.r = nr; t.c = nc;
+        startAnim(t, nr, nc, 'drift');
+        any = true;
+        G.driftCount++;
+      } else if (occ !== t && occ.v === t.v && !occ.dying && !occ.driftMerged && !t.driftMerged) {
+        t.dying = true;
+        occ.driftMerged = true;
+        G.grid[t.r][t.c] = null;
+        startAnim(t, nr, nc, 'drift');
+        G.driftMerges.push({ survivor: occ, value: t.v * 2 });
+        any = true;
+        G.driftCount++;
+        G.zeroGMerges++;
+      } else {
+        continue; // blocked: try the other side
+      }
+      break;
+    }
+  }
+  G.phase = 'drift';
+  if (!any) completeDrift();
+}
+
+function completeDrift() {
+  if (G.phase !== 'drift') return;
+  applyMerges(G.driftMerges, true);
+  G.driftMerges = [];
+  finishMove();
+}
+
+function finishMove() {
+  spawnTile();
+  G.moves++;
+  updateHud();
+  G.phase = 'idle';
+  if (!G.won && G.tiles.some(t => t.v >= WIN_VALUE)) {
+    G.won = true;
+    celebrateWin();
+  } else if (!movesAvailable()) {
+    G.over = true;
+    G.overAt = nowSec + 0.75;
+  }
+}
+
+function fastForward() {
+  let guard = 0;
+  while (G.phase !== 'idle' && guard++ < 8) {
+    for (const t of G.tiles) {
+      if (t.kind) { t.t = 1; t.kind = null; t.ar = t.toR; t.ac = t.toC; }
+    }
+    if (G.phase === 'slide') completeSlide();
+    else if (G.phase === 'drift') completeDrift();
+    else break;
+  }
+}
+
+function spawnTile() {
+  const empty = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (!G.grid[r][c]) empty.push([r, c]);
+  if (!empty.length) return null;
+  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  const t = makeTile(r, c, Math.random() < 0.9 ? 2 : 4);
+  t.spawnT = 0;
+  G.grid[r][c] = t;
+  G.tiles.push(t);
+  const [x, y] = cellCenter(r, c);
+  spawnSparkle(x, y);
+  sndSpawn();
+  return t;
+}
+
+function movesAvailable() {
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++) {
+      const t = G.grid[r][c];
+      if (!t) return true;
+      if (c + 1 < SIZE && G.grid[r][c + 1] && G.grid[r][c + 1].v === t.v) return true;
+      if (r + 1 < SIZE && G.grid[r + 1][c] && G.grid[r + 1][c].v === t.v) return true;
+    }
+  return false;
+}
+
+function celebrateWin() {
+  spawnConfetti(150);
+  for (let i = 0; i < 3; i++) {
+    explode(
+      bX + bS * (0.25 + Math.random() * 0.5),
+      bY + bS * (0.25 + Math.random() * 0.5),
+      Math.random() * 360, 3
+    );
+  }
+  shakeMag = Math.min(14, shakeMag + 7);
+  sndWin();
+  G.winAt = nowSec + 1.0;
+}
+
+function newGame() {
+  G.grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  G.tiles = [];
+  G.score = 0;
+  G.over = false; G.won = false; G.keepPlaying = false;
+  G.phase = 'idle';
+  G.moves = 0;
+  G.mergesThisMove = 0;
+  G.slideMerges = []; G.driftMerges = [];
+  G.overAt = 0; G.winAt = 0;
+  parts.length = 0;
+  pops.length = 0;
+  shakeMag = 0;
+  spawnTile();
+  spawnTile();
+  updateHud();
+  hideModal();
+}
+
+// ---------- test/debug hooks (top-level on purpose) ----------
+function debugSetBoard(rows) {
+  fastForward();
+  G.grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  G.tiles = [];
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++) {
+      const v = rows[r] && rows[r][c];
+      if (v) {
+        const t = makeTile(r, c, v);
+        G.grid[r][c] = t;
+        G.tiles.push(t);
+      }
+    }
+  G.phase = 'idle';
+  G.over = false;
+  updateHud();
+}
+function debugCheckOver() {
+  if (!movesAvailable()) { G.over = true; G.overAt = nowSec + 0.2; }
+  return G.over;
+}
+
+// ---------- HUD / modal ----------
+function updateHud() {
+  scoreEl.textContent = G.score;
+  bestEl.textContent = G.best;
+}
+function showModal(title, text, withAlt) {
+  modalTitle.textContent = title;
+  modalText.textContent = text;
+  modalAlt.style.display = withAlt ? '' : 'none';
+  overlay.classList.add('show');
+}
+function hideModal() {
+  overlay.classList.remove('show');
+}
+
+// ---------- audio (all synthesized, lazily started) ----------
+let audioCtx = null, master = null, audioFailed = false;
+let muted = false;
+try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+function initAudio() {
+  if (audioCtx || audioFailed) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    master = audioCtx.createGain();
+    master.gain.value = 0.22;
+    master.connect(audioCtx.destination);
+  } catch (e) { audioFailed = true; }
+}
+function tone(opt) {
+  if (!audioCtx || muted) return;
+  try {
+    const t0 = audioCtx.currentTime + (opt.delay || 0);
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(opt.f, t0);
+    if (opt.f2) o.frequency.exponentialRampToValueAtTime(opt.f2, t0 + opt.dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(opt.gain || 0.2, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+    o.connect(g); g.connect(master);
+    o.start(t0);
+    o.stop(t0 + opt.dur + 0.03);
+  } catch (e) {}
+}
+const NOTES = [262, 294, 330, 392, 440, 523, 587, 659, 784, 880, 1047, 1175];
+function sndSlide() { tone({ f: 150, f2: 90, type: 'triangle', dur: 0.08, gain: 0.12 }); }
+function sndInvalid() { tone({ f: 120, f2: 78, type: 'square', dur: 0.08, gain: 0.07 }); }
+function sndSpawn() { tone({ f: 660, f2: 880, dur: 0.05, gain: 0.045 }); }
+function sndMerge(v, isDrift) {
+  const idx = Math.max(0, Math.min(NOTES.length - 1, Math.log2(v) - 2));
+  const f = NOTES[Math.floor(idx)];
+  tone({ f, dur: 0.14, gain: 0.2, type: 'triangle' });
+  tone({ f: f * 1.5, dur: 0.16, gain: 0.14, delay: 0.03 });
+  if (isDrift) {
+    tone({ f: f * 2, dur: 0.18, gain: 0.13, delay: 0.07 });
+    tone({ f: f * 2.5, dur: 0.2, gain: 0.1, delay: 0.11 });
+  }
+}
+function sndWin() {
+  const arp = [523, 659, 784, 1047, 1319];
+  arp.forEach((f, i) => tone({ f, dur: 0.24, gain: 0.18, type: 'triangle', delay: i * 0.09 }));
+  tone({ f: 2093, dur: 0.5, gain: 0.08, delay: 0.45 });
+}
+function sndLose() {
+  tone({ f: 220, f2: 110, type: 'sawtooth', dur: 0.5, gain: 0.1 });
+  tone({ f: 165, f2: 82, type: 'sawtooth', dur: 0.6, gain: 0.09, delay: 0.12 });
+}
+function updateSoundBtn() {
+  soundBtn.textContent = muted ? '🔇' : '🔊';
+  soundBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+}
+soundBtn.addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
+  if (!muted) { initAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); }
+  updateSoundBtn();
+});
+
+// ---------- input ----------
+function handleSwipe(dx, dy) {
+  const dist = Math.hypot(dx, dy);
+  if (dist < 24) return;
+  if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 'right' : 'left');
+  else move(dy > 0 ? 'down' : 'up');
+}
+let touchStart = null;
+document.addEventListener('touchstart', e => {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (e.target.closest('button') || e.target.closest('a')) return;
+  const t = e.changedTouches[0];
+  touchStart = { x: t.clientX, y: t.clientY };
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!e.target.closest('button') && !e.target.closest('a')) e.preventDefault();
+}, { passive: false });
+document.addEventListener('touchend', e => {
+  if (!touchStart) return;
+  const t = e.changedTouches[0];
+  handleSwipe(t.clientX - touchStart.x, t.clientY - touchStart.y);
+  touchStart = null;
+}, { passive: true });
+
+let mouseStart = null;
+document.addEventListener('mousedown', e => {
+  initAudio();
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (e.target.closest('button') || e.target.closest('a')) return;
+  mouseStart = { x: e.clientX, y: e.clientY };
+});
+document.addEventListener('mouseup', e => {
+  if (!mouseStart) return;
+  handleSwipe(e.clientX - mouseStart.x, e.clientY - mouseStart.y);
+  mouseStart = null;
+});
+
+window.addEventListener('keydown', e => {
+  initAudio();
+  const k = e.key;
+  if (k === 'ArrowUp' || k === 'w' || k === 'W') { move('up'); e.preventDefault(); }
+  else if (k === 'ArrowRight' || k === 'd' || k === 'D') { move('right'); e.preventDefault(); }
+  else if (k === 'ArrowDown' || k === 's' || k === 'S') { move('down'); e.preventDefault(); }
+  else if (k === 'ArrowLeft' || k === 'a' || k === 'A') { move('left'); e.preventDefault(); }
+  else if (k === 'n' || k === 'N') newGame();
+  else if (k === 'm' || k === 'M') soundBtn.click();
+});
+
+document.getElementById('newGameBtn').addEventListener('click', newGame);
+modalBtn.addEventListener('click', newGame);
+modalAlt.addEventListener('click', () => {
+  G.keepPlaying = true;
+  hideModal();
+});
+
+// ---------- main loop ----------
+let lastTs = 0;
+function frame(ts) {
+  const now = ts / 1000;
+  const dt = Math.min(0.05, Math.max(0.0001, now - lastTs));
+  lastTs = now;
+  nowSec = now;
+
+  updateTiles(dt);
+  updateParts(dt);
+  updatePops(dt);
+  updateStars(dt);
+
+  if (G.overAt && now >= G.overAt) {
+    G.overAt = 0;
+    sndLose();
+    showModal('LOST IN SPACE', 'No more moves. Score: ' + G.score, false);
+  }
+  if (G.winAt && now >= G.winAt) {
+    G.winAt = 0;
+    showModal('2048 IN ZERO-G! 🌈', 'You built 2048 with the gravity switched off. Score: ' + G.score, true);
+  }
+
+  // draw
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.drawImage(bgCv, 0, 0, W, H);
+  drawStars(now);
+  const [sx, sy] = shakeOffset(dt);
+  ctx.save();
+  ctx.translate(sx, sy);
+  ctx.drawImage(boardCv, bX - boardM, bY - boardM, bS + boardM * 2, bS + boardM * 2);
+  drawTiles(now);
+  drawParts(now);
+  drawPops(now);
+  ctx.restore();
+
+  requestAnimationFrame(frame);
+}
+
+// ---------- boot ----------
+try { G.best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) {}
+updateSoundBtn();
+layout();
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 100));
+newGame();
+requestAnimationFrame(ts => { lastTs = ts / 1000; requestAnimationFrame(frame); });
+</script>
+</body>
+</html>

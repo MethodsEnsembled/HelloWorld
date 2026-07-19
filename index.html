@@ -348,6 +348,40 @@
     box-shadow: inset 0 -2px 0 #7a4d24;
     font-size: 11px; line-height: 1;
   }
+  /* Zero Gravity 2048: floating tiles adrift in a starfield */
+  .zg-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: radial-gradient(circle at 70% 18%, #3a2a6a 0%, #150a33 55%, #060112 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  .zg-art .zgstar {
+    position: absolute; top: 8px; left: 10px;
+    width: 2px; height: 2px; border-radius: 50%;
+    background: #fff;
+    box-shadow: 26px 4px 0 #ffd6f5, 12px 30px 0 #b3f0ff, 36px 22px 0 #fff,
+                4px 20px 0 rgba(255,255,255,0.7), 30px 38px 0 rgba(255,255,255,0.6);
+  }
+  .zg-art .zgt {
+    position: absolute;
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 900; color: #fff;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.35);
+  }
+  .zg-art .zgt.a { left: 5px;  top: 7px;    transform: rotate(-14deg); background: linear-gradient(135deg, #ff5e7a, #ffb3c1); box-shadow: 0 0 7px rgba(255,94,122,0.8); }
+  .zg-art .zgt.b { right: 6px; top: 13px;   transform: rotate(11deg);  background: linear-gradient(135deg, #ff9f1c, #ffd166); box-shadow: 0 0 7px rgba(255,159,28,0.8); color: #3d2200; }
+  .zg-art .zgt.c { left: 10px; bottom: 6px; transform: rotate(9deg);   background: linear-gradient(135deg, #00b7d4, #7ee8fa); box-shadow: 0 0 7px rgba(0,183,212,0.8); color: #00272e; }
+  .zg-art .zgt.d { right: 9px; bottom: 10px; transform: rotate(-19deg); background: linear-gradient(135deg, #7209b7, #c77dff); box-shadow: 0 0 7px rgba(199,125,255,0.8); font-size: 7px; }
+  .zg-art .zgboom {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11px;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.9));
+  }
+
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -373,6 +407,24 @@
   </header>
 
   <main>
+    <a class="game-card" href="zero-gravity-2048.html">
+      <div class="card-art">
+        <div class="zg-art">
+          <span class="zgstar"></span>
+          <span class="zgt a">2</span>
+          <span class="zgt b">4</span>
+          <span class="zgt c">8</span>
+          <span class="zgt d">16</span>
+          <span class="zgboom">✨</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Zero Gravity 2048</h2>
+        <p>2048 with the gravity switched off — after every swipe the tiles drift across the rows on their own. Zero-g merges score ×2 in a storm of rainbows and explosions.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+
     <a class="game-card" href="zapatron.html">
       <div class="card-art">
         <div class="zap-art">

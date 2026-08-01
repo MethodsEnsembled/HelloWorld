@@ -284,6 +284,43 @@
     position: absolute; left: 4px; bottom: 3px;
     font-size: 11px;
   }
+  .ti-art {
+    width: 54px; height: 54px;
+    border-radius: 8px 8px 12px 12px;
+    background: linear-gradient(170deg, #34373f, #17181c);
+    border: 1px solid #0c0d10;
+    padding: 5px 6px 4px;
+    display: flex; flex-direction: column; gap: 4px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .ti-art .tscreen {
+    height: 22px;
+    background: #f3f5f2;
+    border-radius: 2px;
+    border-top: 3px solid #1e3050;
+    position: relative;
+    overflow: hidden;
+  }
+  .ti-art .tscreen::before {
+    /* tiny parabola */
+    content: ""; position: absolute; left: 50%; bottom: -14px;
+    width: 22px; height: 22px;
+    transform: translateX(-50%);
+    border: 2px solid #2b5fd9;
+    border-radius: 50%;
+    border-bottom-color: transparent; border-left-color: transparent; border-right-color: transparent;
+    rotate: 180deg;
+  }
+  .ti-art .tkeys {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2px;
+  }
+  .ti-art .tkeys span { border-radius: 2px; background: #45484f; }
+  .ti-art .tkeys span:nth-child(1) { background: #4d8fd0; }
+  .ti-art .tkeys span:nth-child(5) { background: #57ad57; }
+  .ti-art .tkeys span:nth-child(2n+6) { background: #e9e6dd; }
   .bakery-art {
     width: 54px; height: 54px;
     border-radius: 10px;
@@ -407,6 +444,24 @@
   </header>
 
   <main>
+    <a class="game-card" href="ti84.html">
+      <div class="card-art">
+        <div class="ti-art">
+          <div class="tscreen"></div>
+          <div class="tkeys">
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span>
+          </div>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>TI-84 Plus CE</h2>
+        <p>A working graphing-calculator simulator: full keypad, 2nd &amp; alpha, Y= graphing, trace, tables, fractions, and variables.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+
     <a class="game-card" href="zero-gravity-2048.html">
       <div class="card-art">
         <div class="zg-art">
@@ -603,16 +658,6 @@
       </div>
     </a>
 
-    <div class="game-card disabled">
-      <div class="card-art">
-        <div class="coming-art">+</div>
-      </div>
-      <div class="card-info">
-        <h2>Coming soon</h2>
-        <p>Another twisted classic, in the works.</p>
-        <span class="badge">SOON</span>
-      </div>
-    </div>
   </main>
 
   <footer>Built for fun on mobile.</footer>

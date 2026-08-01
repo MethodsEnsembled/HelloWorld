@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a1033">
+<title>2048 (Big Grid)</title>
+<style>
+  :root {
+    --bg: #1a1033;
+    --panel: #2a1a4a;
+    --text: #f6f3ff;
+    --accent: #ffd166;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, var(--bg) 60%, #0a0520 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    height: 100vh;
+  }
+  header {
+    width: 100%; max-width: 640px;
+    padding: 12px 14px 4px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+  .back, .icon-btn {
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 17px;
+    flex-shrink: 0;
+    cursor: pointer;
+    padding: 0;
+  }
+  .back:active, .icon-btn:active { background: var(--accent); color: #1a1033; transform: scale(0.94); }
+  .icon-btn.armed { background: var(--accent); color: #1a1033; }
+  h1 {
+    margin: 0; font-size: clamp(15px, 4.2vw, 24px);
+    letter-spacing: 2px; font-weight: 800;
+    background: linear-gradient(90deg, #ffd166, #ff9f1c, #ff5e7a, #c77dff, #ffd166);
+    background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: goldflow 8s linear infinite;
+    white-space: nowrap;
+    overflow: hidden;
+    min-width: 0;
+  }
+  @keyframes goldflow { to { background-position: 300% 0; } }
+  @media (max-width: 430px) {
+    h1 { font-size: 14px; letter-spacing: 1px; }
+    .stat { min-width: 40px; padding: 4px 7px; font-size: 9px; }
+    .stat b { font-size: 13px; }
+  }
+  .stats { display: flex; align-items: center; gap: 6px; }
+  .stat {
+    background: var(--panel); border-radius: 10px;
+    padding: 5px 10px; font-size: 10px; text-align: center;
+    min-width: 52px; line-height: 1.2;
+    opacity: 0.95;
+  }
+  .stat b { display: block; font-size: 14px; color: var(--accent); }
+
+  .bar {
+    width: 100%; max-width: 640px;
+    padding: 4px 14px 6px;
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .bar select, .bar input[type="number"] {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 7px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    outline: none;
+  }
+  .bar input[type="number"] { width: 62px; }
+  .bar .mini {
+    background: var(--panel); color: var(--text);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 10px;
+    padding: 7px 12px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .bar .mini:active { transform: scale(0.96); border-color: var(--accent); }
+  .custom-row { display: none; align-items: center; gap: 6px; }
+  .custom-row.show { display: flex; }
+  .custom-row .x { opacity: 0.6; font-size: 12px; }
+
+  .play {
+    flex: 1;
+    width: 100%;
+    position: relative;
+    min-height: 0;
+    touch-action: none;
+  }
+  #game {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+  }
+  .zoom-stack {
+    position: absolute; right: 10px; bottom: 12px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 5;
+  }
+  .zoom-btn {
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(42,26,74,0.88);
+    color: var(--text);
+    font-size: 19px; font-weight: 800;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+  }
+  .zoom-btn:active { background: var(--accent); color: #1a1033; transform: scale(0.94); }
+
+  #toast {
+    position: absolute; left: 50%; top: 12px;
+    transform: translateX(-50%) translateY(-8px);
+    background: rgba(10,5,30,0.85);
+    border: 1px solid rgba(255,209,102,0.5);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 13px; font-weight: 700;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 6;
+    white-space: nowrap;
+    max-width: 92%;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  footer {
+    width: 100%; max-width: 640px;
+    padding: 6px 14px 12px;
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    flex-shrink: 0;
+  }
+  .help {
+    font-size: 11px; opacity: 0.65; text-align: center; line-height: 1.4;
+  }
+  button.primary {
+    background: var(--accent); color: #1a1033;
+    border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  button.primary:active { transform: scale(0.97); }
+  button.ghost {
+    background: transparent; color: var(--text);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+  }
+  button.ghost:active { transform: scale(0.97); border-color: var(--accent); }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(10, 5, 30, 0.8);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(5px);
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 24px 28px;
+    text-align: center;
+    max-width: 340px;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal h2 {
+    margin: 0 0 10px;
+    background: linear-gradient(90deg, #ffd166, #ff9f1c, #ff5e7a, #c77dff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .modal p { margin: 0 0 16px; opacity: 0.85; font-size: 14px; }
+  .modal .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <a class="back" href="index.html" aria-label="Back to arcade">←</a>
+      <h1>BIG 2048</h1>
+    </div>
+    <div class="stats">
+      <button class="icon-btn" id="soundBtn" aria-label="Toggle sound">🔊</button>
+      <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="stat">BEST<b id="best">0</b></div>
+      <div class="stat">MAX<b id="maxt">0</b></div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <select id="sizeSel" aria-label="Grid size">
+      <option value="4">4 × 4 classic</option>
+      <option value="8">8 × 8</option>
+      <option value="16" selected>16 × 16</option>
+      <option value="32">32 × 32</option>
+      <option value="64">64 × 64</option>
+      <option value="100">100 × 100</option>
+      <option value="200">200 × 200</option>
+      <option value="300">300 × 300 max</option>
+      <option value="custom">Custom…</option>
+    </select>
+    <div class="custom-row" id="customRow">
+      <input type="number" id="rowsIn" min="3" max="300" value="20" aria-label="Rows">
+      <span class="x">×</span>
+      <input type="number" id="colsIn" min="3" max="300" value="20" aria-label="Columns">
+      <button class="mini" id="applyBtn">Go</button>
+    </div>
+    <button class="icon-btn" id="shuffleBtn" aria-label="Shuffle all tiles" title="Shuffle all tiles">🔀</button>
+    <button class="icon-btn" id="shakeBtn" aria-label="Shake to shuffle" title="Shake to shuffle" style="display:none">📳</button>
+    <button class="mini" id="newGameBtn">New Game</button>
+  </div>
+
+  <div class="play" id="play">
+    <canvas id="game"></canvas>
+    <div class="zoom-stack">
+      <button class="zoom-btn" id="zoomInBtn" aria-label="Zoom in">＋</button>
+      <button class="zoom-btn" id="zoomOutBtn" aria-label="Zoom out">－</button>
+      <button class="zoom-btn" id="zoomFitBtn" aria-label="Fit board" style="font-size:15px">⛶</button>
+    </div>
+    <div id="toast"></div>
+  </div>
+
+  <footer>
+    <div class="help">
+      Swipe / arrow keys to slide. Tiles spawn in proportion to the board — the same pressure as classic 4×4, so use all four directions or it jams.
+      Wheel, pinch or ＋/− to zoom in and read the numbers; drag (or two fingers) to pan. 🔀 shuffles the whole board.
+    </div>
+  </footer>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Game Over</h2>
+      <p id="modalText">No more moves.</p>
+      <div class="btn-row">
+        <button class="primary" id="modalBtn">Play Again</button>
+        <button class="ghost" id="modalAlt" style="display:none">Keep Going</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+'use strict';
+/* ============================================================
+   2048 (BIG GRID)
+   Classic 2048 rules on a grid you choose — up to 300×300
+   (90,000 cells). The spawn mechanic scales with area so a
+   big board keeps the classic pressure: vanilla 2048 drops
+   1 tile per move on 16 cells, so an R×C board starts with
+   round(area/8) tiles and drops round(area/16) per move — the
+   same per-cell pressure at every size (and still 90% twos /
+   10% fours). Reaching 2048 is a win, but
+   the game is endless: play on until the grid is full and no
+   merge is left.
+
+   Engine is a flat Uint8Array of exponents; a move is O(area)
+   with zero allocation. Rendering is one canvas with two
+   paths: a 1px-per-cell ImageData blit when zoomed out (fast
+   at 90k cells) and a culled rounded-rect + label pass when
+   zoomed in. Zoom is smoothed every frame; pan by drag.
+   Soundtrack is generated in WebAudio: three tiers that
+   crossfade as max tile / board fill climb.
+   State lives in top-level bindings for devtools/tests.
+   ============================================================ */
+
+const MAX_N = 300;
+const MIN_N = 3;
+const WIN_EXP = 11;              // 2^11 = 2048
+const FOUR_CHANCE = 0.1;         // classic: 10% of spawns are a 4
+const ANIM_MAX_AREA = 4096;      // slide animation only up to 64x64
+const TEXT_MIN = 14;             // px/cell where the rect renderer takes over
+const LABEL_MIN = 17;            // px/cell where numbers are drawn
+const MAX_SCALE = 96;            // px/cell zoom ceiling
+const SLIDE_MS = 105;
+const POP_MS = 130;
+const SIZE_KEY = 'big2048_size';
+const MUTE_KEY = 'big2048_muted';
+const bestKey = (r, c) => 'big2048_best_' + r + 'x' + c;
+
+const DIRS = { left: 0, right: 1, up: 2, down: 3 };
+
+const G = {
+  rows: 16, cols: 16, area: 256,
+  grid: null,          // Uint8Array of exponents, 0 = empty
+  score: 0, best: 0,
+  moves: 0, merges: 0,
+  maxExp: 0, tileCount: 0,
+  spawnPerMove: 16,    // recomputed per size: max(1, round(area/16))
+  won: false, keepGoing: false, over: false,
+  shuffles: 0,
+};
+let empties = null;              // Int32Array scratch for spawn picking
+
+// ---------- DOM ----------
+const playEl = document.getElementById('play');
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const maxtEl = document.getElementById('maxt');
+const overlay = document.getElementById('overlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const modalBtn = document.getElementById('modalBtn');
+const modalAlt = document.getElementById('modalAlt');
+const soundBtn = document.getElementById('soundBtn');
+const sizeSel = document.getElementById('sizeSel');
+const customRow = document.getElementById('customRow');
+const rowsIn = document.getElementById('rowsIn');
+const colsIn = document.getElementById('colsIn');
+const toastEl = document.getElementById('toast');
+
+// ---------- tiny utils ----------
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+function fmtVal(exp) {
+  const v = Math.pow(2, exp);
+  if (v < 100000) return String(v);
+  const u = ['K', 'M', 'G', 'T', 'P', 'E'];
+  let x = v, ui = -1;
+  while (x >= 1000 && ui < u.length - 1) { x /= 1000; ui++; }
+  return (x >= 100 ? Math.round(x) : x.toFixed(1)) + u[ui];
+}
+function fmtScore(v) {
+  if (v < 10000000) return v.toLocaleString('en-US');
+  const u = ['M', 'B', 'T'];
+  let x = v / 1000000, ui = 0;
+  while (x >= 1000 && ui < u.length - 1) { x /= 1000; ui++; }
+  return (x >= 100 ? Math.round(x) : x.toFixed(1)) + u[ui];
+}
+let toastTimer = 0;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
+}
+
+// ---------- animation records (small boards only) ----------
+let animOn = false;
+const anim = { active: false, t0: 0, slides: [], pops: [], spawns: [] };
+function startAnim() {
+  anim.active = true;
+  anim.t0 = performance.now();
+}
+function clearAnim() {
+  anim.active = false;
+  anim.slides.length = 0; anim.pops.length = 0; anim.spawns.length = 0;
+}
+
+// ---------- engine ----------
+/* One directional pass. Each lane is walked from the wall the tiles
+   slide toward; tiles compact and a pair merges at most once (the
+   classic rule). Implemented over the flat array with base+stride so
+   all four directions share one loop and allocate nothing. */
+function doMove(dir) {
+  if (G.over || overlayShown) return false;
+  const grid = G.grid, rows = G.rows, cols = G.cols;
+  let lanes, len, laneStride, stride, start;
+  if (dir === DIRS.left)       { lanes = rows; len = cols; laneStride = cols; stride = 1;      start = 0; }
+  else if (dir === DIRS.right) { lanes = rows; len = cols; laneStride = cols; stride = -1;     start = cols - 1; }
+  else if (dir === DIRS.up)    { lanes = cols; len = rows; laneStride = 1;    stride = cols;   start = 0; }
+  else                         { lanes = cols; len = rows; laneStride = 1;    stride = -cols;  start = (rows - 1) * cols; }
+
+  let changed = false, gained = 0, mergeCount = 0;
+  let topMerge = 0, secondMerge = 0;
+  if (animOn) clearAnim();
+
+  for (let L = 0; L < lanes; L++) {
+    const base = L * laneStride + start;
+    let w = 0, lastExp = 0, lastW = -1;
+    for (let i = 0; i < len; i++) {
+      const p = base + i * stride;
+      const e = grid[p];
+      if (e === 0) continue;
+      if (e === lastExp) {
+        const q = base + lastW * stride;
+        const ne = e + 1;
+        grid[q] = ne;
+        grid[p] = 0;
+        gained += Math.pow(2, ne);
+        mergeCount++;
+        if (ne > G.maxExp) G.maxExp = ne;
+        if (ne > topMerge) { secondMerge = topMerge; topMerge = ne; }
+        else if (ne > secondMerge) { secondMerge = ne; }
+        G.tileCount--;
+        changed = true;
+        lastExp = 0;                    // a merged tile can't merge again
+        if (animOn) { anim.slides.push(p, q, e); anim.pops.push(q, ne); }
+      } else {
+        const q = base + w * stride;
+        if (q !== p) { grid[q] = e; grid[p] = 0; changed = true; }
+        if (animOn) anim.slides.push(p, q, e);
+        lastExp = e; lastW = w; w++;
+      }
+    }
+  }
+
+  if (!changed) { sndInvalid(); return false; }
+
+  G.moves++;
+  G.merges += mergeCount;
+  if (gained > 0) {
+    G.score += gained;
+    if (G.score > G.best) {
+      G.best = G.score;
+      try { localStorage.setItem(bestKey(G.rows, G.cols), String(G.best)); } catch (e) {}
+    }
+  }
+
+  const spawned = spawnTiles(G.spawnPerMove);
+  if (animOn) startAnim();
+  dirtyCells = true; needsDraw = true;
+
+  sndSlide();
+  if (mergeCount > 0) sndMerge(topMerge, secondMerge, mergeCount);
+
+  updateHud();
+  checkEnd();
+  updateMusicTier();
+  return true;
+}
+
+/* Spawn `count` tiles into uniformly random empty cells (partial
+   Fisher–Yates over an index scratch array). 90% twos, 10% fours,
+   exactly like classic — just more of them per move on big boards. */
+function spawnTiles(count) {
+  const grid = G.grid, area = G.area;
+  let n = 0;
+  for (let p = 0; p < area; p++) if (grid[p] === 0) empties[n++] = p;
+  if (count > n) count = n;
+  for (let k = 0; k < count; k++) {
+    const j = k + ((Math.random() * (n - k)) | 0);
+    const tmp = empties[k]; empties[k] = empties[j]; empties[j] = tmp;
+    const p = empties[k];
+    const e = Math.random() < FOUR_CHANCE ? 2 : 1;
+    grid[p] = e;
+    if (e > G.maxExp) G.maxExp = e;
+    if (animOn) anim.spawns.push(p, e);
+  }
+  G.tileCount += count;
+  return count;
+}
+
+function movesAvailable() {
+  const grid = G.grid, rows = G.rows, cols = G.cols;
+  if (G.tileCount < G.area) return true;
+  for (let r = 0; r < rows; r++) {
+    const b = r * cols;
+    for (let c = 0; c < cols; c++) {
+      const e = grid[b + c];
+      if (c + 1 < cols && grid[b + c + 1] === e) return true;
+      if (r + 1 < rows && grid[b + c + cols] === e) return true;
+    }
+  }
+  return false;
+}
+
+function checkEnd() {
+  if (G.maxExp >= WIN_EXP && !G.won) {
+    G.won = true;
+    showModal('2048! 🏆', 'You built a 2048 on ' + G.rows + '×' + G.cols +
+      '. The board is endless — keep going until it jams.', true);
+    sndWin();
+    return;
+  }
+  if (G.tileCount >= G.area && !movesAvailable()) {
+    G.over = true;
+    showModal('Game Over', 'The grid is full and nothing merges. Score ' +
+      fmtScore(G.score) + ' in ' + G.moves + ' moves.', false);
+    sndLose();
+  }
+}
+
+/* Randomize: every tile keeps its value but the whole population is
+   dealt onto fresh uniformly-random cells (full Fisher–Yates of the
+   occupied-cell choice). Free feature, real risk: you can shuffle
+   yourself out of (or into) a corner. */
+function shuffleBoard() {
+  if (G.over || overlayShown) return;
+  const grid = G.grid, area = G.area;
+  const vals = [];
+  for (let p = 0; p < area; p++) { if (grid[p]) { vals.push(grid[p]); grid[p] = 0; } }
+  // deal onto a shuffled prefix of all cell indices
+  for (let p = 0; p < area; p++) empties[p] = p;
+  for (let k = 0; k < vals.length; k++) {
+    const j = k + ((Math.random() * (area - k)) | 0);
+    const tmp = empties[k]; empties[k] = empties[j]; empties[j] = tmp;
+    grid[empties[k]] = vals[k];
+  }
+  G.shuffles++;
+  clearAnim();
+  flashT = 1;
+  dirtyCells = true; needsDraw = true;
+  sndShuffle();
+  toast('🔀 Board shuffled!');
+  // a shuffle can unjam or jam the board — re-check
+  if (G.tileCount >= G.area && !movesAvailable()) {
+    G.over = true;
+    showModal('Game Over', 'Shuffled into a dead end! Score ' + fmtScore(G.score) + '.', false);
+    sndLose();
+  }
+  updateMusicTier();
+}
+
+function recount() {   // recompute derived stats after tests poke G.grid
+  let tc = 0, mx = 0;
+  for (let p = 0; p < G.area; p++) { const e = G.grid[p]; if (e) { tc++; if (e > mx) mx = e; } }
+  G.tileCount = tc; G.maxExp = mx;
+  dirtyCells = true; needsDraw = true;
+  updateHud();
+}
+
+function newGame(rows, cols) {
+  rows = clamp(rows | 0 || G.rows, MIN_N, MAX_N);
+  cols = clamp(cols | 0 || G.cols, MIN_N, MAX_N);
+  const sizeChanged = !G.grid || rows !== G.rows || cols !== G.cols;
+  G.rows = rows; G.cols = cols; G.area = rows * cols;
+  if (sizeChanged || !G.grid) {
+    G.grid = new Uint8Array(G.area);
+    empties = new Int32Array(G.area);
+    allocCellCanvas();
+  } else {
+    G.grid.fill(0);
+  }
+  G.score = 0; G.moves = 0; G.merges = 0; G.shuffles = 0;
+  G.maxExp = 0; G.tileCount = 0;
+  G.won = false; G.keepGoing = false; G.over = false;
+  /* Classic drops 1 tile per move on 16 cells; scaling that per-cell
+     pressure linearly (area/16 per move, 5,625 at 300x300) turns out
+     to be the fun point too. Simulated play shows why it works: merge
+     capacity grows superlinearly with density, so engaged play using
+     all four directions rides the avalanche more or less forever,
+     while lazy two-direction corner spam jams the board dead in
+     ~700 moves at 16x16 and ~1,900 at 300x300 — the same risk
+     dynamic as the 4x4 original. */
+  G.spawnPerMove = Math.max(1, Math.round(G.area / 16));
+  G.best = 0;
+  try { G.best = parseInt(localStorage.getItem(bestKey(rows, cols)) || '0', 10) || 0; } catch (e) {}
+  try { localStorage.setItem(SIZE_KEY, rows + 'x' + cols); } catch (e) {}
+  animOn = G.area <= ANIM_MAX_AREA;
+  clearAnim();
+  const startTiles = Math.max(2, Math.round(G.area / 8));
+  spawnTiles(startTiles);
+  hideModal();
+  fitView();
+  dirtyCells = true; needsDraw = true;
+  updateHud();
+  musicTier = 0; pendingTier = null; applyTierGains();
+  if (G.area > 10000) {
+    toast(rows + '×' + cols + ' — ' + startTiles.toLocaleString('en-US') + ' start tiles, +' +
+      G.spawnPerMove.toLocaleString('en-US') + ' per move');
+  }
+}
+
+function updateHud() {
+  scoreEl.textContent = fmtScore(G.score);
+  bestEl.textContent = fmtScore(G.best);
+  maxtEl.textContent = G.maxExp ? fmtVal(G.maxExp) : '0';
+}
+
+// ---------- modal ----------
+let overlayShown = false;
+function showModal(title, text, withKeepGoing) {
+  modalTitle.textContent = title;
+  modalText.textContent = text;
+  modalAlt.style.display = withKeepGoing ? '' : 'none';
+  modalBtn.textContent = withKeepGoing ? 'New Game' : 'Play Again';
+  overlay.classList.add('show');
+  overlayShown = true;
+}
+function hideModal() {
+  overlay.classList.remove('show');
+  overlayShown = false;
+}
+
+// ---------- view (zoom / pan, all in device px) ----------
+let W = 0, H = 0, DPR = 1;
+let scale = 8, targetScale = 8, ox = 0, oy = 0;
+let anchorX = 0, anchorY = 0;   // zoom anchor on the canvas
+let fitScale = 1, fitAnim = false, viewActive = false;
+let needsDraw = true, dirtyCells = true;
+let flashT = 0;                 // shuffle flash 1 -> 0
+
+function computeFit() {
+  const M = 8 * DPR;
+  fitScale = Math.min((W - 2 * M) / G.cols, (H - 2 * M) / G.rows);
+  if (!isFinite(fitScale) || fitScale <= 0) fitScale = 0.5;
+}
+const maxScaleFor = () => Math.max(fitScale, MAX_SCALE * DPR);
+
+function layout() {
+  const r = playEl.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+  W = Math.max(1, Math.round(r.width * DPR));
+  H = Math.max(1, Math.round(r.height * DPR));
+  if (cvs.width !== W || cvs.height !== H) { cvs.width = W; cvs.height = H; }
+  computeFit();
+  scale = clamp(scale, fitScale, maxScaleFor());
+  targetScale = clamp(targetScale, fitScale, maxScaleFor());
+  clampPan();
+  needsDraw = true;
+}
+
+function clampPan() {
+  const bw = G.cols * scale, bh = G.rows * scale;
+  ox = bw <= W ? (W - bw) / 2 : clamp(ox, W - bw, 0);
+  oy = bh <= H ? (H - bh) / 2 : clamp(oy, H - bh, 0);
+}
+
+function fitView() {
+  computeFit();
+  scale = targetScale = fitScale;
+  ox = (W - G.cols * scale) / 2;
+  oy = (H - G.rows * scale) / 2;
+  fitAnim = false;
+  needsDraw = true;
+}
+
+function zoomBy(factor, ax, ay) {
+  fitAnim = false;
+  anchorX = ax !== undefined ? ax : W / 2;
+  anchorY = ay !== undefined ? ay : H / 2;
+  targetScale = clamp(targetScale * factor, fitScale, maxScaleFor());
+}
+function zoomFitSmooth() {
+  targetScale = fitScale;
+  fitAnim = true;
+}
+/* Pinch sets the scale directly (no smoothing lag under the fingers). */
+function setScaleImmediate(s, ax, ay) {
+  fitAnim = false;
+  s = clamp(s, fitScale, maxScaleFor());
+  ox = ax - (ax - ox) * (s / scale);
+  oy = ay - (ay - oy) * (s / scale);
+  scale = targetScale = s;
+  clampPan();
+  needsDraw = true;
+}
+
+function stepView(dt) {
+  const f = 1 - Math.exp(-dt * 13);
+  let active = false;
+  if (Math.abs(targetScale - scale) > 0.0015 * scale) {
+    const ns = scale + (targetScale - scale) * f;
+    if (!fitAnim) {
+      ox = anchorX - (anchorX - ox) * (ns / scale);
+      oy = anchorY - (anchorY - oy) * (ns / scale);
+    }
+    scale = ns;
+    active = true;
+  } else if (scale !== targetScale) {
+    scale = targetScale;
+    active = true;
+  }
+  if (fitAnim) {
+    const cx = (W - G.cols * scale) / 2, cy = (H - G.rows * scale) / 2;
+    ox += (cx - ox) * f; oy += (cy - oy) * f;
+    if (Math.abs(cx - ox) < 0.5 && Math.abs(cy - oy) < 0.5 && scale === targetScale) {
+      ox = cx; oy = cy; fitAnim = false;
+    }
+    active = true;
+  }
+  if (active) { clampPan(); needsDraw = true; }
+  return active;
+}
+
+// ---------- palette ----------
+const PAL_N = 64;
+const palCss = new Array(PAL_N);
+const pal32 = new Uint32Array(PAL_N);
+const EMPTY_CSS = '#332552';
+(function buildPalette() {
+  const classic = [null, '#eee4da', '#ede0c8', '#f2b179', '#f59563', '#f67c5f',
+    '#f65e3b', '#edcf72', '#edcc61', '#edc850', '#edc53f', '#edc22e'];
+  function hslCss(h, s, l) {
+    const a = s * Math.min(l, 1 - l);
+    const f = n => {
+      const k = (n + h / 30) % 12;
+      const v = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+      return Math.round(v * 255).toString(16).padStart(2, '0');
+    };
+    return '#' + f(0) + f(8) + f(4);
+  }
+  for (let e = 0; e < PAL_N; e++) {
+    if (e === 0) palCss[e] = EMPTY_CSS;
+    else if (e < classic.length) palCss[e] = classic[e];
+    else palCss[e] = hslCss((150 + e * 47) % 360, 0.82, 0.56);
+  }
+  for (let e = 0; e < PAL_N; e++) {
+    const hex = palCss[e];
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    pal32[e] = (255 << 24) | (b << 16) | (g << 8) | r;   // little-endian RGBA
+  }
+})();
+const labelColor = exp => exp <= 2 ? '#776e65' : '#ffffff';
+
+// ---------- 1px-per-cell fast renderer ----------
+let cellCv = null, cellCtx = null, cellImg = null, cellU32 = null;
+function allocCellCanvas() {
+  cellCv = document.createElement('canvas');
+  cellCv.width = G.cols; cellCv.height = G.rows;
+  cellCtx = cellCv.getContext('2d');
+  cellImg = cellCtx.createImageData(G.cols, G.rows);
+  cellU32 = new Uint32Array(cellImg.data.buffer);
+}
+function rebuildCells() {
+  const g = G.grid, n = G.area, u = cellU32, pal = pal32;
+  for (let p = 0; p < n; p++) u[p] = pal[g[p] < PAL_N ? g[p] : PAL_N - 1];
+  cellCtx.putImageData(cellImg, 0, 0);
+  dirtyCells = false;
+}
+
+// ---------- drawing ----------
+function rr(c, x, y, w, h, rad) {
+  if (rad <= 1) { c.rect(x, y, w, h); return; }
+  c.moveTo(x + rad, y);
+  c.arcTo(x + w, y, x + w, y + h, rad);
+  c.arcTo(x + w, y + h, x, y + h, rad);
+  c.arcTo(x, y + h, x, y, rad);
+  c.arcTo(x, y, x + w, y, rad);
+  c.closePath();
+}
+const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+function drawTile(x, y, cellPx, exp, popS) {
+  const gapPx = Math.max(1, cellPx * 0.07);
+  let sz = cellPx - 2 * gapPx;
+  let dx = x + gapPx, dy = y + gapPx;
+  if (popS !== 1) {
+    const ns = sz * popS;
+    dx -= (ns - sz) / 2; dy -= (ns - sz) / 2; sz = ns;
+  }
+  ctx.fillStyle = palCss[exp < PAL_N ? exp : PAL_N - 1];
+  ctx.beginPath();
+  rr(ctx, dx, dy, sz, sz, cellPx * 0.11);
+  ctx.fill();
+  if (cellPx >= LABEL_MIN * DPR) {
+    const txt = fmtVal(exp);
+    const k = txt.length <= 2 ? 0.45 : txt.length === 3 ? 0.38 : txt.length === 4 ? 0.3 : txt.length === 5 ? 0.25 : 0.21;
+    ctx.fillStyle = labelColor(exp);
+    ctx.font = '700 ' + Math.max(7, cellPx * k).toFixed(1) + 'px -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.fillText(txt, x + cellPx / 2, y + cellPx / 2 + cellPx * 0.02);
+  }
+}
+
+function render(now) {
+  ctx.clearRect(0, 0, W, H);
+  const cols = G.cols, rows = G.rows, g = G.grid;
+  const bw = cols * scale, bh = rows * scale;
+  const pad = 4 * DPR;
+  ctx.fillStyle = 'rgba(5,2,18,0.55)';
+  ctx.beginPath();
+  rr(ctx, ox - pad, oy - pad, bw + 2 * pad, bh + 2 * pad, 8 * DPR);
+  ctx.fill();
+
+  const c0 = clamp(Math.floor((0 - ox) / scale), 0, cols - 1);
+  const c1 = clamp(Math.ceil((W - ox) / scale), 1, cols);
+  const r0 = clamp(Math.floor((0 - oy) / scale), 0, rows - 1);
+  const r1 = clamp(Math.ceil((H - oy) / scale), 1, rows);
+  const visCells = (c1 - c0) * (r1 - r0);
+  const useFast = scale < TEXT_MIN * DPR || (viewActive && visCells > 3500);
+
+  if (useFast) {
+    if (dirtyCells) rebuildCells();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(cellCv, 0, 0, cols, rows, ox, oy, bw, bh);
+    ctx.imageSmoothingEnabled = true;
+    if (scale >= 7 * DPR) {          // subtle separation once cells are chunky
+      ctx.strokeStyle = 'rgba(8,4,24,0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const y0 = Math.max(oy, 0), y1 = Math.min(oy + bh, H);
+      const x0 = Math.max(ox, 0), x1 = Math.min(ox + bw, W);
+      for (let c = c0; c <= c1; c++) { const x = ox + c * scale; ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+      for (let r = r0; r <= r1; r++) { const y = oy + r * scale; ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+      ctx.stroke();
+    }
+  } else {
+    drawRectPass(now, c0, c1, r0, r1);
+  }
+
+  if (flashT > 0) {
+    ctx.fillStyle = 'rgba(255,235,180,' + (0.3 * flashT).toFixed(3) + ')';
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+function drawRectPass(now, c0, c1, r0, r1) {
+  const cols = G.cols, g = G.grid;
+  let slideT = 1, phase = 'idle';
+  if (anim.active) {
+    const el = now - anim.t0;
+    if (el <= SLIDE_MS) { slideT = el / SLIDE_MS; phase = 'slide'; }
+    else if (el <= SLIDE_MS + POP_MS) { phase = 'pop'; }
+    else { anim.active = false; }
+  }
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // empty sockets
+  const gapPx = Math.max(1, scale * 0.07);
+  ctx.fillStyle = EMPTY_CSS;
+  ctx.beginPath();
+  for (let r = r0; r < r1; r++) {
+    const y = oy + r * scale + gapPx;
+    for (let c = c0; c < c1; c++) {
+      rr(ctx, ox + c * scale + gapPx, y, scale - 2 * gapPx, scale - 2 * gapPx, scale * 0.11);
+    }
+  }
+  ctx.fill();
+
+  if (phase === 'slide') {
+    // grid already holds the end state; animate from the records instead
+    const e2 = easeOutCubic(slideT);
+    const s = anim.slides;
+    for (let i = 0; i < s.length; i += 3) {
+      const p = s[i], q = s[i + 1], exp = s[i + 2];
+      const fr = (p / cols) | 0, fc = p % cols;
+      const tr = (q / cols) | 0, tc = q % cols;
+      const cr = fr + (tr - fr) * e2, cc = fc + (tc - fc) * e2;
+      if (cr < r0 - 1 || cr > r1 || cc < c0 - 1 || cc > c1) continue;
+      drawTile(ox + cc * scale, oy + cr * scale, scale, exp, 1);
+    }
+    return;
+  }
+
+  let popMap = null;
+  if (phase === 'pop') {
+    const el = now - anim.t0 - SLIDE_MS;
+    const tp = clamp(el / POP_MS, 0, 1);
+    const popS = 1 + 0.22 * Math.sin(Math.PI * tp);
+    const spawnS = 0.25 + 0.75 * easeOutCubic(tp);
+    popMap = new Map();
+    for (let i = 0; i < anim.pops.length; i += 2) popMap.set(anim.pops[i], popS);
+    for (let i = 0; i < anim.spawns.length; i += 2) popMap.set(anim.spawns[i], spawnS);
+  }
+  for (let r = r0; r < r1; r++) {
+    const b = r * cols, y = oy + r * scale;
+    for (let c = c0; c < c1; c++) {
+      const e = g[b + c];
+      if (!e) continue;
+      const pop = popMap ? (popMap.get(b + c) || 1) : 1;
+      drawTile(ox + c * scale, y, scale, e, pop);
+    }
+  }
+}
+
+// ---------- frame loop ----------
+let lastT = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+  viewActive = stepView(dt);
+  if (flashT > 0) { flashT = Math.max(0, flashT - dt * 2.6); needsDraw = true; }
+  if (needsDraw || anim.active || viewActive) {
+    render(now);
+    if (!anim.active && !viewActive && flashT <= 0) needsDraw = false;
+  }
+  requestAnimationFrame(frame);
+}
+
+// ---------- audio: SFX + a 3-tier generative soundtrack ----------
+let AC = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null;
+let tierGain = null, musicTier = 0, pendingTier = null, musicStep = 0, musicNextT = 0;
+let muted = false;
+try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = muted ? 0 : 1; master.connect(AC.destination);
+    sfxBus = AC.createGain(); sfxBus.gain.value = 0.9; sfxBus.connect(master);
+    musicBus = AC.createGain(); musicBus.gain.value = 0.5; musicBus.connect(master);
+    tierGain = [0, 1, 2].map(() => { const g = AC.createGain(); g.gain.value = 0; g.connect(musicBus); return g; });
+    tierGain[musicTier].gain.value = 1;
+    noiseBuf = AC.createBuffer(1, (AC.sampleRate * 0.5) | 0, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    musicNextT = AC.currentTime + 0.1;
+    setInterval(musicTick, 90);
+  } catch (e) {}
+}
+
+function tone(o) {
+  if (!AC || muted) return;
+  const t = AC.currentTime + (o.at || 0);
+  const dur = o.dur || 0.1;
+  const osc = AC.createOscillator(), gn = AC.createGain();
+  osc.type = o.type || 'sine';
+  osc.frequency.setValueAtTime(o.f, t);
+  if (o.f2) osc.frequency.exponentialRampToValueAtTime(o.f2, t + dur);
+  gn.gain.setValueAtTime(0.0001, t);
+  gn.gain.exponentialRampToValueAtTime(o.gain || 0.1, t + (o.att || 0.008));
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(gn); gn.connect(o.bus || sfxBus);
+  osc.start(t); osc.stop(t + dur + 0.05);
+}
+function noiseHit(o) {
+  if (!AC || muted) return;
+  const t = (o.t !== undefined ? o.t : AC.currentTime) + (o.at || 0);
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const flt = AC.createBiquadFilter();
+  flt.type = o.ftype || 'highpass';
+  flt.frequency.setValueAtTime(o.freq || 6000, t);
+  if (o.freq2) flt.frequency.exponentialRampToValueAtTime(o.freq2, t + o.dur);
+  const gn = AC.createGain();
+  gn.gain.setValueAtTime(0.0001, t);
+  gn.gain.exponentialRampToValueAtTime(o.gain, t + 0.005);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+  src.connect(flt); flt.connect(gn); gn.connect(o.bus || sfxBus);
+  src.start(t); src.stop(t + o.dur + 0.05);
+}
+
+function sndSlide() { tone({ f: 150, f2: 95, type: 'triangle', dur: 0.07, gain: 0.09 }); }
+function sndInvalid() { tone({ f: 110, f2: 80, type: 'square', dur: 0.07, gain: 0.05 }); }
+function sndMerge(top, second, count) {
+  const f = Math.min(2400, 240 * Math.pow(2, top / 6));
+  tone({ f: f, f2: f * 1.5, dur: 0.13, gain: 0.075 });
+  if (second) {
+    const f2 = Math.min(2400, 240 * Math.pow(2, second / 6));
+    tone({ f: f2, f2: f2 * 1.5, dur: 0.11, gain: 0.05, at: 0.05 });
+  }
+  if (count >= 50) tone({ f: f * 2, f2: f * 2.6, dur: 0.18, gain: 0.04, at: 0.08 });
+}
+function sndShuffle() {
+  noiseHit({ ftype: 'bandpass', freq: 350, freq2: 2600, dur: 0.4, gain: 0.12 });
+  tone({ f: 330, f2: 990, type: 'triangle', dur: 0.35, gain: 0.06 });
+}
+function sndWin() {
+  [523, 659, 784, 1047, 1319].forEach((f, i) =>
+    tone({ f: f, type: 'triangle', dur: 0.34, gain: 0.09, at: i * 0.09 }));
+}
+function sndLose() {
+  [220, 262, 330].forEach(f => tone({ f: f, f2: f * 0.5, type: 'sawtooth', dur: 0.8, gain: 0.045 }));
+}
+
+/* Three tracks, one per intensity tier, all sequenced from the same
+   16th-note scheduler. The active tier's bus crossfades in at a bar
+   boundary as progress (max tile, board fill) climbs. */
+const TIER_NAMES = ['Drift', 'Momentum', 'Overdrive'];
+const TIER_BPM = [84, 108, 138];
+const PROG = [
+  [[48, 55, 59, 64], [45, 52, 57, 60], [41, 48, 57, 60], [43, 50, 55, 59]],
+  [[45, 52, 57, 60], [41, 48, 53, 57], [48, 52, 55, 60], [43, 47, 50, 55]],
+  [[45, 52, 57, 60], [41, 48, 53, 57], [48, 52, 55, 60], [43, 47, 50, 55]],
+];
+const PENTA = [72, 74, 76, 79, 81, 84];
+const T1_ARP = [0, 1, 2, 3, 2, 1];
+const T1_BASS = { 0: 0, 3: 7, 6: 0, 8: 0, 11: 7, 14: 12 };
+const midiHz = n => 440 * Math.pow(2, (n - 69) / 12);
+
+function mNote(bus, t, note, dur, gain, type, att) {
+  const osc = AC.createOscillator(), gn = AC.createGain();
+  osc.type = type; osc.frequency.value = midiHz(note);
+  gn.gain.setValueAtTime(0.0001, t);
+  gn.gain.exponentialRampToValueAtTime(gain, t + (att || 0.01));
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(gn); gn.connect(bus);
+  osc.start(t); osc.stop(t + dur + 0.1);
+}
+function mBass(bus, t, note, dur, gain) {
+  const osc = AC.createOscillator(), gn = AC.createGain(), flt = AC.createBiquadFilter();
+  osc.type = 'sawtooth'; osc.frequency.value = midiHz(note);
+  flt.type = 'lowpass'; flt.frequency.value = 780; flt.Q.value = 4;
+  gn.gain.setValueAtTime(0.0001, t);
+  gn.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(flt); flt.connect(gn); gn.connect(bus);
+  osc.start(t); osc.stop(t + dur + 0.1);
+}
+function mKick(bus, t) {
+  const osc = AC.createOscillator(), gn = AC.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(155, t);
+  osc.frequency.exponentialRampToValueAtTime(46, t + 0.1);
+  gn.gain.setValueAtTime(0.5, t);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+  osc.connect(gn); gn.connect(bus);
+  osc.start(t); osc.stop(t + 0.18);
+}
+function mHit(bus, t, dur, freq, gain, ftype) {
+  noiseHit({ bus: bus, t: t, dur: dur, freq: freq, gain: gain, ftype: ftype });
+}
+
+function musicTick() {
+  if (!AC || AC.state !== 'running') return;
+  const ahead = AC.currentTime + 0.35;
+  if (musicNextT < AC.currentTime - 0.5) musicNextT = AC.currentTime + 0.05;  // catch up after suspend
+  while (musicNextT < ahead) {
+    scheduleStep(musicStep, musicNextT);
+    musicNextT += 15 / TIER_BPM[musicTier];
+    musicStep++;
+  }
+}
+
+function scheduleStep(step, t) {
+  if (step % 16 === 0 && pendingTier !== null && pendingTier !== musicTier) {
+    const up = pendingTier > musicTier;
+    musicTier = pendingTier; pendingTier = null;
+    applyTierGains(t);
+    toast((up ? '♫ intensity up — ' : '♫ easing off — ') + TIER_NAMES[musicTier]);
+  }
+  if (muted) return;
+  const tier = musicTier, s = step % 16, bar = (step >> 4) % 4;
+  const chord = PROG[tier][bar];
+  const bus = tierGain[tier];
+  const barSec = 240 / TIER_BPM[tier];
+  if (tier === 0) {
+    if (s === 0) {
+      for (let i = 0; i < chord.length; i++) mNote(bus, t, chord[i], barSec * 1.05, 0.05, 'sine', 0.6);
+      mNote(bus, t, chord[0] - 12, barSec * 1.05, 0.045, 'sine', 0.8);
+    }
+    if (s % 4 === 0 && Math.random() < 0.5) {
+      mNote(bus, t, PENTA[(Math.random() * PENTA.length) | 0], 0.55, 0.05, 'triangle', 0.01);
+    }
+  } else if (tier === 1) {
+    if (s === 0 || s === 8) for (let i = 0; i < chord.length; i++) mNote(bus, t, chord[i], 1.2, 0.035, 'sine', 0.06);
+    if (T1_BASS[s] !== undefined) mBass(bus, t, chord[0] - 12 + T1_BASS[s], 0.26, 0.12);
+    if (s % 2 === 0) mNote(bus, t, chord[T1_ARP[(step >> 1) % 6]] + 12, 0.16, 0.05, 'triangle', 0.01);
+    if (s === 2 || s === 6 || s === 10 || s === 14) mHit(bus, t, 0.04, 7000, 0.035, 'highpass');
+  } else {
+    if (s === 0 || s === 10) for (let i = 0; i < chord.length; i++) mNote(bus, t, chord[i] + 12, 0.14, 0.04, 'sawtooth', 0.008);
+    mBass(bus, t, chord[0] - 12 + (s % 4 === 2 ? 12 : 0), 0.11, 0.1);
+    if (s % 4 === 0) mKick(bus, t);
+    if (s === 4 || s === 12) mHit(bus, t, 0.14, 1800, 0.12, 'bandpass');
+    mHit(bus, t, 0.03, 8200, s % 2 ? 0.018 : 0.04, 'highpass');
+    const ai = step % 8;
+    mNote(bus, t, chord[ai % 4] + 12 * (1 + (ai >> 2)), 0.09, 0.038, 'triangle', 0.006);
+  }
+}
+
+function applyTierGains(at) {
+  if (!tierGain) return;
+  const t = at !== undefined ? at : AC.currentTime;
+  for (let i = 0; i < 3; i++) {
+    tierGain[i].gain.cancelScheduledValues(t);
+    tierGain[i].gain.setTargetAtTime(i === musicTier ? 1 : 0, t, 0.4);
+  }
+}
+
+/* Intensity: whichever is further along — the best tile's march to
+   2048 (exp 11) or how jammed the board is getting. */
+const tierFor = p => p < 0.34 ? 0 : p < 0.72 ? 1 : 2;
+function updateMusicTier() {
+  const fill = G.tileCount / G.area;
+  const p = Math.max((G.maxExp - 1) / 10, (fill - 0.15) / 0.6);
+  let want = tierFor(p);
+  if (want > musicTier && tierFor(p - 0.02) === musicTier) want = musicTier;   // hysteresis
+  if (want < musicTier && tierFor(p + 0.04) === musicTier) want = musicTier;
+  pendingTier = want === musicTier ? null : want;
+}
+
+function updateSoundBtn() { soundBtn.textContent = muted ? '🔇' : '🔊'; }
+soundBtn.addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
+  if (!muted) initAudio();
+  if (AC && master) master.gain.setTargetAtTime(muted ? 0 : 1, AC.currentTime, 0.05);
+  updateSoundBtn();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!AC) return;
+  if (document.hidden) AC.suspend(); else AC.resume();
+});
+
+// ---------- input ----------
+const KEYMAP = { ArrowLeft: 0, ArrowRight: 1, ArrowUp: 2, ArrowDown: 3,
+  a: 0, d: 1, w: 2, s: 3, A: 0, D: 1, W: 2, S: 3 };
+window.addEventListener('keydown', e => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+  const d = KEYMAP[e.key];
+  if (d !== undefined) { e.preventDefault(); initAudio(); doMove(d); }
+  else if (e.key === 'x' || e.key === 'X') { initAudio(); shuffleBoard(); }
+});
+
+function canvasPos(clientX, clientY) {
+  const r = cvs.getBoundingClientRect();
+  return [(clientX - r.left) * DPR, (clientY - r.top) * DPR];
+}
+const tDist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+/* One finger = swipe to move. Two fingers = pinch zoom + pan.
+   Mouse: drag pans, wheel zooms at the cursor. */
+let swipe = null, pinch = null;
+cvs.addEventListener('touchstart', e => {
+  initAudio();
+  if (e.touches.length === 1 && !pinch) {
+    const t = e.touches[0];
+    swipe = { x: t.clientX, y: t.clientY };
+  } else if (e.touches.length === 2) {
+    swipe = null;
+    const [a, b] = [e.touches[0], e.touches[1]];
+    const [mx, my] = canvasPos((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+    pinch = { d: tDist(a, b), s0: scale, mx: mx, my: my };
+  }
+  e.preventDefault();
+}, { passive: false });
+cvs.addEventListener('touchmove', e => {
+  if (pinch && e.touches.length === 2) {
+    const [a, b] = [e.touches[0], e.touches[1]];
+    const [mx, my] = canvasPos((a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+    ox += mx - pinch.mx; oy += my - pinch.my;
+    pinch.mx = mx; pinch.my = my;
+    setScaleImmediate(pinch.s0 * tDist(a, b) / pinch.d, mx, my);
+  }
+  e.preventDefault();
+}, { passive: false });
+cvs.addEventListener('touchend', e => {
+  if (e.touches.length === 0) {
+    if (swipe && e.changedTouches.length) {
+      const t = e.changedTouches[0];
+      const dx = t.clientX - swipe.x, dy = t.clientY - swipe.y;
+      if (Math.max(Math.abs(dx), Math.abs(dy)) >= 24) {
+        doMove(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? DIRS.right : DIRS.left)
+                                           : (dy > 0 ? DIRS.down : DIRS.up));
+      }
+    }
+    swipe = null; pinch = null;
+  } else if (e.touches.length === 1) {
+    pinch = null; swipe = null;   // don't turn the tail of a pinch into a swipe
+  }
+  e.preventDefault();
+}, { passive: false });
+
+let drag = null;
+cvs.addEventListener('mousedown', e => { initAudio(); drag = { x: e.clientX, y: e.clientY }; });
+window.addEventListener('mousemove', e => {
+  if (!drag) return;
+  ox += (e.clientX - drag.x) * DPR;
+  oy += (e.clientY - drag.y) * DPR;
+  drag.x = e.clientX; drag.y = e.clientY;
+  fitAnim = false;
+  clampPan();
+  needsDraw = true;
+});
+window.addEventListener('mouseup', () => { drag = null; });
+cvs.addEventListener('wheel', e => {
+  e.preventDefault();
+  const [cx, cy] = canvasPos(e.clientX, e.clientY);
+  fitAnim = false;
+  anchorX = cx; anchorY = cy;
+  targetScale = clamp(targetScale * Math.pow(1.0016, -e.deltaY), fitScale, maxScaleFor());
+}, { passive: false });
+
+document.getElementById('zoomInBtn').addEventListener('click', () => zoomBy(1.6));
+document.getElementById('zoomOutBtn').addEventListener('click', () => zoomBy(1 / 1.6));
+document.getElementById('zoomFitBtn').addEventListener('click', zoomFitSmooth);
+
+// ---------- shake to shuffle ----------
+const shakeBtn = document.getElementById('shakeBtn');
+let shakeArmed = false, lastAcc = null, shakeHits = 0, firstHitAt = 0, lastShakeAt = 0;
+function onMotion(e) {
+  if (!shakeArmed) return;
+  const a = e.accelerationIncludingGravity;
+  if (!a || a.x == null) return;
+  if (lastAcc) {
+    const d = Math.abs(a.x - lastAcc.x) + Math.abs(a.y - lastAcc.y) + Math.abs(a.z - lastAcc.z);
+    const now = Date.now();
+    if (d > 25) {
+      if (now - firstHitAt > 900) { shakeHits = 0; firstHitAt = now; }
+      shakeHits++;
+      if (shakeHits >= 3 && now - lastShakeAt > 1500) {
+        lastShakeAt = now; shakeHits = 0;
+        shuffleBoard();
+      }
+    }
+  }
+  lastAcc = { x: a.x, y: a.y, z: a.z };
+}
+function armShake(on) {
+  shakeArmed = on;
+  shakeBtn.classList.toggle('armed', on);
+  if (on) {
+    window.addEventListener('devicemotion', onMotion);
+    toast('📳 Shake your phone to shuffle!');
+  } else {
+    window.removeEventListener('devicemotion', onMotion);
+    toast('Shake-to-shuffle off');
+  }
+}
+if (window.DeviceMotionEvent && 'ontouchstart' in window) shakeBtn.style.display = '';
+shakeBtn.addEventListener('click', () => {
+  initAudio();
+  if (shakeArmed) { armShake(false); return; }
+  const DM = window.DeviceMotionEvent;
+  if (DM && typeof DM.requestPermission === 'function') {
+    DM.requestPermission()
+      .then(st => { if (st === 'granted') armShake(true); else toast('Motion permission denied'); })
+      .catch(() => toast('Motion permission denied'));
+  } else {
+    armShake(true);
+  }
+});
+
+// ---------- controls ----------
+document.getElementById('shuffleBtn').addEventListener('click', () => { initAudio(); shuffleBoard(); });
+document.getElementById('newGameBtn').addEventListener('click', () => { initAudio(); newGame(G.rows, G.cols); });
+modalBtn.addEventListener('click', () => newGame(G.rows, G.cols));
+modalAlt.addEventListener('click', () => { G.keepGoing = true; hideModal(); });
+
+sizeSel.addEventListener('change', () => {
+  if (sizeSel.value === 'custom') {
+    customRow.classList.add('show');
+    return;
+  }
+  customRow.classList.remove('show');
+  const n = parseInt(sizeSel.value, 10);
+  newGame(n, n);
+});
+document.getElementById('applyBtn').addEventListener('click', () => {
+  const r = clamp(parseInt(rowsIn.value, 10) || 0, MIN_N, MAX_N);
+  const c = clamp(parseInt(colsIn.value, 10) || 0, MIN_N, MAX_N);
+  rowsIn.value = r; colsIn.value = c;
+  newGame(r, c);
+});
+
+window.addEventListener('resize', layout);
+document.addEventListener('pointerdown', () => initAudio(), { once: true });
+
+// ---------- boot ----------
+updateSoundBtn();
+(function boot() {
+  let r = 16, c = 16;
+  try {
+    const s = localStorage.getItem(SIZE_KEY);
+    if (s) {
+      const m = s.match(/^(\d+)x(\d+)$/);
+      if (m) { r = clamp(+m[1], MIN_N, MAX_N); c = clamp(+m[2], MIN_N, MAX_N); }
+    }
+  } catch (e) {}
+  let preset = false;
+  if (r === c) {
+    for (const o of sizeSel.options) if (o.value === String(r)) { preset = true; break; }
+  }
+  if (preset) {
+    sizeSel.value = String(r);
+  } else {
+    sizeSel.value = 'custom';
+    customRow.classList.add('show');
+    rowsIn.value = r; colsIn.value = c;
+  }
+  layout();
+  newGame(r, c);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

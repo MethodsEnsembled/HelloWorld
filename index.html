@@ -382,6 +382,30 @@
     filter: drop-shadow(0 0 4px rgba(255,255,255,0.9));
   }
 
+  /* Big 2048: a sea of tiny tiles under a loupe */
+  .big2048-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: #221342;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    gap: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .big2048-art i { border-radius: 1px; background: rgba(255,255,255,0.08); }
+  .big2048-art i.t2   { background: #eee4da; }
+  .big2048-art i.t8   { background: #f2b179; }
+  .big2048-art i.t32  { background: #f67c5f; }
+  .big2048-art i.t128 { background: #edcf72; }
+  .big2048-art .loupe {
+    position: absolute; right: 0; bottom: -1px;
+    font-size: 19px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+  }
+
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -407,6 +431,27 @@
   </header>
 
   <main>
+    <a class="game-card" href="2048-big-grid.html">
+      <div class="card-art">
+        <div class="big2048-art">
+          <i class="t2"></i><i></i><i></i><i class="t8"></i><i></i><i></i><i class="t2"></i><i></i>
+          <i></i><i class="t32"></i><i class="t2"></i><i></i><i></i><i class="t2"></i><i></i><i></i>
+          <i class="t2"></i><i></i><i></i><i></i><i class="t128"></i><i></i><i></i><i class="t2"></i>
+          <i></i><i></i><i class="t8"></i><i class="t2"></i><i></i><i></i><i class="t8"></i><i></i>
+          <i></i><i class="t2"></i><i></i><i></i><i class="t2"></i><i></i><i></i><i></i>
+          <i class="t8"></i><i></i><i></i><i class="t32"></i><i></i><i class="t2"></i><i></i><i class="t2"></i>
+          <i></i><i class="t2"></i><i></i><i></i><i></i><i></i><i class="t2"></i><i></i>
+          <i></i><i></i><i class="t2"></i><i></i><i class="t8"></i><i></i><i></i><i class="t32"></i>
+          <span class="loupe">🔍</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>2048 (Big Grid)</h2>
+        <p>Classic 2048 from 4×4 all the way to a 300×300 ocean of 90,000 tiles. Spawns scale with the board, play on past 2048, zoom into the swarm, and the soundtrack ramps up as you do. Shake your phone to shuffle!</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+
     <a class="game-card" href="zero-gravity-2048.html">
       <div class="card-art">
         <div class="zg-art">

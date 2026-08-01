@@ -1,0 +1,1935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c1e22">
+<title>TI-84 Plus CE Simulator</title>
+<style>
+  :root {
+    --body: #26282e;
+    --body-hi: #34373f;
+    --body-lo: #17181c;
+    --key: #35383f;
+    --key-hi: #45484f;
+    --white-key: #e9e6dd;
+    --blue: #6db3e8;
+    --green: #6fce6f;
+    --page-bg1: #1a1033;
+    --page-bg2: #0a0520;
+    --text: #f6f3ff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, var(--page-bg1) 60%, var(--page-bg2) 100%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    touch-action: manipulation;
+    overflow: hidden;
+  }
+  body {
+    height: 100dvh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: env(safe-area-inset-top) 8px calc(4px + env(safe-area-inset-bottom));
+  }
+  .top-bar {
+    flex-shrink: 0;
+    width: 100%; max-width: 430px;
+    padding: 6px 2px 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .rbtn {
+    appearance: none;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 50%;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 15px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .rbtn:active { background: #ffd166; color: #1a1033; }
+  .rbtn.on { background: #ffd166; color: #1a1033; border-color: #ffd166; }
+  .top-title {
+    flex: 1; text-align: center;
+    font-size: 10.5px; font-weight: 800; letter-spacing: 2.5px;
+    color: rgba(246,243,255,0.55);
+  }
+
+  /* Scale-to-fit stage: the calculator shrinks so it never scrolls. */
+  .fit {
+    flex: 1; min-height: 0;
+    width: 100%;
+    display: flex; justify-content: center; align-items: flex-start;
+    overflow: hidden;
+  }
+
+  /* ================= Calculator body ================= */
+  .calc {
+    width: min(96vw, 366px);
+    flex-shrink: 0;
+    transform-origin: top center;
+    background: linear-gradient(170deg, var(--body-hi) 0%, var(--body) 30%, var(--body-lo) 100%);
+    border-radius: 22px 22px 28px 28px;
+    padding: 10px 11px 14px;
+    box-shadow:
+      0 20px 50px rgba(0,0,0,0.65),
+      inset 0 2px 0 rgba(255,255,255,0.14),
+      inset 0 -6px 14px rgba(0,0,0,0.4);
+    border: 1px solid #0c0d10;
+  }
+  .brand {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 4px 6px;
+  }
+  .brand .ti { font-size: 11px; font-weight: 800; color: #dfe3ea; letter-spacing: 0.4px; font-style: italic; }
+  .brand .model { font-size: 9.5px; font-weight: 700; color: #9aa2b0; letter-spacing: 0.8px; }
+  .bezel {
+    background: #101216;
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(255,255,255,0.06);
+  }
+  canvas#lcd {
+    display: block;
+    width: 100%;
+    border-radius: 2px;
+    background: #f3f5f2;
+  }
+
+  .keys {
+    margin-top: 9px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px 6px;
+    position: relative;
+  }
+  .key {
+    appearance: none; border: none; cursor: pointer;
+    font-family: inherit;
+    background: linear-gradient(180deg, var(--key-hi), var(--key) 45%, #26282e);
+    color: #eceef2;
+    border-radius: 7px;
+    padding: 1px 2px 3px;
+    min-height: 33px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    box-shadow: 0 3px 0 #0d0e11, inset 0 1px 0 rgba(255,255,255,0.14);
+    transition: transform 0.05s, box-shadow 0.05s, filter 0.05s;
+    position: relative;
+  }
+  .key:active, .key.pressed { transform: translateY(2px); box-shadow: 0 1px 0 #0d0e11; filter: brightness(1.3); }
+  .key .lab {
+    display: flex; gap: 4px; justify-content: center;
+    font-size: 6.8px; font-weight: 700; letter-spacing: 0.2px;
+    min-height: 9px;
+    line-height: 9px;
+    width: 100%;
+    padding: 0 1px;
+  }
+  .key .lab .s { color: var(--blue); }
+  .key .lab .a { color: var(--green); }
+  .key .main { font-size: 11.5px; font-weight: 800; line-height: 1.1; padding-bottom: 1px; }
+  .key.small .main { font-size: 9.5px; }
+  .key.num { background: linear-gradient(180deg, #f6f4ec, var(--white-key) 50%, #cfccc1); color: #1c1d20; box-shadow: 0 3px 0 #8f8c82, inset 0 1px 0 rgba(255,255,255,0.9); }
+  .key.num:active, .key.num.pressed { box-shadow: 0 1px 0 #8f8c82; }
+  .key.k2nd { background: linear-gradient(180deg, #7cc0f0, #4d8fd0 55%, #366aa8); color: #0c1a2a; }
+  .key.k2nd .main { color: #0c1a2a; }
+  .key.kalpha { background: linear-gradient(180deg, #8fdc8f, #57ad57 55%, #3d8a3d); color: #0f2410; }
+  .key.soft {
+    min-height: 23px;
+    border-radius: 5px 5px 9px 9px;
+    justify-content: center;
+  }
+  .key.soft .main { font-size: 8.6px; letter-spacing: 0.3px; }
+  /* solfège hint printed on the number keys */
+  .key .solf {
+    position: absolute; top: 1px; right: 3px;
+    font-size: 6.5px; font-weight: 800;
+    color: #b08a3a;
+    letter-spacing: 0.2px;
+  }
+
+  /* arrow pad island: spans cols 4-5, rows 2-3 */
+  .dpad {
+    grid-column: 4 / 6;
+    grid-row: 2 / 4;
+    position: relative;
+    align-self: center; justify-self: center;
+    width: 78px; height: 78px;
+  }
+  .dpad .ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 34%, #4a4d55, #26282e 70%);
+    box-shadow: 0 3px 0 #0d0e11, inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .dpad button {
+    appearance: none; border: none; cursor: pointer;
+    position: absolute;
+    width: 30px; height: 26px;
+    background: transparent;
+    color: #dfe3ea;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dpad button:active { color: var(--blue); transform: scale(0.9); }
+  .dpad .up    { top: 1px; left: 50%; transform: translateX(-50%); }
+  .dpad .down  { bottom: 1px; left: 50%; transform: translateX(-50%); }
+  .dpad .left  { left: 1px; top: 50%; transform: translateY(-50%); }
+  .dpad .right { right: 1px; top: 50%; transform: translateY(-50%); }
+  .dpad .up:active, .dpad .down:active { transform: translateX(-50%) scale(0.9); }
+  .dpad .left:active, .dpad .right:active { transform: translateY(-50%) scale(0.9); }
+  .dpad .hub {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #1b1d21;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.7);
+    pointer-events: none;
+  }
+
+  .hint-note {
+    flex-shrink: 0;
+    padding: 3px 6px 0;
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgba(246,243,255,0.42);
+    text-align: center;
+    max-width: 430px;
+  }
+  .hint-note b { color: rgba(246,243,255,0.68); }
+</style>
+</head>
+<body>
+  <div class="top-bar">
+    <a class="rbtn" href="index.html" aria-label="Back to arcade">←</a>
+    <div class="top-title">GRAPHING CALCULATOR</div>
+    <button class="rbtn" id="mute-btn" aria-label="Toggle key sounds">🎵</button>
+  </div>
+
+  <div class="fit" id="fit">
+    <div class="calc" id="calc">
+      <div class="brand">
+        <span class="ti">TEXAS INSTRUMENTS</span>
+        <span class="model">TI-84 Plus CE</span>
+      </div>
+      <div class="bezel"><canvas id="lcd"></canvas></div>
+      <div class="keys" id="keys"></div>
+    </div>
+  </div>
+
+  <p class="hint-note">
+    Number keys play <b>do re mi fa so la ti</b> — every key has its own note.
+    Try <b>prgm ▸ NEW</b> to write a program.
+  </p>
+
+<script>
+(() => {
+  'use strict';
+
+  // ================= Key layout =================
+  // [id, main, 2nd label, alpha label, css class]
+  const KEYS = [
+    ['yeq', 'y=', 'stat plot', '', 'soft'], ['window', 'window', 'tblset', '', 'soft'],
+    ['zoom', 'zoom', 'format', '', 'soft'], ['trace', 'trace', 'calc', '', 'soft'],
+    ['graph', 'graph', 'table', '', 'soft'],
+
+    ['2nd', '2nd', '', '', 'k2nd'], ['mode', 'mode', 'quit', ''], ['del', 'del', 'ins', ''],
+    // dpad occupies cols 4-5 rows 2-3
+    ['alpha', 'alpha', 'A-lock', '', 'kalpha'], ['xton', 'X,T,θ,n', 'link', '', 'small'], ['stat', 'stat', 'list', ''],
+
+    ['math', 'math', 'test', 'A'], ['apps', 'apps', 'char', 'B'], ['prgm', 'prgm', 'draw', 'C'],
+    ['vars', 'vars', 'distr', ''], ['clear', 'clear', '', ''],
+
+    ['inv', 'x⁻¹', 'matrix', 'D'], ['sin', 'sin', 'sin⁻¹', 'E'], ['cos', 'cos', 'cos⁻¹', 'F'],
+    ['tan', 'tan', 'tan⁻¹', 'G'], ['pow', '^', 'π', 'H'],
+
+    ['sq', 'x²', '√', 'I'], ['comma', ',', 'EE', 'J'], ['lparen', '(', '{', 'K'],
+    ['rparen', ')', '}', 'L'], ['div', '÷', 'e', 'M'],
+
+    ['log', 'log', '10ˣ', 'N'], ['7', '7', 'u', 'O', 'num'], ['8', '8', 'v', 'P', 'num'],
+    ['9', '9', 'w', 'Q', 'num'], ['mul', '×', '[', 'R'],
+
+    ['ln', 'ln', 'eˣ', 'S'], ['4', '4', 'L4', 'T', 'num'], ['5', '5', 'L5', 'U', 'num'],
+    ['6', '6', 'L6', 'V', 'num'], ['sub', '−', ']', 'W'],
+
+    ['sto', 'sto→', 'rcl', 'X'], ['1', '1', 'L1', 'Y', 'num'], ['2', '2', 'L2', 'Z', 'num'],
+    ['3', '3', 'L3', 'θ', 'num'], ['add', '+', 'mem', '"'],
+
+    ['on', 'on', 'off', ''], ['0', '0', 'catalog', '␣', 'num'], ['dot', '.', 'i', ':', 'num'],
+    ['neg', '(−)', 'ans', '?', 'num'], ['enter', 'enter', 'entry', 'solve'],
+  ];
+  // solfège printed on the playable number keys
+  const SOLFEGE = { '1':'do', '2':'re', '3':'mi', '4':'fa', '5':'so', '6':'la', '7':'ti', '8':'do', '9':'re', '0':'DO' };
+
+  const keysEl = document.getElementById('keys');
+  KEYS.forEach((k, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'key ' + (k[4] || '');
+    btn.dataset.k = k[0];
+    btn.innerHTML = `<span class="lab"><span class="s">${k[2]}</span><span class="a">${k[3]}</span></span><span class="main">${k[1]}</span>`
+      + (SOLFEGE[k[0]] ? `<span class="solf">${SOLFEGE[k[0]]}</span>` : '');
+    keysEl.appendChild(btn);
+    if (i === 7) { // after 'del', insert the dpad island
+      const dp = document.createElement('div');
+      dp.className = 'dpad';
+      dp.innerHTML = `<div class="ring"></div><div class="hub"></div>
+        <button class="up" data-k="up">▲</button><button class="down" data-k="down">▼</button>
+        <button class="left" data-k="left">◀</button><button class="right" data-k="right">▶</button>`;
+      keysEl.appendChild(dp);
+    }
+  });
+
+  // ================= Sound: every key is an instrument =================
+  // Number keys are a playable C-major scale so you can pick out tunes,
+  // the way kids do on old Casio/Japanese calculators.
+  const N = {
+    C3:130.81, D3:146.83, E3:164.81, F3:174.61, G3:196.00, A3:220.00, B3:246.94,
+    C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
+    C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
+    C6:1046.50, D6:1174.66, E6:1318.51, G6:1567.98,
+  };
+  // f=freq  w=wave  d=seconds  g=gain  sl=slide-to-freq  bell=add octave shimmer
+  // seq=[[freq,delaySeconds],…] extra notes for chords/arpeggios
+  const VOICES = {
+    // --- the scale: do re mi fa so la ti, then high do/re, and a bass do ---
+    '1': { f: N.C4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '2': { f: N.D4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '3': { f: N.E4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '4': { f: N.F4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '5': { f: N.G4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '6': { f: N.A4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '7': { f: N.B4, w: 'triangle', d: 0.55, g: 0.34, bell: 1 },
+    '8': { f: N.C5, w: 'triangle', d: 0.52, g: 0.32, bell: 1 },
+    '9': { f: N.D5, w: 'triangle', d: 0.52, g: 0.32, bell: 1 },
+    '0': { f: N.C3, w: 'triangle', d: 0.62, g: 0.36, bell: 1 },
+    dot: { f: N.G5, w: 'sine', d: 0.16, g: 0.20 },
+
+    // --- operators: little intervals, each unmistakable ---
+    add:   { f: N.C5, w: 'square',   d: 0.20, g: 0.16, seq: [[N.G5, 0.05]] },
+    sub:   { f: N.G4, w: 'square',   d: 0.22, g: 0.16, seq: [[N.D4, 0.05]] },
+    mul:   { f: N.E5, w: 'sawtooth', d: 0.13, g: 0.12, seq: [[N.A5, 0.06]] },
+    div:   { f: N.A5, w: 'sawtooth', d: 0.13, g: 0.12, seq: [[N.E5, 0.06]] },
+    pow:   { f: N.C5, w: 'sine',     d: 0.26, g: 0.20, sl: 700 },
+    enter: { f: N.G4, w: 'triangle', d: 0.30, g: 0.30, seq: [[N.C5, 0.09]] },
+    clear: { f: N.A4, w: 'sine',     d: 0.28, g: 0.22, sl: -230 },
+    del:   { f: N.E4, w: 'square',   d: 0.09, g: 0.13, sl: -70 },
+
+    // --- modifiers ---
+    '2nd':  { f: N.E6, w: 'sine',   d: 0.13, g: 0.22 },
+    alpha:  { f: N.G6, w: 'sine',   d: 0.13, g: 0.20 },
+    on:     { f: N.C4, w: 'triangle', d: 0.30, g: 0.26, seq: [[N.E4, 0.08], [N.G4, 0.16], [N.C5, 0.24]] },
+
+    // --- soft keys: bright pentatonic bells ---
+    yeq:    { f: N.C5, w: 'sine', d: 0.24, g: 0.20, bell: 1 },
+    window: { f: N.D5, w: 'sine', d: 0.24, g: 0.20, bell: 1 },
+    zoom:   { f: N.E5, w: 'sine', d: 0.24, g: 0.20, bell: 1 },
+    trace:  { f: N.G5, w: 'sine', d: 0.24, g: 0.20, bell: 1 },
+    graph:  { f: N.A5, w: 'sine', d: 0.24, g: 0.20, bell: 1 },
+
+    // --- trig keys really are sine waves ---
+    sin: { f: N.C5, w: 'sine', d: 0.30, g: 0.22 },
+    cos: { f: N.E5, w: 'sine', d: 0.30, g: 0.22 },
+    tan: { f: N.G5, w: 'sine', d: 0.30, g: 0.22 },
+
+    // --- the rest, each its own colour ---
+    log:    { f: N.F5, w: 'square',   d: 0.16, g: 0.13 },
+    ln:     { f: N.D5, w: 'square',   d: 0.16, g: 0.13 },
+    sq:     { f: N.B4, w: 'triangle', d: 0.18, g: 0.22, seq: [[N.D6, 0.05]] },
+    inv:    { f: N.D6, w: 'triangle', d: 0.18, g: 0.18, sl: -240 },
+    lparen: { f: N.A5, w: 'square',   d: 0.07, g: 0.14 },
+    rparen: { f: N.F5, w: 'square',   d: 0.07, g: 0.14 },
+    comma:  { f: N.B5, w: 'sine',     d: 0.08, g: 0.14 },
+    neg:    { f: N.F3, w: 'triangle', d: 0.22, g: 0.24 },
+    sto:    { f: N.C4, w: 'sawtooth', d: 0.22, g: 0.13, sl: 420 },
+    math:   { f: N.A4, w: 'triangle', d: 0.19, g: 0.20 },
+    apps:   { f: N.B4, w: 'triangle', d: 0.19, g: 0.20 },
+    prgm:   { f: N.C5, w: 'triangle', d: 0.19, g: 0.20 },
+    vars:   { f: N.D5, w: 'triangle', d: 0.19, g: 0.20 },
+    stat:   { f: N.E5, w: 'triangle', d: 0.19, g: 0.20 },
+    xton:   { f: N.G4, w: 'sawtooth', d: 0.20, g: 0.13 },
+    mode:   { f: N.F4, w: 'triangle', d: 0.19, g: 0.20 },
+
+    // --- d-pad ticks ---
+    up:    { f: N.E6, w: 'sine', d: 0.06, g: 0.15 },
+    down:  { f: N.C5, w: 'sine', d: 0.06, g: 0.15 },
+    left:  { f: N.G5, w: 'sine', d: 0.06, g: 0.15 },
+    right: { f: N.B5, w: 'sine', d: 0.06, g: 0.15 },
+  };
+
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let actx = null, master = null;
+  let muted = false;
+  try { muted = localStorage.getItem('ti.muted') === '1'; } catch (e) {}
+
+  function ensureAudio() {
+    if (!AC) return null;
+    if (!actx) {
+      actx = new AC();
+      master = actx.createGain();
+      master.gain.value = muted ? 0 : 0.55;
+      // Keeps stacked notes from clipping when keys are mashed.
+      const comp = actx.createDynamicsCompressor();
+      comp.threshold.value = -18;
+      comp.ratio.value = 6;
+      master.connect(comp);
+      comp.connect(actx.destination);
+    }
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  // iOS keeps a context muted until a sound plays inside a real gesture.
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    try {
+      const b = ctx.createBuffer(1, 1, 22050);
+      const s = ctx.createBufferSource();
+      s.buffer = b;
+      s.connect(ctx.destination);
+      s.start(0);
+    } catch (e) {}
+  }
+  document.addEventListener('pointerdown', unlockAudio, { capture: true, once: true });
+  document.addEventListener('touchstart', unlockAudio, { capture: true, once: true });
+
+  function note(f, w, d, g, when, sl, bell) {
+    const t = actx.currentTime + when;
+    const osc = actx.createOscillator();
+    const env = actx.createGain();
+    osc.type = w;
+    osc.frequency.setValueAtTime(f, t);
+    if (sl) osc.frequency.exponentialRampToValueAtTime(Math.max(40, f + sl), t + d);
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(g, t + 0.008);
+    env.gain.exponentialRampToValueAtTime(0.0008, t + d);
+    osc.connect(env); env.connect(master);
+    osc.start(t); osc.stop(t + d + 0.04);
+    if (bell) { // faint octave above gives the plastic-bell shimmer
+      const o2 = actx.createOscillator(), e2 = actx.createGain();
+      o2.type = 'sine';
+      o2.frequency.setValueAtTime(f * 2, t);
+      e2.gain.setValueAtTime(0, t);
+      e2.gain.linearRampToValueAtTime(g * 0.3, t + 0.006);
+      e2.gain.exponentialRampToValueAtTime(0.0008, t + d * 0.7);
+      o2.connect(e2); e2.connect(master);
+      o2.start(t); o2.stop(t + d + 0.04);
+    }
+  }
+  function playKey(k) {
+    if (muted) { haptic(); return; }
+    if (!ensureAudio()) return;
+    const v = VOICES[k] || { f: N.A4, w: 'square', d: 0.08, g: 0.12 };
+    note(v.f, v.w, v.d, v.g, 0, v.sl, v.bell);
+    if (v.seq) for (const [f2, dly] of v.seq) note(f2, v.w, v.d * 0.8, v.g * 0.85, dly, 0, v.bell);
+    haptic();
+  }
+  function haptic() { try { if (navigator.vibrate) navigator.vibrate(4); } catch (e) {} }
+
+  const muteBtn = document.getElementById('mute-btn');
+  function refreshMuteBtn() {
+    muteBtn.textContent = muted ? '🔇' : '🎵';
+    muteBtn.classList.toggle('on', !muted);
+  }
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    try { localStorage.setItem('ti.muted', muted ? '1' : '0'); } catch (e) {}
+    if (master) master.gain.value = muted ? 0 : 0.55;
+    refreshMuteBtn();
+    if (!muted) { ensureAudio(); playKey('5'); }
+  });
+  refreshMuteBtn();
+
+  // ================= LCD =================
+  const LW = 320, LH = 240, BAR = 18;
+  const lcd = document.getElementById('lcd');
+  const ctx = lcd.getContext('2d');
+  const SCALE = 2;
+  lcd.width = LW * SCALE; lcd.height = LH * SCALE;
+  lcd.style.aspectRatio = LW + ' / ' + LH;
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+
+  const FONT = 'bold 15px "Courier New", monospace';
+  const FONT_SM = 'bold 12px "Courier New", monospace';
+  ctx.font = FONT;
+  const CHW = ctx.measureText('0').width;
+  const COLS = Math.floor((LW - 6) / CHW);
+  const ROWH = 21;
+  const ROWS = Math.floor((LH - BAR - 4) / ROWH);
+
+  // ================= Scale-to-fit (no scrolling, ever) =================
+  const calcEl = document.getElementById('calc');
+  const fitEl = document.getElementById('fit');
+  function fitCalc() {
+    calcEl.style.transform = 'none';
+    const natural = calcEl.offsetHeight;
+    const avail = fitEl.clientHeight;
+    if (!natural || !avail) return;
+    const k = Math.min(1, avail / natural);
+    calcEl.style.transform = k < 1 ? `scale(${k.toFixed(4)})` : 'none';
+  }
+  window.addEventListener('resize', fitCalc);
+  window.addEventListener('orientationchange', () => setTimeout(fitCalc, 120));
+
+  // ================= State =================
+  const YCOLORS = ['#2b5fd9', '#d92b2b', '#1a8a3a', '#c22bd9'];
+  const S = {
+    screen: 'home',
+    second: false, alpha: false, alphaLock: false,
+    rad: true,
+    ans: 0,
+    vars: {},
+    hist: [],
+    entries: [],
+    entryIdx: -1,
+    line: [], cur: 0,
+    yeq: [[], [], [], []],
+    ysel: 0,
+    win: { Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1 },
+    tbl: { TblStart: 0, dTbl: 1 },
+    fldSel: 0, fldLine: null, fldCur: 0,
+    menuSel: 0, menuFrom: 'home',
+    err: null, errFrom: 'home',
+    trace: { fn: 0, X: 0 },
+    tScroll: 0,
+    modeSel: 0,
+    blink: true,
+    // ---- programming ----
+    progs: [],
+    prgmTab: 0,          // 0 EXEC · 1 EDIT · 2 NEW
+    pe: { idx: 0, line: 0, cur: 0, scroll: 0 },
+    nameBuf: [],
+    cmdTab: 0, cmdSel: 0,
+    run: null,
+  };
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZθ'.split('').forEach(v => S.vars[v] = 0);
+
+  // Sample programs so PRGM is never empty.
+  const str = s => s.split('');
+  const DEFAULT_PROGS = () => ([
+    { name: 'HELLOWLD', lines: [
+      ['ClrHome'],
+      ['Disp ', '"', ...str('HELLO WORLD'), '"'],
+    ]},
+    { name: 'COUNT', lines: [
+      ['ClrHome'],
+      ['For(', 'I', ',', '1', ',', '5', ')'],
+      ['Disp ', 'I'],
+      ['End'],
+    ]},
+    { name: 'GUESS', lines: [
+      ['ClrHome'],
+      ['Disp ', '"', ...str('GUESS 1-9'), '"'],
+      ['Input ', 'G'],
+      ['If ', 'G', '=', '7'],
+      ['Then'],
+      ['Disp ', '"', ...str('YOU GOT IT!'), '"'],
+      ['Else'],
+      ['Disp ', '"', ...str('NOPE!'), '"'],
+      ['End'],
+    ]},
+  ]);
+
+  function save() {
+    try {
+      localStorage.setItem('ti.state', JSON.stringify({
+        rad: S.rad, ans: S.ans, vars: S.vars, yeq: S.yeq, win: S.win, tbl: S.tbl, progs: S.progs,
+      }));
+    } catch (e) {}
+  }
+  try {
+    const raw = localStorage.getItem('ti.state');
+    if (raw) {
+      const o = JSON.parse(raw);
+      if (o && typeof o === 'object') {
+        S.rad = o.rad !== false;
+        S.ans = +o.ans || 0;
+        Object.assign(S.vars, o.vars || {});
+        if (Array.isArray(o.yeq) && o.yeq.length === 4) S.yeq = o.yeq;
+        Object.assign(S.win, o.win || {});
+        Object.assign(S.tbl, o.tbl || {});
+        if (Array.isArray(o.progs)) S.progs = o.progs;
+      }
+    }
+  } catch (e) {}
+  if (!S.progs.length) S.progs = DEFAULT_PROGS();
+
+  // ================= Number formatting =================
+  function fmt(x) {
+    if (Object.is(x, -0)) x = 0;
+    if (!isFinite(x)) return 'ERR';
+    const ax = Math.abs(x);
+    if (x !== 0 && (ax >= 1e10 || ax < 1e-4)) {
+      const exp = Math.floor(Math.log10(ax));
+      const mant = x / Math.pow(10, exp);
+      return Number(mant.toPrecision(10)).toString() + 'ᴇ' + exp;
+    }
+    const s = Number(x.toPrecision(10)).toString();
+    if (s.includes('e')) { const [m, e] = s.split('e'); return m + 'ᴇ' + +e; }
+    return s;
+  }
+  function toFrac(x) {
+    if (!isFinite(x)) return null;
+    if (Number.isInteger(x)) return String(x);
+    const sign = x < 0 ? '⁻' : '';
+    const v = Math.abs(x);
+    let h1 = 1, h0 = 0, k1 = 0, k0 = 1, b = v;
+    for (let i = 0; i < 30; i++) {
+      const a = Math.floor(b);
+      [h1, h0] = [a * h1 + h0, h1];
+      [k1, k0] = [a * k1 + k0, k1];
+      if (k1 > 9999) return null;
+      if (Math.abs(v - h1 / k1) < 1e-10 * Math.max(1, v)) return sign + h1 + '/' + k1;
+      const f = b - a;
+      if (f < 1e-12) break;
+      b = 1 / f;
+    }
+    return null;
+  }
+
+  // ================= Tokens & evaluation =================
+  const FUNCS = {
+    'sin(': a => Math.sin(S.rad ? a : a * Math.PI / 180),
+    'cos(': a => Math.cos(S.rad ? a : a * Math.PI / 180),
+    'tan(': a => Math.tan(S.rad ? a : a * Math.PI / 180),
+    'sin⁻¹(': a => { const r = Math.asin(a); return S.rad ? r : r * 180 / Math.PI; },
+    'cos⁻¹(': a => { const r = Math.acos(a); return S.rad ? r : r * 180 / Math.PI; },
+    'tan⁻¹(': a => { const r = Math.atan(a); return S.rad ? r : r * 180 / Math.PI; },
+    'log(': a => Math.log10(a),
+    'ln(': a => Math.log(a),
+    '√(': a => Math.sqrt(a),
+    '³√(': a => Math.cbrt(a),
+    '10^(': a => Math.pow(10, a),
+    'e^(': a => Math.exp(a),
+    'abs(': a => Math.abs(a),
+    'int(': a => Math.floor(a),
+    'randInt(': a => Math.floor(Math.random() * a) + 1,
+  };
+  const isDigit = t => /^[0-9.]$/.test(t);
+  const isVar = t => /^[A-Zθ]$/.test(t);
+  const isConst = t => t === 'π' || t === 'e' || t === 'Ans';
+  const isFunc = t => Object.prototype.hasOwnProperty.call(FUNCS, t);
+  const isPostfix = t => t === '²' || t === '³' || t === '⁻¹' || t === '!';
+  // Relational operators sit below +/− (TI-style), and yield 1 or 0.
+  const BINOP = { '=': 3, '≠': 3, '>': 3, '<': 3, '≥': 3, '≤': 3, '+': 4, '−': 4, '×': 5, '÷': 5, '^': 8, 'ᴇ': 9 };
+
+  function toRPN(tokens) {
+    const out = [], ops = [];
+    let prevVal = false;
+    let i = 0;
+    const err = () => { throw { type: 'SYNTAX' }; };
+    function pushOp(t) {
+      const prec = BINOP[t];
+      while (ops.length) {
+        const top = ops[ops.length - 1];
+        const tp = top.u ? top.prec : top.op ? BINOP[top.op] : -1;
+        if (tp >= prec) out.push(ops.pop());  // left-assoc, including ^ (a TI quirk)
+        else break;
+      }
+      ops.push({ op: t });
+    }
+    while (i < tokens.length) {
+      const t = tokens[i];
+      if (isDigit(t)) {
+        let s = t; i++;
+        while (i < tokens.length && isDigit(tokens[i])) { s += tokens[i]; i++; }
+        if ((s.match(/\./g) || []).length > 1) err();
+        if (prevVal) pushOp('×');
+        out.push({ n: parseFloat(s) });
+        prevVal = true;
+        continue;
+      }
+      if (isConst(t) || isVar(t)) {
+        if (prevVal) pushOp('×');
+        out.push({ v: t });
+        prevVal = true;
+      } else if (isFunc(t)) {
+        if (prevVal) pushOp('×');
+        ops.push({ f: t });
+        prevVal = false;
+      } else if (t === '(') {
+        if (prevVal) pushOp('×');
+        ops.push({ p: 1 });
+        prevVal = false;
+      } else if (t === ')') {
+        let found = false;
+        while (ops.length) {
+          const o = ops.pop();
+          if (o.p) { found = true; break; }
+          if (o.f) { out.push({ call: o.f }); found = true; break; }
+          out.push(o);
+        }
+        if (!found) err();
+        prevVal = true;
+      } else if (isPostfix(t)) {
+        if (!prevVal) err();
+        out.push({ post: t });
+        prevVal = true;
+      } else if (t === '⁻') {
+        if (prevVal) err();
+        ops.push({ u: 1, prec: 6 });
+        prevVal = false;
+      } else if (BINOP[t]) {
+        if (!prevVal) err();
+        pushOp(t);
+        prevVal = false;
+      } else err();
+      i++;
+    }
+    if (!prevVal && tokens.length) err();
+    while (ops.length) {
+      const o = ops.pop();
+      if (o.p) err();
+      if (o.f) { out.push({ call: o.f }); continue; }
+      out.push(o);
+    }
+    return out;
+  }
+
+  function evalRPN(rpn, xVal) {
+    const st = [];
+    for (const it of rpn) {
+      if ('n' in it) st.push(it.n);
+      else if (it.v) {
+        if (it.v === 'π') st.push(Math.PI);
+        else if (it.v === 'e') st.push(Math.E);
+        else if (it.v === 'Ans') st.push(S.ans);
+        else if (it.v === 'X' && xVal !== undefined) st.push(xVal);
+        else st.push(S.vars[it.v] || 0);
+      } else if (it.post) {
+        const a = st.pop(); if (a === undefined) throw { type: 'SYNTAX' };
+        if (it.post === '²') st.push(a * a);
+        else if (it.post === '³') st.push(a * a * a);
+        else if (it.post === '⁻¹') { if (a === 0) throw { type: 'DIVIDE BY 0' }; st.push(1 / a); }
+        else if (it.post === '!') {
+          if (a < 0 || a > 170 || !Number.isInteger(a)) throw { type: 'DOMAIN' };
+          let r = 1; for (let k = 2; k <= a; k++) r *= k; st.push(r);
+        }
+      } else if (it.u) {
+        const a = st.pop(); if (a === undefined) throw { type: 'SYNTAX' };
+        st.push(-a);
+      } else if (it.call) {
+        const a = st.pop(); if (a === undefined) throw { type: 'SYNTAX' };
+        st.push(FUNCS[it.call](a));
+      } else if (it.op) {
+        const b = st.pop(), a = st.pop();
+        if (a === undefined || b === undefined) throw { type: 'SYNTAX' };
+        switch (it.op) {
+          case '+': st.push(a + b); break;
+          case '−': st.push(a - b); break;
+          case '×': st.push(a * b); break;
+          case '÷': if (b === 0) throw { type: 'DIVIDE BY 0' }; st.push(a / b); break;
+          case '^': st.push(Math.pow(a, b)); break;
+          case 'ᴇ': st.push(a * Math.pow(10, b)); break;
+          case '=': st.push(a === b ? 1 : 0); break;
+          case '≠': st.push(a !== b ? 1 : 0); break;
+          case '>': st.push(a > b ? 1 : 0); break;
+          case '<': st.push(a < b ? 1 : 0); break;
+          case '≥': st.push(a >= b ? 1 : 0); break;
+          case '≤': st.push(a <= b ? 1 : 0); break;
+        }
+      }
+    }
+    if (st.length !== 1) throw { type: 'SYNTAX' };
+    const r = st[0];
+    if (isNaN(r)) throw { type: 'NONREAL ANS' };
+    if (!isFinite(r)) throw { type: 'OVERFLOW' };
+    return r;
+  }
+  function evalTokens(tokens, xVal) { return evalRPN(toRPN(tokens), xVal); }
+
+  // ================= Home screen =================
+  function pushHist(row) {
+    S.hist.push(row);
+    if (S.hist.length > 60) S.hist.shift();
+  }
+  function homeEnter() {
+    let tokens = S.line.slice();
+    if (!tokens.length) {
+      if (!S.entries.length) return;
+      tokens = S.entries[S.entries.length - 1].slice();
+    }
+    // prgmNAME runs a program
+    if (tokens[0] === 'prgm') {
+      const nm = tokens.slice(1).join('');
+      const idx = S.progs.findIndex(p => p.name === nm);
+      S.line = []; S.cur = 0;
+      if (idx === -1) return showErr('UNDEFINED');
+      runProgram(idx);
+      return;
+    }
+    if (BINOP[tokens[0]] || isPostfix(tokens[0])) tokens = ['Ans', ...tokens];
+    let frac = false;
+    if (tokens[tokens.length - 1] === '▶Frac') { frac = true; tokens = tokens.slice(0, -1); }
+    else if (tokens[tokens.length - 1] === '▶Dec') tokens = tokens.slice(0, -1);
+    let stoVar = null;
+    const stoIdx = tokens.indexOf('→');
+    if (stoIdx !== -1) {
+      if (stoIdx !== tokens.length - 2 || !isVar(tokens[tokens.length - 1])) return showErr('SYNTAX');
+      stoVar = tokens[tokens.length - 1];
+      tokens = tokens.slice(0, stoIdx);
+    }
+    if (!tokens.length) return showErr('SYNTAX');
+    let val;
+    try { val = evalTokens(tokens); }
+    catch (ex) { return showErr(ex.type || 'SYNTAX'); }
+    if (stoVar) S.vars[stoVar] = val;
+    S.ans = val;
+    const res = frac ? (toFrac(val) || fmt(val)) : fmt(val);
+    pushHist({ l: S.line.length ? S.line.join('') : tokens.join('') });
+    pushHist({ r: res });
+    if (S.line.length) {
+      S.entries.push(S.line.slice());
+      if (S.entries.length > 30) S.entries.shift();
+    }
+    S.entryIdx = -1;
+    S.line = []; S.cur = 0;
+    save();
+  }
+  function showErr(type) {
+    S.err = type;
+    S.errFrom = S.screen === 'error' ? S.errFrom : S.screen;
+    S.screen = 'error';
+  }
+
+  // ================= Key → token =================
+  function tokenFor(k, second, alpha) {
+    if (alpha) {
+      if (k === '0') return ' ';
+      if (k === 'add') return '"';
+      if (k === 'dot') return ':';
+      if (k === 'neg') return '?';
+      const key = KEYS.find(x => x[0] === k);
+      if (key && key[3] && key[3].length === 1 && /[A-Zθ]/.test(key[3])) return key[3];
+      return null;
+    }
+    const map = {
+      '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9',
+      dot: '.', add: '+', sub: '−', mul: '×', div: '÷', pow: '^',
+      lparen: '(', rparen: ')', comma: ',', neg: '⁻', xton: 'X', sto: '→',
+      sin: 'sin(', cos: 'cos(', tan: 'tan(', log: 'log(', ln: 'ln(',
+      sq: '²', inv: '⁻¹',
+    };
+    const map2 = {
+      sin: 'sin⁻¹(', cos: 'cos⁻¹(', tan: 'tan⁻¹(', log: '10^(', ln: 'e^(',
+      sq: '√(', pow: 'π', div: 'e', comma: 'ᴇ', neg: 'Ans',
+    };
+    if (second && map2[k]) return map2[k];
+    return map[k] || null;
+  }
+
+  // ================= Line editing =================
+  function curLine() {
+    if (S.screen === 'home') return { get: () => S.line, cur: () => S.cur, setCur: c => S.cur = c };
+    if (S.screen === 'yeq') return { get: () => S.yeq[S.ysel], cur: () => S.cur, setCur: c => S.cur = c };
+    if (S.screen === 'window' || S.screen === 'tblset') {
+      if (!S.fldLine) S.fldLine = [];
+      return { get: () => S.fldLine, cur: () => S.fldCur, setCur: c => S.fldCur = c };
+    }
+    if (S.screen === 'progedit') {
+      const p = S.progs[S.pe.idx];
+      return { get: () => p.lines[S.pe.line], cur: () => S.pe.cur, setCur: c => S.pe.cur = c };
+    }
+    if (S.screen === 'progname') return { get: () => S.nameBuf, cur: () => S.nameBuf.length, setCur: () => {} };
+    if (S.screen === 'progrun' && S.run && S.run.waiting && S.run.waiting.type === 'input') {
+      return { get: () => S.run.inBuf, cur: () => S.run.inCur, setCur: c => S.run.inCur = c };
+    }
+    return null;
+  }
+  function insertTok(tok) {
+    const L = curLine();
+    if (!L) return;
+    L.get().splice(L.cur(), 0, tok);
+    L.setCur(L.cur() + 1);
+  }
+  function delTok() {
+    const L = curLine();
+    if (!L) return;
+    const arr = L.get();
+    if (L.cur() > 0) { arr.splice(L.cur() - 1, 1); L.setCur(L.cur() - 1); }
+    else if (arr.length) arr.splice(0, 1);
+  }
+
+  // ================= Menus =================
+  const ZOOM_ITEMS = ['ZBox', 'Zoom In', 'Zoom Out', 'ZDecimal', 'ZSquare', 'ZStandard', 'ZTrig'];
+  const MATH_ITEMS = ['▶Frac', '▶Dec', '³', '³√(', 'int(', 'abs(', 'randInt('];
+  const MATH_TOK  = ['▶Frac', '▶Dec', '³', '³√(', 'int(', 'abs(', 'randInt('];
+  const TEST_ITEMS = ['=', '≠', '>', '≥', '<', '≤'];
+  // Program command menu: CTL and I/O pages, mirroring the real PRGM editor.
+  const CMD_PAGES = [
+    { name: 'CTL', items: [
+      ['If ', 'If '], ['Then', 'Then'], ['Else', 'Else'], ['For(', 'For('],
+      ['While ', 'While '], ['Repeat ', 'Repeat '], ['End', 'End'],
+      ['Pause', 'Pause'], ['Lbl ', 'Lbl '], ['Goto ', 'Goto '], ['Stop', 'Stop'],
+    ]},
+    { name: 'I/O', items: [
+      ['Input ', 'Input '], ['Prompt ', 'Prompt '], ['Disp ', 'Disp '],
+      ['ClrHome', 'ClrHome'], ['DispGraph', 'DispGraph'],
+    ]},
+  ];
+
+  function zoomApply(i) {
+    const w = S.win;
+    const cx = (w.Xmin + w.Xmax) / 2, cy = (w.Ymin + w.Ymax) / 2;
+    const rx = (w.Xmax - w.Xmin) / 2, ry = (w.Ymax - w.Ymin) / 2;
+    switch (ZOOM_ITEMS[i]) {
+      case 'ZStandard': Object.assign(w, { Xmin: -10, Xmax: 10, Xscl: 1, Ymin: -10, Ymax: 10, Yscl: 1 }); break;
+      case 'ZDecimal': Object.assign(w, { Xmin: -4.7, Xmax: 4.7, Xscl: 1, Ymin: -3.1, Ymax: 3.1, Yscl: 1 }); break;
+      case 'ZTrig': {
+        const s = S.rad ? Math.PI : 180;
+        Object.assign(w, { Xmin: -2 * s, Xmax: 2 * s, Xscl: s / 2, Ymin: -4, Ymax: 4, Yscl: 1 });
+        break;
+      }
+      case 'ZSquare': {
+        const nrx = ry * (LW / (LH - BAR));
+        Object.assign(w, { Xmin: cx - nrx, Xmax: cx + nrx });
+        break;
+      }
+      case 'Zoom In': Object.assign(w, { Xmin: cx - rx / 4, Xmax: cx + rx / 4, Ymin: cy - ry / 4, Ymax: cy + ry / 4 }); break;
+      case 'Zoom Out': Object.assign(w, { Xmin: cx - rx * 4, Xmax: cx + rx * 4, Ymin: cy - ry * 4, Ymax: cy + ry * 4 }); break;
+      case 'ZBox': return;
+    }
+    save();
+    S.screen = 'graph';
+  }
+
+  // ================= TI-BASIC programs =================
+  const CMD_LIST = ['ClrHome', 'DispGraph', 'Disp ', 'Input ', 'Prompt ', 'If ', 'Then', 'Else',
+                    'For(', 'While ', 'Repeat ', 'End', 'Pause', 'Lbl ', 'Goto ', 'Stop', 'Return'];
+  function cmdOf(line) {
+    if (!line || !line.length) return null;
+    return CMD_LIST.includes(line[0]) ? line[0] : null;
+  }
+  // Split "a,b,c" token runs at top level (parens aware).
+  function splitArgs(tokens) {
+    const out = [[]];
+    let depth = 0;
+    for (const t of tokens) {
+      if (t === '(' || isFunc(t) || t === 'For(') depth++;
+      else if (t === ')') { if (depth > 0) depth--; else continue; }
+      if (t === ',' && depth === 0) { out.push([]); continue; }
+      out[out.length - 1].push(t);
+    }
+    return out.map(a => {
+      while (a.length && a[a.length - 1] === ')') a.pop();
+      return a;
+    });
+  }
+  function isStr(tokens) { return tokens.length && tokens[0] === '"'; }
+  function strVal(tokens) {
+    const t = tokens.slice(1);
+    if (t.length && t[t.length - 1] === '"') t.pop();
+    return t.join('');
+  }
+
+  function runProgram(idx) {
+    const p = S.progs[idx];
+    if (!p) return showErr('UNDEFINED');
+    S.run = { p, pc: 0, out: [], stack: [], waiting: null, done: false, inBuf: [], inCur: 0 };
+    S.screen = 'progrun';
+    stepRun();
+  }
+  function outLine(row) {
+    S.run.out.push(row);
+    if (S.run.out.length > 40) S.run.out.shift();
+  }
+  // Finds the Else / End that close the block starting after `from`.
+  function scanBlock(lines, from) {
+    let depth = 0, elseIdx = -1;
+    for (let i = from; i < lines.length; i++) {
+      const c = cmdOf(lines[i]);
+      if (c === 'Then' || c === 'For(' || c === 'While ' || c === 'Repeat ') depth++;
+      else if (c === 'Else' && depth === 0 && elseIdx === -1) elseIdx = i;
+      else if (c === 'End') { if (depth === 0) return { elseIdx, endIdx: i }; depth--; }
+    }
+    return { elseIdx, endIdx: lines.length };
+  }
+  function stepRun() {
+    const R = S.run;
+    if (!R) return;
+    let guard = 0;
+    while (!R.done && !R.waiting) {
+      if (guard++ > 40000) { R.done = true; outLine({ l: 'STOPPED (too long)' }); break; }
+      const lines = R.p.lines;
+      if (R.pc >= lines.length) { R.done = true; break; }
+      const line = lines[R.pc];
+      const here = R.pc;
+      R.pc++;
+      try { execLine(line, here); }
+      catch (ex) { R.done = true; S.run = null; return showErr(ex.type || 'SYNTAX'); }
+    }
+    if (R.done && !R.ended) { R.ended = true; outLine({ r: 'Done' }); }
+  }
+  function execLine(line, here) {
+    const R = S.run;
+    if (!line || !line.length) return;
+    const cmd = cmdOf(line);
+    const rest = cmd ? line.slice(1) : line;
+    switch (cmd) {
+      case 'ClrHome': R.out = []; return;
+      case 'DispGraph': R.waiting = { type: 'graph' }; return;
+      case 'Disp ': {
+        for (const arg of splitArgs(rest)) {
+          if (!arg.length) continue;
+          if (isStr(arg)) outLine({ l: strVal(arg) });
+          else outLine({ r: fmt(evalTokens(arg)) });
+        }
+        return;
+      }
+      case 'Input ': {
+        const args = splitArgs(rest);
+        let prompt = '?', v = null;
+        if (args.length >= 2 && isStr(args[0])) { prompt = strVal(args[0]); v = args[1].join(''); }
+        else v = args[0].join('');
+        if (!isVar(v)) throw { type: 'SYNTAX' };
+        R.waiting = { type: 'input', v, prompt };
+        R.inBuf = []; R.inCur = 0;
+        return;
+      }
+      case 'Prompt ': {
+        const v = rest.join('');
+        if (!isVar(v)) throw { type: 'SYNTAX' };
+        R.waiting = { type: 'input', v, prompt: v + '=?' };
+        R.inBuf = []; R.inCur = 0;
+        return;
+      }
+      case 'Pause': {
+        if (rest.length) outLine({ r: fmt(evalTokens(rest)) });
+        R.waiting = { type: 'pause' };
+        return;
+      }
+      case 'Stop': R.done = true; return;
+      case 'Return': R.done = true; return;
+      case 'Lbl ': return;
+      case 'Goto ': {
+        const name = rest.join('');
+        const target = R.p.lines.findIndex(l => cmdOf(l) === 'Lbl ' && l.slice(1).join('') === name);
+        if (target === -1) throw { type: 'LABEL' };
+        R.pc = target + 1;
+        return;
+      }
+      case 'If ': {
+        const cond = evalTokens(rest);
+        const next = R.p.lines[R.pc];
+        if (cmdOf(next) === 'Then') {
+          const { elseIdx, endIdx } = scanBlock(R.p.lines, R.pc + 1);
+          if (cond) { R.pc = R.pc + 1; R.stack.push({ t: 'if', endIdx }); }
+          else if (elseIdx !== -1) { R.pc = elseIdx + 1; R.stack.push({ t: 'if', endIdx }); }
+          else R.pc = endIdx + 1;
+        } else if (!cond) R.pc++;   // single-line If skips the next line
+        return;
+      }
+      case 'Then': return;
+      case 'Else': {   // reached while running the true branch → jump past End
+        const { endIdx } = scanBlock(R.p.lines, R.pc);
+        R.pc = endIdx + 1;
+        const top = R.stack[R.stack.length - 1];
+        if (top && top.t === 'if') R.stack.pop();
+        return;
+      }
+      case 'For(': {
+        const args = splitArgs(rest);
+        if (args.length < 3) throw { type: 'SYNTAX' };
+        const v = args[0].join('');
+        if (!isVar(v)) throw { type: 'SYNTAX' };
+        const start = evalTokens(args[1]), end = evalTokens(args[2]);
+        const stepv = args.length > 3 && args[3].length ? evalTokens(args[3]) : 1;
+        S.vars[v] = start;
+        const { endIdx } = scanBlock(R.p.lines, R.pc);
+        if ((stepv > 0 && start > end) || (stepv < 0 && start < end)) { R.pc = endIdx + 1; return; }
+        R.stack.push({ t: 'for', v, end, step: stepv, body: R.pc, endIdx });
+        return;
+      }
+      case 'While ': {
+        const cond = evalTokens(rest);
+        const { endIdx } = scanBlock(R.p.lines, R.pc);
+        if (!cond) { R.pc = endIdx + 1; return; }
+        R.stack.push({ t: 'while', head: here, endIdx });
+        return;
+      }
+      case 'Repeat ': {
+        const { endIdx } = scanBlock(R.p.lines, R.pc);
+        R.stack.push({ t: 'repeat', head: here, cond: rest, endIdx });
+        return;
+      }
+      case 'End': {
+        const fr = R.stack.pop();
+        if (!fr) return;
+        if (fr.t === 'for') {
+          S.vars[fr.v] += fr.step;
+          const more = fr.step > 0 ? S.vars[fr.v] <= fr.end : S.vars[fr.v] >= fr.end;
+          if (more) { R.pc = fr.body; R.stack.push(fr); }
+        } else if (fr.t === 'while') {
+          R.pc = fr.head;
+        } else if (fr.t === 'repeat') {
+          if (!evalTokens(fr.cond)) R.pc = fr.head + 1, R.stack.push(fr);
+        }
+        return;
+      }
+      default: {
+        // assignment (expr→VAR) or a bare expression
+        const stoIdx = line.indexOf('→');
+        if (stoIdx !== -1) {
+          const v = line.slice(stoIdx + 1).join('');
+          if (!isVar(v)) throw { type: 'SYNTAX' };
+          S.vars[v] = evalTokens(line.slice(0, stoIdx));
+          return;
+        }
+        const val = evalTokens(line);
+        S.ans = val;
+        outLine({ r: fmt(val) });
+      }
+    }
+  }
+  function submitInput() {
+    const R = S.run;
+    if (!R || !R.waiting || R.waiting.type !== 'input') return;
+    let val = 0;
+    try { val = R.inBuf.length ? evalTokens(R.inBuf) : 0; }
+    catch (ex) { return; }  // stay put until it parses
+    S.vars[R.waiting.v] = val;
+    outLine({ l: R.waiting.prompt + fmt(val) });
+    R.waiting = null;
+    R.inBuf = []; R.inCur = 0;
+    stepRun();
+  }
+
+  // ================= Graphing =================
+  function compiledFns() {
+    const out = [];
+    S.yeq.forEach((toks, i) => {
+      if (!toks.length) return;
+      try { out.push({ i, rpn: toRPN(toks), color: YCOLORS[i], text: toks.join('') }); }
+      catch (e) {}
+    });
+    return out;
+  }
+  const plotH = LH - BAR;
+  const mapX = x => (x - S.win.Xmin) / (S.win.Xmax - S.win.Xmin) * (LW - 1);
+  const mapY = y => BAR + (S.win.Ymax - y) / (S.win.Ymax - S.win.Ymin) * (plotH - 1);
+
+  // ================= Drawing =================
+  const C_BG = '#f3f5f2', C_INK = '#17181a', C_BAR = '#1e3050', C_HL = '#17181a';
+  setInterval(() => { S.blink = !S.blink; if (needsCursor()) draw(); }, 480);
+  function needsCursor() {
+    return ['home', 'yeq', 'window', 'tblset', 'progedit', 'progname'].includes(S.screen)
+        || (S.screen === 'progrun' && S.run && S.run.waiting && S.run.waiting.type === 'input');
+  }
+
+  function drawBar(extra) {
+    ctx.fillStyle = C_BAR;
+    ctx.fillRect(0, 0, LW, BAR);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 9px -apple-system, sans-serif';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(extra || ('NORMAL FLOAT AUTO REAL ' + (S.rad ? 'RADIAN' : 'DEGREE') + ' MP'), 6, BAR / 2 + 0.5);
+    let bx = 218;
+    const chip = (txt, color) => {
+      ctx.fillStyle = color;
+      const w = ctx.measureText(txt).width + 8;
+      ctx.fillRect(bx, 3, w, BAR - 6);
+      ctx.fillStyle = '#10203a';
+      ctx.fillText(txt, bx + 4, BAR / 2 + 0.5);
+      bx += w + 4;
+    };
+    if (S.second) chip('2ND', '#6db3e8');
+    if (S.alpha || S.alphaLock) chip(S.alphaLock ? 'A-LK' : 'ALPHA', '#6fce6f');
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(LW - 26, 4, 18, 10);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(LW - 7, 6.5, 2.5, 5);
+    ctx.fillStyle = '#5fd97a';
+    ctx.fillRect(LW - 24.5, 5.5, 15, 7);
+  }
+
+  function text(s, x, y, invert) {
+    ctx.font = FONT;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    if (invert) {
+      ctx.fillStyle = C_HL;
+      ctx.fillRect(x - 1, y - ROWH / 2 + 2, ctx.measureText(s).width + 2, ROWH - 3);
+      ctx.fillStyle = C_BG;
+    } else ctx.fillStyle = C_INK;
+    ctx.fillText(s, x, y);
+  }
+
+  function editLine(tokens, cur, x, y, maxChars) {
+    let disp = '', curCh = 0;
+    tokens.forEach((t, i) => { if (i < cur) curCh += t.length; disp += t; });
+    let start = 0;
+    if (curCh > maxChars - 2) start = curCh - (maxChars - 2);
+    text(disp.slice(start, start + maxChars), x, y);
+    if (S.blink) {
+      const cx = x + (curCh - start) * CHW;
+      ctx.fillStyle = C_INK;
+      ctx.fillRect(cx, y - ROWH / 2 + 3, CHW, ROWH - 5);
+      ctx.fillStyle = C_BG;
+      ctx.font = FONT;
+      const mark = S.second ? '↑' : (S.alpha || S.alphaLock) ? 'A' : (cur < tokens.length ? tokens[cur][0] : '');
+      if (mark) ctx.fillText(mark, cx + 0.5, y);
+    }
+  }
+
+  function clearScreen() {
+    ctx.fillStyle = C_BG;
+    ctx.fillRect(0, 0, LW, LH);
+  }
+
+  function drawRows(rows, editTokens, editCur) {
+    const visible = rows.slice(-(ROWS - (editTokens ? 1 : 0)));
+    let y = BAR + ROWH / 2 + 2;
+    for (const r of visible) {
+      if (r.l !== undefined) text(r.l.slice(0, COLS), 4, y);
+      else {
+        const s = r.r.slice(0, COLS);
+        ctx.font = FONT;
+        text(s, LW - 4 - ctx.measureText(s).width, y);
+      }
+      y += ROWH;
+    }
+    if (editTokens) editLine(editTokens, editCur, 4, y, COLS - 1);
+  }
+
+  function drawHome() { clearScreen(); drawBar(); drawRows(S.hist, S.line, S.cur); }
+
+  function drawMenuScreen(title, items, sel) {
+    clearScreen(); drawBar();
+    ctx.fillStyle = C_HL;
+    ctx.fillRect(0, BAR, LW, ROWH);
+    ctx.fillStyle = C_BG;
+    ctx.font = FONT;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(title, 6, BAR + ROWH / 2 + 1);
+    let y = BAR + ROWH + ROWH / 2 + 1;
+    const first = Math.max(0, Math.min(sel - (ROWS - 3), items.length - (ROWS - 2)));
+    items.slice(first, first + ROWS - 2).forEach((it, j) => {
+      const i = first + j;
+      const label = (i + 1) + ':' + it;
+      if (i === sel) text(label, 4, y, true);
+      else text(label, 4, y);
+      y += ROWH;
+    });
+  }
+
+  function drawYeq() {
+    clearScreen(); drawBar();
+    ctx.font = FONT_SM;
+    ctx.fillStyle = '#8a8f96';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('Plot1  Plot2  Plot3', 8, BAR + 10);
+    let y = BAR + ROWH + 8;
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = YCOLORS[i];
+      ctx.fillRect(4, y - 7, 5, 14);
+      ctx.font = FONT;
+      ctx.fillStyle = C_INK;
+      const name = '\\Y' + (i + 1) + '=';
+      ctx.fillText(name, 13, y);
+      const x0 = 13 + ctx.measureText(name).width;
+      if (i === S.ysel) editLine(S.yeq[i], S.cur, x0, y, COLS - 5);
+      else text(S.yeq[i].join('').slice(0, COLS - 5), x0, y);
+      y += ROWH + 4;
+    }
+    ctx.font = FONT_SM;
+    ctx.fillStyle = '#8a8f96';
+    ctx.fillText('graph → plot   clear → erase', 8, y + 2);
+  }
+
+  function fieldScreens() {
+    return S.screen === 'window'
+      ? { title: 'WINDOW', obj: S.win, keys: ['Xmin', 'Xmax', 'Xscl', 'Ymin', 'Ymax', 'Yscl'] }
+      : { title: 'TABLE SETUP', obj: S.tbl, keys: ['TblStart', 'dTbl'] };
+  }
+  function drawFields() {
+    const f = fieldScreens();
+    clearScreen(); drawBar();
+    text(f.title, 4, BAR + ROWH / 2 + 2);
+    let y = BAR + ROWH + ROWH / 2 + 2;
+    f.keys.forEach((key, i) => {
+      const label = (key === 'dTbl' ? 'ΔTbl' : key) + '=';
+      text(label, 8, y);
+      const x0 = 8 + label.length * CHW;
+      if (i === S.fldSel) {
+        if (S.fldLine === null) { S.fldLine = tokensFromNumber(f.obj[key]); S.fldCur = S.fldLine.length; }
+        editLine(S.fldLine, S.fldCur, x0, y, COLS - label.length - 2);
+      } else text(fmt(f.obj[key]), x0, y);
+      y += ROWH;
+    });
+  }
+  function tokensFromNumber(n) {
+    return fmt(n).split('').map(c => c === '-' ? '⁻' : c);
+  }
+  function commitField() {
+    const f = fieldScreens();
+    const key = f.keys[S.fldSel];
+    if (S.fldLine && S.fldLine.length) {
+      try { f.obj[key] = evalTokens(S.fldLine); }
+      catch (ex) { showErr(ex.type || 'SYNTAX'); return false; }
+    }
+    S.fldLine = null;
+    save();
+    return true;
+  }
+
+  function drawModeScreen() {
+    clearScreen(); drawBar();
+    const rows = [
+      [['NORMAL', true], ['SCI', false], ['ENG', false]],
+      [['FLOAT', true], ['0123456789', false]],
+      [['RADIAN', S.rad], ['DEGREE', !S.rad]],
+      [['FUNCTION', true], ['PARAMETRIC', false], ['POLAR', false], ['SEQ', false]],
+      [['THICK', true], ['DOT-THICK', false], ['THIN', false], ['DOT-THIN', false]],
+    ];
+    let y = BAR + ROWH / 2 + 4;
+    rows.forEach((row, ri) => {
+      let x = 8;
+      row.forEach(([label, active], ci) => {
+        const isCursor = ri === 2 && ci === S.modeSel;
+        ctx.font = FONT_SM;
+        const w = ctx.measureText(label).width;
+        if (active || (isCursor && S.blink)) {
+          ctx.fillStyle = C_HL;
+          ctx.fillRect(x - 2, y - 8, w + 4, 16);
+          ctx.fillStyle = C_BG;
+        } else ctx.fillStyle = C_INK;
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y);
+        x += w + 14;
+      });
+      y += ROWH;
+    });
+    ctx.font = FONT_SM;
+    ctx.fillStyle = '#8a8f96';
+    ctx.fillText('← → on RADIAN row · enter to set', 8, y + 4);
+  }
+
+  function drawAxes() {
+    const w = S.win;
+    ctx.strokeStyle = '#9aa0a8';
+    ctx.lineWidth = 1;
+    if (w.Xmin <= 0 && w.Xmax >= 0) {
+      const x = mapX(0);
+      ctx.beginPath(); ctx.moveTo(x, BAR); ctx.lineTo(x, LH); ctx.stroke();
+      if (w.Yscl > 0) {
+        for (let t = Math.ceil(w.Ymin / w.Yscl) * w.Yscl; t <= w.Ymax; t += w.Yscl) {
+          const y = mapY(t);
+          ctx.beginPath(); ctx.moveTo(x - 2, y); ctx.lineTo(x + 2, y); ctx.stroke();
+        }
+      }
+    }
+    if (w.Ymin <= 0 && w.Ymax >= 0) {
+      const y = mapY(0);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(LW, y); ctx.stroke();
+      if (w.Xscl > 0) {
+        for (let t = Math.ceil(w.Xmin / w.Xscl) * w.Xscl; t <= w.Xmax; t += w.Xscl) {
+          const x = mapX(t);
+          ctx.beginPath(); ctx.moveTo(x, y - 2); ctx.lineTo(x, y + 2); ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function drawGraph(traceMode) {
+    clearScreen(); drawBar();
+    drawAxes();
+    const fns = compiledFns();
+    const w = S.win;
+    const range = w.Ymax - w.Ymin;
+    for (const f of fns) {
+      ctx.strokeStyle = f.color;
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      let pen = false, prevY = null;
+      for (let px = 0; px < LW; px++) {
+        const X = w.Xmin + px * (w.Xmax - w.Xmin) / (LW - 1);
+        let Y;
+        try { Y = evalRPN(f.rpn, X); } catch (e) { Y = NaN; }
+        if (!isFinite(Y)) { pen = false; prevY = null; continue; }
+        const py = mapY(Y);
+        if (prevY !== null && Math.abs(Y - prevY) > range * 3) pen = false;
+        if (py < BAR - 200 || py > LH + 200) { pen = false; prevY = Y; continue; }
+        if (!pen) { ctx.moveTo(px, py); pen = true; } else ctx.lineTo(px, py);
+        prevY = Y;
+      }
+      ctx.stroke();
+    }
+    if (traceMode && fns.length) {
+      const f = fns[Math.min(S.trace.fn, fns.length - 1)];
+      let Y = null;
+      try { Y = evalRPN(f.rpn, S.trace.X); } catch (e) {}
+      ctx.font = FONT_SM;
+      ctx.fillStyle = f.color;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText('Y' + (f.i + 1) + '=' + f.text.slice(0, 24), 5, BAR + 10);
+      if (Y !== null && isFinite(Y)) {
+        const px = mapX(S.trace.X), py = mapY(Y);
+        if (py > BAR - 6 && py < LH + 6) {
+          ctx.strokeStyle = '#e838b8';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(px - 5, py); ctx.lineTo(px + 5, py);
+          ctx.moveTo(px, py - 5); ctx.lineTo(px, py + 5);
+          ctx.stroke();
+        }
+      }
+      ctx.fillStyle = 'rgba(243,245,242,0.92)';
+      ctx.fillRect(0, LH - 20, LW, 20);
+      ctx.font = FONT_SM;
+      ctx.fillStyle = C_INK;
+      ctx.fillText('X=' + fmt(S.trace.X).slice(0, 13) + '   Y=' + (Y === null || !isFinite(Y) ? '' : fmt(Y).slice(0, 13)), 6, LH - 10);
+    }
+  }
+
+  function drawTable() {
+    clearScreen(); drawBar();
+    const fns = compiledFns().slice(0, 2);
+    const cw = LW / (1 + Math.max(1, fns.length));
+    ctx.fillStyle = C_HL;
+    ctx.fillRect(0, BAR, LW, ROWH);
+    ctx.font = FONT;
+    ctx.fillStyle = C_BG;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText('X', 8, BAR + ROWH / 2 + 1);
+    fns.forEach((f, i) => {
+      ctx.fillStyle = '#cfe3ff';
+      ctx.fillText('Y' + (f.i + 1), 8 + cw * (i + 1), BAR + ROWH / 2 + 1);
+    });
+    let y = BAR + ROWH + ROWH / 2 + 1;
+    for (let r = 0; r < ROWS - 1; r++) {
+      const X = S.tbl.TblStart + (S.tScroll + r) * S.tbl.dTbl;
+      ctx.fillStyle = C_INK;
+      ctx.font = FONT;
+      ctx.fillText(fmt(X).slice(0, Math.floor(cw / CHW) - 1), 8, y);
+      fns.forEach((f, i) => {
+        let v = '';
+        try { v = fmt(evalRPN(f.rpn, X)).slice(0, Math.floor(cw / CHW) - 1); } catch (e) { v = 'ERR'; }
+        ctx.fillText(v, 8 + cw * (i + 1), y);
+      });
+      y += ROWH;
+    }
+    ctx.strokeStyle = '#c2c6cc';
+    for (let i = 1; i <= fns.length; i++) {
+      ctx.beginPath(); ctx.moveTo(cw * i, BAR + ROWH); ctx.lineTo(cw * i, LH); ctx.stroke();
+    }
+  }
+
+  // ---------- program screens ----------
+  function drawPrgmMenu() {
+    clearScreen(); drawBar();
+    // tab strip
+    ctx.fillStyle = C_HL;
+    ctx.fillRect(0, BAR, LW, ROWH);
+    const tabs = ['EXEC', 'EDIT', 'NEW'];
+    let x = 6;
+    tabs.forEach((t, i) => {
+      ctx.font = FONT;
+      const w = ctx.measureText(t).width;
+      if (i === S.prgmTab) {
+        ctx.fillStyle = C_BG;
+        ctx.fillRect(x - 4, BAR + 2, w + 8, ROWH - 4);
+        ctx.fillStyle = C_INK;
+      } else ctx.fillStyle = C_BG;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(t, x, BAR + ROWH / 2 + 1);
+      x += w + 20;
+    });
+    let y = BAR + ROWH + ROWH / 2 + 1;
+    if (S.prgmTab === 2) {
+      text('Name=' + S.nameBuf.join(''), 4, y);
+      if (S.blink) {
+        const cx = 4 + ('Name=' + S.nameBuf.join('')).length * CHW;
+        ctx.fillStyle = C_INK;
+        ctx.fillRect(cx, y - ROWH / 2 + 3, CHW, ROWH - 5);
+        ctx.fillStyle = C_BG;
+        ctx.font = FONT;
+        ctx.fillText('A', cx + 0.5, y);
+      }
+      ctx.font = FONT_SM;
+      ctx.fillStyle = '#8a8f96';
+      ctx.fillText('type letters (alpha is locked) · enter', 6, y + ROWH);
+      return;
+    }
+    if (!S.progs.length) { text('  no programs', 4, y); return; }
+    S.progs.forEach((p, i) => {
+      if (y > LH - 6) return;
+      const label = (i + 1) + ':' + p.name;
+      if (i === S.menuSel) text(label, 4, y, true); else text(label, 4, y);
+      y += ROWH;
+    });
+  }
+
+  function drawProgEdit() {
+    clearScreen();
+    const p = S.progs[S.pe.idx];
+    drawBar('PROGRAM:' + (p ? p.name : ''));
+    if (!p) return;
+    const vis = ROWS;
+    if (S.pe.line < S.pe.scroll) S.pe.scroll = S.pe.line;
+    if (S.pe.line > S.pe.scroll + vis - 1) S.pe.scroll = S.pe.line - vis + 1;
+    let y = BAR + ROWH / 2 + 2;
+    for (let i = S.pe.scroll; i < Math.min(p.lines.length, S.pe.scroll + vis); i++) {
+      text(':', 4, y);
+      if (i === S.pe.line) editLine(p.lines[i], S.pe.cur, 4 + CHW, y, COLS - 2);
+      else text(p.lines[i].join('').slice(0, COLS - 2), 4 + CHW, y);
+      y += ROWH;
+    }
+  }
+
+  function drawCmdMenu() {
+    clearScreen(); drawBar();
+    ctx.fillStyle = C_HL;
+    ctx.fillRect(0, BAR, LW, ROWH);
+    let x = 6;
+    CMD_PAGES.forEach((pg, i) => {
+      ctx.font = FONT;
+      const w = ctx.measureText(pg.name).width;
+      if (i === S.cmdTab) {
+        ctx.fillStyle = C_BG;
+        ctx.fillRect(x - 4, BAR + 2, w + 8, ROWH - 4);
+        ctx.fillStyle = C_INK;
+      } else ctx.fillStyle = C_BG;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(pg.name, x, BAR + ROWH / 2 + 1);
+      x += w + 20;
+    });
+    const items = CMD_PAGES[S.cmdTab].items;
+    let y = BAR + ROWH + ROWH / 2 + 1;
+    const first = Math.max(0, Math.min(S.cmdSel - (ROWS - 3), Math.max(0, items.length - (ROWS - 2))));
+    items.slice(first, first + ROWS - 2).forEach((it, j) => {
+      const i = first + j;
+      const label = (i + 1) + ':' + it[0];
+      if (i === S.cmdSel) text(label, 4, y, true); else text(label, 4, y);
+      y += ROWH;
+    });
+  }
+
+  function drawProgRun() {
+    const R = S.run;
+    clearScreen(); drawBar();
+    if (!R) return;
+    if (R.waiting && R.waiting.type === 'graph') { drawGraph(false); return; }
+    const rows = R.out.slice();
+    if (R.waiting && R.waiting.type === 'input') {
+      drawRows(rows.concat([{ l: R.waiting.prompt }]), R.inBuf, R.inCur);
+      return;
+    }
+    drawRows(rows, null, 0);
+    if (R.waiting && R.waiting.type === 'pause') {
+      ctx.font = FONT_SM;
+      ctx.fillStyle = '#8a8f96';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText('press enter…', LW - 6, LH - 10);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function drawError() {
+    clearScreen(); drawBar();
+    text('ERR:' + S.err, 4, BAR + ROWH / 2 + 2);
+    text('1:Quit', 4, BAR + ROWH + ROWH / 2 + 2, true);
+  }
+  function drawOff() {
+    ctx.fillStyle = '#0d0f13';
+    ctx.fillRect(0, 0, LW, LH);
+  }
+
+  function draw() {
+    switch (S.screen) {
+      case 'home': drawHome(); break;
+      case 'yeq': drawYeq(); break;
+      case 'window': case 'tblset': drawFields(); break;
+      case 'zoom': drawMenuScreen('ZOOM MEMORY', ZOOM_ITEMS, S.menuSel); break;
+      case 'math': drawMenuScreen('MATH NUM CMPLX PROB', MATH_ITEMS, S.menuSel); break;
+      case 'test': drawMenuScreen('TEST LOGIC', TEST_ITEMS, S.menuSel); break;
+      case 'prgm': drawPrgmMenu(); break;
+      case 'progedit': drawProgEdit(); break;
+      case 'progcmd': drawCmdMenu(); break;
+      case 'progrun': drawProgRun(); break;
+      case 'mode': drawModeScreen(); break;
+      case 'graph': drawGraph(false); break;
+      case 'trace': drawGraph(true); break;
+      case 'table': drawTable(); break;
+      case 'error': drawError(); break;
+      case 'off': drawOff(); break;
+    }
+  }
+
+  // ================= Key dispatch =================
+  function quitHome() { S.screen = 'home'; S.fldLine = null; }
+  function startTrace() {
+    if (!compiledFns().length) { S.screen = 'graph'; return; }
+    S.trace.fn = 0;
+    S.trace.X = (S.win.Xmin + S.win.Xmax) / 2;
+    S.screen = 'trace';
+  }
+  function openPrgm() {
+    S.screen = 'prgm';
+    S.prgmTab = 0; S.menuSel = 0; S.nameBuf = [];
+  }
+  function newProgram(name) {
+    const clean = name.replace(/[^A-Z0-9θ]/g, '').slice(0, 8) || ('PROG' + (S.progs.length + 1));
+    let final = clean, n = 1;
+    while (S.progs.some(p => p.name === final)) final = clean.slice(0, 7) + (++n);
+    S.progs.push({ name: final, lines: [[]] });
+    S.pe = { idx: S.progs.length - 1, line: 0, cur: 0, scroll: 0 };
+    S.screen = 'progedit';
+    save();
+  }
+
+  function handleKey(k) {
+    playKey(k);
+    if (S.screen === 'off') { if (k === 'on') { S.screen = 'home'; draw(); } return; }
+    if (k === '2nd') { S.second = !S.second; draw(); return; }
+    if (k === 'alpha') {
+      if (S.second) { S.second = false; S.alphaLock = !S.alphaLock; S.alpha = false; }
+      else if (S.alphaLock) S.alphaLock = false;
+      else S.alpha = !S.alpha;
+      draw(); return;
+    }
+    const second = S.second; S.second = false;
+    const alpha = S.alpha || S.alphaLock;
+    if (S.alpha) S.alpha = false;
+
+    if (second && k === 'on') { S.screen = 'off'; draw(); return; }
+    if (second && k === 'mode') {   // QUIT works from anywhere
+      if (S.screen === 'progedit') save();
+      S.run = null;
+      quitHome(); draw(); return;
+    }
+
+    const editable = () => ['home', 'yeq', 'progedit'].includes(S.screen);
+    const nav = () => {
+      if (k === 'yeq' && !second) { S.screen = 'yeq'; S.ysel = 0; S.cur = S.yeq[0].length; return true; }
+      if (k === 'window') { S.screen = second ? 'tblset' : 'window'; S.fldSel = 0; S.fldLine = null; return true; }
+      if (k === 'zoom' && !second) { S.screen = 'zoom'; S.menuSel = 0; return true; }
+      if (k === 'trace' && !second) { startTrace(); return true; }
+      if (k === 'graph') { if (second) { S.screen = 'table'; S.tScroll = 0; } else S.screen = 'graph'; return true; }
+      if (k === 'mode' && !second) { S.screen = 'mode'; S.modeSel = S.rad ? 0 : 1; return true; }
+      if (k === 'math' && !alpha) {
+        S.menuFrom = editable() ? S.screen : 'home';
+        S.screen = second ? 'test' : 'math';
+        S.menuSel = 0;
+        return true;
+      }
+      if (k === 'prgm' && !second && !alpha) { openPrgm(); return true; }
+      return false;
+    };
+
+    switch (S.screen) {
+      case 'home': {
+        if (nav()) break;
+        if (k === 'enter') {
+          if (second) { if (S.entries.length) { S.line = S.entries[S.entries.length - 1].slice(); S.cur = S.line.length; } }
+          else homeEnter();
+          break;
+        }
+        if (k === 'clear') { if (S.line.length) { S.line = []; S.cur = 0; } else S.hist = []; break; }
+        if (k === 'del') { delTok(); break; }
+        if (k === 'left') { S.cur = Math.max(0, S.cur - 1); break; }
+        if (k === 'right') { S.cur = Math.min(S.line.length, S.cur + 1); break; }
+        if (k === 'up') {
+          if (S.entries.length) {
+            S.entryIdx = S.entryIdx === -1 ? S.entries.length - 1 : Math.max(0, S.entryIdx - 1);
+            S.line = S.entries[S.entryIdx].slice(); S.cur = S.line.length;
+          }
+          break;
+        }
+        if (k === 'down') {
+          if (S.entryIdx !== -1 && S.entryIdx < S.entries.length - 1) {
+            S.entryIdx++;
+            S.line = S.entries[S.entryIdx].slice(); S.cur = S.line.length;
+          } else { S.line = []; S.cur = 0; S.entryIdx = -1; }
+          break;
+        }
+        if (k === 'on') break;
+        const tok = tokenFor(k, second, alpha);
+        if (tok) insertTok(tok);
+        break;
+      }
+      case 'yeq': {
+        if (nav()) break;
+        if (k === 'enter' || k === 'down') { S.ysel = (S.ysel + 1) % 4; S.cur = S.yeq[S.ysel].length; save(); break; }
+        if (k === 'up') { S.ysel = (S.ysel + 3) % 4; S.cur = S.yeq[S.ysel].length; break; }
+        if (k === 'clear') { S.yeq[S.ysel] = []; S.cur = 0; save(); break; }
+        if (k === 'del') { delTok(); save(); break; }
+        if (k === 'left') { S.cur = Math.max(0, S.cur - 1); break; }
+        if (k === 'right') { S.cur = Math.min(S.yeq[S.ysel].length, S.cur + 1); break; }
+        const tok = tokenFor(k, second, alpha);
+        if (tok) { insertTok(tok); save(); }
+        break;
+      }
+      case 'window': case 'tblset': {
+        const f = fieldScreens();
+        if (k === 'enter' || k === 'down') { if (commitField()) S.fldSel = (S.fldSel + 1) % f.keys.length; break; }
+        if (k === 'up') { if (commitField()) S.fldSel = (S.fldSel + f.keys.length - 1) % f.keys.length; break; }
+        if (k === 'clear') { S.fldLine = []; S.fldCur = 0; break; }
+        if (k === 'del') { delTok(); break; }
+        if (k === 'left') { S.fldCur = Math.max(0, S.fldCur - 1); break; }
+        if (k === 'right') { S.fldCur = Math.min((S.fldLine || []).length, S.fldCur + 1); break; }
+        if (nav()) { S.fldLine = null; break; }
+        const tok = tokenFor(k, second, alpha);
+        if (tok) {
+          if (S.fldLine && S.fldLine.join('') === fmt(f.obj[f.keys[S.fldSel]])) { S.fldLine = []; S.fldCur = 0; }
+          insertTok(tok);
+        }
+        break;
+      }
+      case 'zoom': {
+        if (menuNav(k, ZOOM_ITEMS.length)) break;
+        if (k === 'enter') { zoomApply(S.menuSel); break; }
+        const n = parseInt(k, 10);
+        if (n >= 1 && n <= ZOOM_ITEMS.length) zoomApply(n - 1);
+        break;
+      }
+      case 'math': case 'test': {
+        const items = S.screen === 'math' ? MATH_ITEMS : TEST_ITEMS;
+        const toks = S.screen === 'math' ? MATH_TOK : TEST_ITEMS;
+        if (menuNav(k, items.length)) break;
+        const pick = (i) => {
+          S.screen = S.menuFrom;
+          if (toks[i] !== undefined) insertTok(toks[i]);
+        };
+        if (k === 'enter') { pick(S.menuSel); break; }
+        const n = parseInt(k, 10);
+        if (n >= 1 && n <= items.length) pick(n - 1);
+        break;
+      }
+      case 'prgm': {
+        if (k === 'left')  { S.prgmTab = (S.prgmTab + 2) % 3; S.menuSel = 0; S.nameBuf = []; if (S.prgmTab === 2) S.alphaLock = true; break; }
+        if (k === 'right') { S.prgmTab = (S.prgmTab + 1) % 3; S.menuSel = 0; S.nameBuf = []; if (S.prgmTab === 2) S.alphaLock = true; break; }
+        if (k === 'clear' || (k === 'mode' && !second)) { S.alphaLock = false; quitHome(); break; }
+        if (S.prgmTab === 2) {   // NEW: type a name
+          if (k === 'enter') { S.alphaLock = false; newProgram(S.nameBuf.join('')); break; }
+          if (k === 'del') { S.nameBuf.pop(); break; }
+          const t = tokenFor(k, second, true);       // name entry is always alpha
+          if (t && /[A-Z0-9θ]/.test(t) && S.nameBuf.length < 8) S.nameBuf.push(t);
+          else if (/^[0-9]$/.test(k) && S.nameBuf.length && S.nameBuf.length < 8) S.nameBuf.push(k);
+          break;
+        }
+        if (menuNav(k, Math.max(1, S.progs.length))) break;
+        const choose = (i) => {
+          if (!S.progs[i]) return;
+          if (S.prgmTab === 0) {          // EXEC
+            S.line = ['prgm', ...S.progs[i].name.split('')];
+            S.cur = S.line.length;
+            S.screen = 'home';
+            homeEnter();
+          } else {                        // EDIT
+            S.pe = { idx: i, line: 0, cur: S.progs[i].lines[0].length, scroll: 0 };
+            S.screen = 'progedit';
+          }
+        };
+        if (k === 'enter') { choose(S.menuSel); break; }
+        const n2 = parseInt(k, 10);
+        if (n2 >= 1 && n2 <= S.progs.length) choose(n2 - 1);
+        break;
+      }
+      case 'progedit': {
+        const p = S.progs[S.pe.idx];
+        if (!p) { quitHome(); break; }
+        if (k === 'prgm' && !second && !alpha) { S.screen = 'progcmd'; S.cmdTab = 0; S.cmdSel = 0; break; }
+        if (k === 'math' && !alpha) { S.menuFrom = 'progedit'; S.screen = second ? 'test' : 'math'; S.menuSel = 0; break; }
+        if (k === 'enter') {
+          const line = p.lines[S.pe.line];
+          const tail = line.splice(S.pe.cur);
+          p.lines.splice(S.pe.line + 1, 0, tail);
+          S.pe.line++; S.pe.cur = 0;
+          save();
+          break;
+        }
+        if (k === 'del') {
+          if (S.pe.cur > 0) { p.lines[S.pe.line].splice(S.pe.cur - 1, 1); S.pe.cur--; }
+          else if (S.pe.line > 0) {
+            const cur = p.lines.splice(S.pe.line, 1)[0];
+            S.pe.line--;
+            S.pe.cur = p.lines[S.pe.line].length;
+            p.lines[S.pe.line] = p.lines[S.pe.line].concat(cur);
+          }
+          save();
+          break;
+        }
+        if (k === 'clear') {
+          if (p.lines[S.pe.line].length) { p.lines[S.pe.line] = []; S.pe.cur = 0; }
+          else if (p.lines.length > 1) { p.lines.splice(S.pe.line, 1); S.pe.line = Math.max(0, S.pe.line - 1); S.pe.cur = p.lines[S.pe.line].length; }
+          save();
+          break;
+        }
+        if (k === 'up') { S.pe.line = Math.max(0, S.pe.line - 1); S.pe.cur = Math.min(S.pe.cur, p.lines[S.pe.line].length); break; }
+        if (k === 'down') { S.pe.line = Math.min(p.lines.length - 1, S.pe.line + 1); S.pe.cur = Math.min(S.pe.cur, p.lines[S.pe.line].length); break; }
+        if (k === 'left') { S.pe.cur = Math.max(0, S.pe.cur - 1); break; }
+        if (k === 'right') { S.pe.cur = Math.min(p.lines[S.pe.line].length, S.pe.cur + 1); break; }
+        const tok = tokenFor(k, second, alpha);
+        if (tok) { insertTok(tok); save(); }
+        break;
+      }
+      case 'progcmd': {
+        const items = CMD_PAGES[S.cmdTab].items;
+        if (k === 'left')  { S.cmdTab = (S.cmdTab + CMD_PAGES.length - 1) % CMD_PAGES.length; S.cmdSel = 0; break; }
+        if (k === 'right') { S.cmdTab = (S.cmdTab + 1) % CMD_PAGES.length; S.cmdSel = 0; break; }
+        if (k === 'up') { S.cmdSel = (S.cmdSel + items.length - 1) % items.length; break; }
+        if (k === 'down') { S.cmdSel = (S.cmdSel + 1) % items.length; break; }
+        if (k === 'clear') { S.screen = 'progedit'; break; }
+        const insertCmd = (i) => {
+          if (!items[i]) return;
+          S.screen = 'progedit';
+          insertTok(items[i][1]);
+          save();
+        };
+        if (k === 'enter') { insertCmd(S.cmdSel); break; }
+        const n = parseInt(k, 10);
+        if (n >= 1 && n <= items.length) insertCmd(n - 1);
+        break;
+      }
+      case 'progrun': {
+        const R = S.run;
+        if (!R) { quitHome(); break; }
+        if (R.waiting && R.waiting.type === 'input') {
+          if (k === 'enter') { submitInput(); break; }
+          if (k === 'del') { delTok(); break; }
+          if (k === 'left') { R.inCur = Math.max(0, R.inCur - 1); break; }
+          if (k === 'right') { R.inCur = Math.min(R.inBuf.length, R.inCur + 1); break; }
+          if (k === 'clear') { R.inBuf = []; R.inCur = 0; break; }
+          const tok = tokenFor(k, second, alpha);
+          if (tok) insertTok(tok);
+          break;
+        }
+        if (R.waiting && (R.waiting.type === 'pause' || R.waiting.type === 'graph')) {
+          if (k === 'enter') { R.waiting = null; stepRun(); }
+          break;
+        }
+        if (k === 'clear' || k === 'enter') { S.run = null; quitHome(); break; }
+        break;
+      }
+      case 'mode': {
+        if (k === 'clear' || k === 'mode') { quitHome(); break; }
+        if (k === 'left') { S.modeSel = 0; break; }
+        if (k === 'right') { S.modeSel = 1; break; }
+        if (k === 'enter') { S.rad = S.modeSel === 0; save(); break; }
+        nav();
+        break;
+      }
+      case 'graph': {
+        if (nav()) break;
+        if (k === 'clear' || k === 'enter') quitHome();
+        break;
+      }
+      case 'trace': {
+        if (k === 'clear') { quitHome(); break; }
+        if (k === 'enter') { S.screen = 'graph'; break; }
+        const fns = compiledFns();
+        const step = (S.win.Xmax - S.win.Xmin) / (LW - 1);
+        if (k === 'left') { S.trace.X = Math.max(S.win.Xmin, S.trace.X - step * 2); break; }
+        if (k === 'right') { S.trace.X = Math.min(S.win.Xmax, S.trace.X + step * 2); break; }
+        if (k === 'up') { S.trace.fn = (S.trace.fn + 1) % Math.max(1, fns.length); break; }
+        if (k === 'down') { S.trace.fn = (S.trace.fn + Math.max(1, fns.length) - 1) % Math.max(1, fns.length); break; }
+        nav();
+        break;
+      }
+      case 'table': {
+        if (nav()) break;
+        if (k === 'up') { S.tScroll--; break; }
+        if (k === 'down') { S.tScroll++; break; }
+        if (k === 'clear') quitHome();
+        break;
+      }
+      case 'error': {
+        if (k === '1' || k === 'enter' || k === 'clear') {
+          S.screen = (S.errFrom === 'error' || S.errFrom === 'progrun') ? 'home' : S.errFrom;
+          if (S.screen === 'window' || S.screen === 'tblset') S.fldLine = null;
+          S.err = null;
+        }
+        break;
+      }
+    }
+    draw();
+  }
+  function menuNav(k, n) {
+    if (k === 'up') { S.menuSel = (S.menuSel + n - 1) % n; return true; }
+    if (k === 'down') { S.menuSel = (S.menuSel + 1) % n; return true; }
+    if (k === 'clear' || k === 'mode') { quitHome(); return true; }
+    return false;
+  }
+
+  // ================= Input wiring =================
+  document.getElementById('calc').addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest('button[data-k]');
+    if (!btn) return;
+    e.preventDefault();
+    btn.classList.add('pressed');
+    setTimeout(() => btn.classList.remove('pressed'), 120);
+    handleKey(btn.dataset.k);
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey) return;
+    const kmap = {
+      'Enter': 'enter', 'Backspace': 'del', 'Delete': 'del', 'Escape': 'clear',
+      'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right',
+      '+': 'add', '*': 'mul', '/': 'div', '^': 'pow', '(': 'lparen', ')': 'rparen',
+      '.': 'dot', ',': 'comma', '=': 'enter',
+    };
+    let k = null;
+    if (/^[0-9]$/.test(e.key)) k = e.key;
+    else if (kmap[e.key]) k = kmap[e.key];
+    else if (e.key === '-') {
+      const L = curLine();
+      if (L) {
+        const arr = L.get();
+        const prev = arr[L.cur() - 1];
+        k = (prev && (isDigit(prev) || isConst(prev) || isVar(prev) || prev === ')' || isPostfix(prev))) ? 'sub' : 'neg';
+      } else k = 'sub';
+    } else if (/^[a-z]$/i.test(e.key)) {
+      const up = e.key.toUpperCase();
+      if (['home', 'yeq', 'progedit'].includes(S.screen) || (S.screen === 'progrun' && S.run && S.run.waiting && S.run.waiting.type === 'input')) {
+        e.preventDefault();
+        playKey('alpha');
+        insertTok(up);
+        draw();
+        return;
+      }
+      if (S.screen === 'prgm' && S.prgmTab === 2 && S.nameBuf.length < 8) {
+        e.preventDefault();
+        playKey('alpha');
+        S.nameBuf.push(up);
+        draw();
+        return;
+      }
+    } else if (e.key === ' ') {
+      if (['home', 'yeq', 'progedit'].includes(S.screen)) { e.preventDefault(); insertTok(' '); draw(); return; }
+    } else if (e.key === '"') {
+      if (['home', 'yeq', 'progedit'].includes(S.screen)) { e.preventDefault(); insertTok('"'); draw(); return; }
+    }
+    if (k) { e.preventDefault(); handleKey(k); }
+  });
+
+  if (!S.yeq.some(f => f.length)) S.yeq[0] = ['X', '²'];
+  draw();
+  fitCalc();
+  window.addEventListener('load', fitCalc);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitCalc);
+
+  // Test hook
+  window.__ti = {
+    press: (...ks) => ks.forEach(k => handleKey(k)),
+    type: (s) => s.split('').forEach(ch => { insertTok(ch); }),
+    get S() { return S; },
+    lastResult() { const r = [...S.hist].reverse().find(h => h.r !== undefined); return r ? r.r : null; },
+    runOut() { return S.run ? S.run.out.map(o => o.l !== undefined ? o.l : '>' + o.r) : []; },
+    fit: fitCalc,
+    voiceCount: Object.keys(VOICES).length,
+  };
+})();
+</script>
+</body>
+</html>

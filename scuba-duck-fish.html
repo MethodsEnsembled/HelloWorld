@@ -24,8 +24,13 @@ canvas#c{width:100vw;height:100vh;display:block;touch-action:none;}
 #dpad b{position:absolute;width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.16);border:2px solid rgba(255,255,255,0.5);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;}
 #dpad b.up{left:45px;top:0;}#dpad b.down{left:45px;bottom:0;}#dpad b.left{left:0;top:45px;}#dpad b.right{right:0;top:45px;}
 button{border:none;font-family:inherit;cursor:pointer;}
-.btn{background:linear-gradient(180deg,#ffe08a,#ffb74d);color:#5a3d00;font-weight:800;border-radius:30px;padding:16px 30px;font-size:20px;box-shadow:0 6px 0 #c98a1e,0 10px 20px rgba(0,0,0,0.35);transition:transform .08s;}
+.btn{background:linear-gradient(180deg,#ffe08a,#ffb74d);color:#5a3d00;font-weight:800;border-radius:30px;padding:16px 30px;font-size:20px;box-shadow:0 6px 0 #c98a1e,0 10px 20px rgba(0,0,0,0.35);transition:transform .08s;cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none;}
 .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #c98a1e;}
+.mute{cursor:pointer;touch-action:manipulation;}
+#overlay{pointer-events:auto;}
+#overlay .btn,#overlay .mute{pointer-events:auto;}
+#stage,canvas#c{pointer-events:auto;}
+/* HUD is pointer-events:none; mute button re-enables itself via .mute */
 #overlay{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:rgba(0,20,40,0.55);backdrop-filter:blur(3px);}
 #overlay.hide{display:none;}
 #overlay h1{font-size:32px;margin:0 0 8px;text-shadow:0 3px 0 rgba(0,0,0,0.35);}
@@ -89,13 +94,27 @@ for(const b of document.querySelectorAll('#dpad b')){const d=b.dataset.d;
   b.addEventListener('touchstart',set(true),{passive:false});b.addEventListener('touchmove',set(true),{passive:false});b.addEventListener('touchend',set(false),{passive:false});
   b.addEventListener('mousedown',set(true));b.addEventListener('mouseup',set(false));b.addEventListener('mouseleave',set(false));}
 let touching=false,tx=0,ty=0;
+// Canvas pointer input (pointer events work on iOS; don't call preventDefault on window
+// touchend — that kills Safari's synthetic click and breaks UI buttons).
+cv.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();touching=true;tx=e.clientX;ty=e.clientY;try{cv.setPointerCapture(e.pointerId);}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!touching)return;tx=e.clientX;ty=e.clientY;});
+cv.addEventListener('pointerup',()=>{touching=false;});
+cv.addEventListener('pointercancel',()=>{touching=false;});
+// touch fallbacks (no window-level preventDefault)
 cv.addEventListener('touchstart',e=>{e.preventDefault();const T=e.touches[0];touching=true;tx=T.clientX;ty=T.clientY;},{passive:false});
 cv.addEventListener('touchmove',e=>{e.preventDefault();const T=e.touches[0];tx=T.clientX;ty=T.clientY;},{passive:false});
-window.addEventListener('touchend',e=>{e.preventDefault();touching=false;},{passive:false});
+cv.addEventListener('touchend',()=>{touching=false;},{passive:true});
 cv.addEventListener('mousedown',e=>{touching=true;tx=e.clientX;ty=e.clientY;});
 window.addEventListener('mousemove',e=>{if(touching){tx=e.clientX;ty=e.clientY;}});
 window.addEventListener('mouseup',()=>{touching=false;});
-muteBtn.addEventListener('click',()=>{audio.muted=!audio.muted;muteBtn.textContent=audio.muted?'🔇':'🔊';if(audio.muted)stopMusic();else if(state==='play')playMusic(game.phase);});
+function onMute(e){if(e)e.preventDefault();audio.muted=!audio.muted;muteBtn.textContent=audio.muted?'🔇':'🔊';if(audio.muted)stopMusic();else if(state==='play')playMusic(game.phase);}
+muteBtn.addEventListener('pointerdown',onMute);
+muteBtn.addEventListener('click',onMute); // desktop fallback
+// CSS: make buttons clearly tappable on iOS
+startBtn.style.cursor='pointer';muteBtn.style.cursor='pointer';
+// touch-action none only on canvas (already set in CSS) — buttons stay default
+startBtn.style.touchAction='manipulation';muteBtn.style.touchAction='manipulation';
+for(const b of document.querySelectorAll('#dpad b')){b.style.touchAction='none';b.style.cursor='pointer';}
 // ---- state ----
 const game={phase:1,t:0,time:0,score:[0,0,0],total:0,hits:0};
 let state='title';
@@ -168,9 +187,16 @@ function goPhase(n){state='play';game.phase=n;touching=false;list=[];
   dpad.style.display=(n===3)?'block':'none';playMusic(['','duck','fish','diver'][n]);
   if(n===1)startDuck();else if(n===2)startFish();else if(n===3)startDiver();}
 function startGame(){ensureAudio();winner.style.display='none';game.total=0;game.score=[0,0,0];overlay.classList.add('hide');goPhase(1);draw();}
-startBtn.addEventListener('click',()=>{
+function onStartBtn(e){
+  if(e){e.preventDefault();e.stopPropagation();}
+  // ignore double-fire from pointerdown + click
+  if(onStartBtn._lock)return;onStartBtn._lock=true;setTimeout(()=>{onStartBtn._lock=false;},300);
   if(state==='title'||state==='gameover'){startGame();}
-  else if(state==='phaseover'){const n=game.phase+1;overlay.classList.add('hide');goPhase(n);}});
+  else if(state==='phaseover'){const n=game.phase+1;overlay.classList.add('hide');goPhase(n);draw();}
+}
+// pointerdown is what every working game in this repo uses on mobile
+startBtn.addEventListener('pointerdown',onStartBtn);
+startBtn.addEventListener('click',onStartBtn);
 ovHow.innerHTML='<b>One hero, three watery rounds.</b><br>🏠 <b>Tap</b> to swim the duck home before the timer ends.<br>🐟 <b>Drag</b> the fish to dodge divers.<br>🤿 <b>Arrow buttons</b> to catch all the fish.';
 // ----- drawing -----
 function drawSea(t){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2490c8');g.addColorStop(.5,'#1c6ea4');g.addColorStop(1,'#0b4d7a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);

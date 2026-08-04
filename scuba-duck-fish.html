@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1c6ea4">
+<title>Scuba, Fish &amp; Duck</title>
+<style>
+:root{--deep:#0b3d66;--ocean:#1c6ea4;--sun:#ffe08a;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--deep);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Comic Sans MS",sans-serif;}
+#modeHint{position:fixed;top:calc(env(safe-area-inset-top,0px) + 46px);left:50%;transform:translateX(-50%);z-index:4;background:rgba(0,0,0,0.35);padding:6px 14px;border-radius:20px;font-size:13px;font-weight:700;pointer-events:none;color:#fff;text-align:center;max-width:82%;}
+#stage{position:fixed;inset:0;background:radial-gradient(120% 120% at 50% 30%,#2490c8 0%,var(--ocean) 45%,var(--deep) 100%);}
+canvas#c{width:100vw;height:100vh;display:block;touch-action:none;}
+.hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px;pointer-events:none;z-index:5;font-weight:800;text-shadow:0 2px 4px rgba(0,0,0,0.45);}
+.hud .timer{font-size:26px;display:flex;align-items:center;gap:6px;}
+.hud .timer small{font-size:13px;opacity:.9;}
+.hud .round{font-size:13px;background:rgba(0,0,0,0.3);padding:5px 11px;border-radius:20px;}
+.hud .score{font-size:24px;}
+.hud .score em{font-style:normal;color:var(--sun);}
+#dpad{position:fixed;right:16px;bottom:calc(env(safe-area-inset-bottom,0px) + 26px);width:132px;height:132px;z-index:6;display:none;touch-action:none;}
+#dpad b{position:absolute;width:42px;height:42px;border-radius:10px;background:rgba(255,255,255,0.16);border:2px solid rgba(255,255,255,0.5);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;}
+#dpad b.up{left:45px;top:0;}#dpad b.down{left:45px;bottom:0;}#dpad b.left{left:0;top:45px;}#dpad b.right{right:0;top:45px;}
+button{border:none;font-family:inherit;cursor:pointer;}
+.btn{background:linear-gradient(180deg,#ffe08a,#ffb74d);color:#5a3d00;font-weight:800;border-radius:30px;padding:16px 30px;font-size:20px;box-shadow:0 6px 0 #c98a1e,0 10px 20px rgba(0,0,0,0.35);transition:transform .08s;}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #c98a1e;}
+#overlay{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:rgba(0,20,40,0.55);backdrop-filter:blur(3px);}
+#overlay.hide{display:none;}
+#overlay h1{font-size:32px;margin:0 0 8px;text-shadow:0 3px 0 rgba(0,0,0,0.35);}
+#overlay .sub{font-size:16px;opacity:.95;margin:0 0 16px;max-width:340px;line-height:1.4;}
+#overlay .how{font-size:15px;background:rgba(255,255,255,0.12);padding:12px 18px;border-radius:12px;margin:0 0 22px;line-height:1.6;max-width:340px;}
+#scores{display:flex;gap:10px;margin:0 0 20px;}
+#scores .chip{background:rgba(255,255,255,0.14);border-radius:16px;padding:14px 10px;min-width:90px;}
+#scores .chip small{display:block;font-size:12px;opacity:.85;}
+#scores .chip b{display:block;font-size:30px;color:var(--sun);}
+.mute{pointer-events:auto;font-size:22px;background:rgba(0,0,0,0.3);border-radius:50%;width:42px;height:42px;color:#fff;}
+.winner{display:none;font-size:46px;margin-bottom:6px;}
+.ovEarn{font-size:18px;color:var(--sun);font-weight:800;margin:0 0 22px;}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div id="modeHint"></div>
+<div class="hud">
+  <div class="round" id="roundLabel">Ready</div>
+  <div class="score" id="scoreLabel">⭐ <em id="scoreNum">0</em></div>
+  <div class="timer" id="timerLabel"><small>⏱</small><em id="timeNum">–</em></div>
+  <button class="mute" id="muteBtn">🔊</button>
+</div>
+<div id="dpad"><b class="up" data-d="up">▲</b><b class="down" data-d="down">▼</b><b class="left" data-d="left">◀</b><b class="right" data-d="right">▶</b></div>
+<div id="overlay">
+  <div class="winner" id="winner">🏆</div>
+  <h1 id="ovTitle">🏊 Scuba, Fish &amp; Duck</h1>
+  <p class="sub" id="ovSub">One hero, three watery challenges. Add up your points!</p>
+  <p class="how" id="ovHow"></p>
+  <p class="ovEarn" id="ovEarn"></p>
+  <div id="scores" style="display:none;"><div class="chip"><small>🦆 Duck</small><b id="s1">0</b></div><div class="chip"><small>🐟 Fish</small><b id="s2">0</b></div><div class="chip"><small>🤿 Diver</small><b id="s3">0</b></div></div>
+  <button class="btn" id="startBtn">Start!</button>
+</div>
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');let W=0,H=0,DPR=1;
+function resize(){DPR=window.devicePixelRatio||1;W=window.innerWidth;H=window.innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener('resize',resize);resize();
+// ---- audio ----
+const audio={ctx:null,muted:false};
+function ensureAudio(){if(!audio.ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audio.ctx=new AC();}if(audio.ctx.state==='suspended')audio.ctx.resume();}
+function nowT(){return audio.ctx?audio.ctx.currentTime:0;}
+function fx(freq,dur,type,vol,slide){(function(){if(!audio.ctx||audio.muted)return;const t=nowT();const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(audio.ctx.destination);o.start(t);o.stop(t+dur);})();}
+const SEMI=440*Math.pow(2,1/12);
+const MUSIC={duck:[57,64,60,67,64,62,69,64],fish:[48,52,53,55,53,52,59,55],diver:[60,64,67,64,72,67,64,60]};
+const DUR={duck:.3,fish:.18,diver:.22};
+const musSt={phase:null,timer:null,step:0,next:0};
+function playMusic(p){stopMusic();if(audio.muted)return;ensureAudio();if(!audio.ctx)return;musSt.phase=p;musSt.step=0;musSt.next=nowT()+0.06;sched();}
+function sched(){if(!musSt.phase||audio.muted||!audio.ctx){musSt.timer=null;return;}const seq=MUSIC[musSt.phase],d=DUR[musSt.phase];while(musSt.next<nowT()+0.4){const m=seq[musSt.step%seq.length];fx(SEMI*Math.pow(2,(m-69)/12),d*0.85,'triangle',0.06);musSt.next+=d;musSt.step++;}musSt.timer=setTimeout(sched,60);}
+function stopMusic(){musSt.phase=null;if(musSt.timer){clearTimeout(musSt.timer);musSt.timer=null;}}
+// ---- dom ----
+const $=id=>document.getElementById(id);
+const roundLabel=$('roundLabel'),scoreNum=$('scoreNum'),timeNum=$('timeNum'),modeHint=$('modeHint'),
+dpad=$('dpad'),overlay=$('overlay'),ovTitle=$('ovTitle'),ovSub=$('ovSub'),ovHow=$('ovHow'),
+ovEarn=$('ovEarn'),startBtn=$('startBtn'),scoresDiv=$('scores'),winner=$('winner'),muteBtn=$('muteBtn');
+// ---- input ----
+const keys={up:false,down:false,left:false,right:false};
+for(const b of document.querySelectorAll('#dpad b')){const d=b.dataset.d;
+  const set=v=>e=>{keys[d]=v;b.style.background=v?'rgba(255,255,255,0.45)':'rgba(255,255,255,0.16)';e.preventDefault();};
+  b.addEventListener('touchstart',set(true),{passive:false});b.addEventListener('touchmove',set(true),{passive:false});b.addEventListener('touchend',set(false),{passive:false});
+  b.addEventListener('mousedown',set(true));b.addEventListener('mouseup',set(false));b.addEventListener('mouseleave',set(false));}
+let touching=false,tx=0,ty=0;
+cv.addEventListener('touchstart',e=>{e.preventDefault();const T=e.touches[0];touching=true;tx=T.clientX;ty=T.clientY;},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();const T=e.touches[0];tx=T.clientX;ty=T.clientY;},{passive:false});
+window.addEventListener('touchend',e=>{e.preventDefault();touching=false;},{passive:false});
+cv.addEventListener('mousedown',e=>{touching=true;tx=e.clientX;ty=e.clientY;});
+window.addEventListener('mousemove',e=>{if(touching){tx=e.clientX;ty=e.clientY;}});
+window.addEventListener('mouseup',()=>{touching=false;});
+muteBtn.addEventListener('click',()=>{audio.muted=!audio.muted;muteBtn.textContent=audio.muted?'🔇':'🔊';if(audio.muted)stopMusic();else if(state==='play')playMusic(game.phase);});
+// ---- state ----
+const game={phase:1,t:0,time:0,score:[0,0,0],total:0,hits:0};
+let state='title';
+const duck={x:0,y:0},fish={x:0,y:0},diver={x:0,y:0};let list=[];let duckHome=false;
+// phase durations
+const T_DUCK=12,T_FISH=15,T_DIVER=45;
+// ----- Phase 1: Duck (tap to swim home; score index 0) -----
+function startDuck(){game.phase=1;game.t=0;game.time=T_DUCK;game.hits=0;duckHome=false;duck.x=W*0.08;duck.y=H*0.62;list=[];for(let i=0;i<5;i++){list.push({kind:Math.random()<0.5?'diver':'fish',x:W*(0.3+0.15*i),y:H*(0.15+Math.random()*0.65),vy:(Math.random()*80+40)*(Math.random()<0.5?-1:1),r:26});}modeHint.textContent='Tap to swim! Dodge fish & divers.';}
+function updateDuck(dt){
+  game.time-=dt;
+  duck.y=H*0.62+Math.sin(game.t*3)*8;
+  if(touching){duck.x=Math.min(W*0.94,duck.x+105*dt);}
+  for(const h of list){h.y+=h.vy*dt;h.x+=Math.sin(game.t*1.5+h.y*0.012)*28*dt;if(h.y<h.r)h.vy=Math.abs(h.vy);if(h.y>H-h.r)h.vy=-Math.abs(h.vy);if(h.x>W*0.96)h.x=W*0.96;if(h.x<W*0.1)h.x=W*0.1;
+    const d=Math.hypot(h.x-duck.x,h.y-duck.y);if(d<h.r+32){duck.x=Math.max(W*0.05,duck.x-110*dt);game.hits++;fx(130,.22,'sawtooth',0.2);h.vy*=-1;}}
+  duck.x=Math.max(W*0.05,duck.x);
+  if(duck.x>=W*0.94&&!duckHome){duckHome=true;phaseDone();}
+  else if(game.time<=0&&!duckHome){game.time=0;phaseDone();}
+}
+// ----- Phase 2: Fish (drag to dodge; score index 1) -----
+function startFish(){game.phase=2;game.t=0;game.time=T_FISH;game.hits=0;fish.x=W*0.5;fish.y=H*0.5;list=[];for(let i=0;i<7;i++){list.push({kind:'diver',x:W*(0.95-0.14*i),y:H*(0.15+Math.random()*0.7),r:30});}modeHint.textContent='Drag to dodge the divers! Don\u2019t get hit.';}
+function updateFish(dt){
+  game.time-=dt;
+  for(const h of list){h.x-=180*dt;if(h.x<-40){h.x=W+40;h.y=H*0.15+Math.random()*0.7;h.hit=false;}}
+  if(touching){fish.x+=(tx-fish.x)*Math.min(1,dt*7);fish.y+=(ty-fish.y)*Math.min(1,dt*7);}
+  fish.x=Math.max(15,Math.min(W-15,fish.x));fish.y=Math.max(15,Math.min(H-15,fish.y));
+  for(const h of list){const d=Math.hypot(h.x-fish.x,h.y-fish.y)-h.r-24;if(d<0&&!h.hit){h.hit=true;game.hits++;fx(120,.2,'sawtooth',0.22);}}
+  if(game.time<=0){game.time=0;phaseDone();}
+}
+// ----- Phase 3: Diver (dpad catch fish; score index 2) -----
+function startDiver(){game.phase=3;game.t=0;game.time=T_DIVER;diver.x=W*0.5;diver.y=H*0.7;list=[];for(let i=0;i<12;i++){list.push({kind:'fish',x:Math.random()*W,y:Math.random()*H,vy:(Math.random()*80+45)*(Math.random()<0.5?-1:1),caught:false});}modeHint.textContent='Use arrow buttons to catch all 12 fish!';}
+function updateDiver(dt){
+  const sp=330*dt;if(keys.left)diver.x-=sp;if(keys.right)diver.x+=sp;if(keys.up)diver.y-=sp;if(keys.down)diver.y+=sp;
+  diver.x=Math.max(15,Math.min(W-15,diver.x));diver.y=Math.max(15,Math.min(H-15,diver.y));
+  for(const f of list){f.y+=f.vy*dt;f.x+=Math.sin(game.t*2+f.y*0.02)*24*dt;if(f.y<15)f.vy=Math.abs(f.vy);if(f.y>H-15)f.vy=-Math.abs(f.vy);if(f.x<15)f.x=15;if(f.x>W-15)f.x=W-15;
+    const d=Math.hypot(f.x-diver.x,f.y-diver.y);if(d<44&&!f.caught){f.caught=true;game.score[2]+=10;fx(720,.12,'square',0.13);}}
+  if(list.every(f=>f.caught)){game.score[2]+=Math.max(0,Math.ceil(game.time))*2;phaseDone();}
+  else game.time-=dt;if(game.time<=0){game.time=0;phaseDone();}
+}
+// ----- flow -----
+function phaseDone(){
+  state='phaseover';stopMusic();
+  const p=game.phase;let earned=0;
+  if(p===1){ // duck
+    game.score[0]=Math.max(0,Math.ceil(game.time))*10+(duckHome?10:0)-game.hits*5;
+    game.score[0]=Math.max(0,game.score[0]);earned=game.score[0];
+    ovTitle.textContent=duckHome?'🦆 Duck made it home!':'🦆 Time\u2019s up!';
+    ovHow.textContent=duckHome?'You reached the home flag!':'The duck didn\u2019t reach home in time.';
+    ovEarn.textContent='+ '+earned+' points';
+  }else if(p===2){ // fish
+    let survive=Math.max(0,game.time);game.score[1]=Math.ceil(survive)*5+15-game.hits*3;game.score[1]=Math.max(0,game.score[1]);earned=game.score[1];
+    ovTitle.textContent='🐟 Fish dodged the divers!';
+    ovHow.textContent='You survived the dive-raid!';
+    ovEarn.textContent='+ '+earned+' points';
+  }else{ // diver
+    game.score[2]=Math.max(0,game.score[2]);earned=game.score[2];
+    ovTitle.textContent='🤿 All fish caught!';
+    ovHow.textContent='Great fishing round!';
+    ovEarn.textContent='+ '+earned+' points';
+  }
+  game.total+=earned;
+  winner.style.display='none';
+  $('s1').textContent=game.score[0];$('s2').textContent=game.score[1];$('s3').textContent=game.score[2];
+  scoresDiv.style.display='flex';
+  if(p<3){startBtn.textContent='Next Round ▶';}
+  else {ovTitle.textContent='🎉 Great dive! Total: '+game.total+' points';state='gameover';startBtn.textContent='Play Again 🔄';}
+  overlay.classList.remove('hide');
+}
+function goPhase(n){state='play';game.phase=n;touching=false;list=[];
+  roundLabel.textContent=['','🏠 Duck','🐟 Fish','🤿 Diver'][n];
+  dpad.style.display=(n===3)?'block':'none';playMusic(['','duck','fish','diver'][n]);
+  if(n===1)startDuck();else if(n===2)startFish();else if(n===3)startDiver();}
+function startGame(){ensureAudio();winner.style.display='none';game.total=0;game.score=[0,0,0];overlay.classList.add('hide');goPhase(1);}
+startBtn.addEventListener('click',()=>{
+  if(state==='title'||state==='gameover'){startGame();}
+  else if(state==='phaseover'){const n=game.phase+1;overlay.classList.add('hide');goPhase(n);}});
+ovHow.innerHTML='<b>One hero, three watery rounds.</b><br>🏠 <b>Tap</b> to swim the duck home before the timer ends.<br>🐟 <b>Drag</b> the fish to dodge divers.<br>🤿 <b>Arrow buttons</b> to catch all the fish.';
+// ----- drawing -----
+function drawSea(t){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#2490c8');g.addColorStop(.5,'#1c6ea4');g.addColorStop(1,'#0b4d7a');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='rgba(255,255,255,0.13)';for(let i=0;i<30;i++){const bx=((i*149)%W),by=(H-((t*18+i*61)%H));ctx.beginPath();ctx.arc(bx,by,(i%3)+1,0,Math.PI*2);ctx.fill();}}
+function drawDuckChar(x,y,sc){sc=sc||1;ctx.save();ctx.translate(x,y);ctx.scale(sc,sc);
+  ctx.fillStyle='#ffe08a';ctx.beginPath();ctx.ellipse(0,0,24,17,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#f3b93b';ctx.beginPath();ctx.arc(16,-12,13,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e67e22';ctx.beginPath();ctx.moveTo(27,-9);ctx.lineTo(44,-5);ctx.lineTo(27,3);ctx.fill();
+  ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(7,-7,3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#e67e22';ctx.lineWidth=3;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-6,10);ctx.quadraticCurveTo(-4,18,-8,22);ctx.stroke();ctx.beginPath();ctx.moveTo(4,12);ctx.quadraticCurveTo(4,20,0,24);ctx.stroke();
+  ctx.restore();}
+function drawFishChar(x,y){ctx.save();ctx.translate(x,y);
+  ctx.fillStyle='#ffb74d';ctx.beginPath();ctx.ellipse(0,0,20,12,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#ff8a3c';ctx.beginPath();ctx.moveTo(-18,0);ctx.lineTo(-30,-12);ctx.lineTo(-30,12);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#e67e22';ctx.beginPath();ctx.arc(-6,0,9,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1a1a1a';ctx.beginPath();ctx.arc(6,-3,2.5,0,Math.PI*2);ctx.fill();
+  ctx.restore();}
+function drawDiverChar(x,y){ctx.save();ctx.translate(x,y);
+  ctx.fillStyle='#9ad0ff';ctx.beginPath();ctx.arc(0,0,18,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.beginPath();ctx.arc(-6,-6,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e67e3c';ctx.beginPath();ctx.moveTo(-14,10);ctx.lineTo(-20,22);ctx.lineTo(-10,22);ctx.lineTo(-8,12);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#4a7c9e';ctx.beginPath();ctx.moveTo(8,8);ctx.lineTo(14,20);ctx.lineTo(20,20);ctx.lineTo(8,6);ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.6)';ctx.beginPath();ctx.arc(-3,-20,5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.moveTo(-4,-15);ctx.lineTo(-8,-30);ctx.lineTo(-1,-30);ctx.lineTo(-2,-15);ctx.closePath();ctx.fill();
+  ctx.restore();}
+function drawChar(h){if(h.kind==='diver')drawDiverChar(h.x,h.y);else drawFishChar(h.x,h.y);}
+function drawHomeFlag(){ctx.save();ctx.translate(W*0.94,H*0.38);
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,34);ctx.lineTo(30,34);ctx.lineTo(0,40);ctx.stroke();
+  ctx.strokeStyle='#e67e22';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(22,9);ctx.lineTo(0,18);ctx.closePath();ctx.stroke();ctx.fillStyle='#ffd54f';ctx.beginPath();ctx.arc(0,6,3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='700 15px Comic Sans MS,sans-serif';ctx.textAlign='center';ctx.fillText('HOME',-6,58);
+  ctx.restore();}
+function draw(){
+  ctx.clearRect(0,0,W,H);drawSea(game.t);
+  if(state==='title'){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='40px Comic Sans MS,sans-serif';ctx.fillText('🏊🐟🦆',W/2,H*0.42);return;}
+  if(game.phase===1){drawHomeFlag();if(duckHome){ctx.globalAlpha=.5;}drawDuckChar(duck.x,duck.y,1);ctx.globalAlpha=1;for(const h of list)drawChar(h);}
+  else if(game.phase===2){drawFishChar(fish.x,fish.y);for(const h of list)drawChar(h);}
+  else if(game.phase===3){drawDiverChar(diver.x,diver.y);for(const f of list)if(!f.caught)drawChar(f);}
+}
+// ----- loop -----
+let last=performance.now();
+function loop(ts){const dt=Math.min(0.05,(ts-last)/1000);last=ts;
+  if(state==='play'){
+    game.t+=dt;
+    if(game.phase===1)updateDuck(dt);
+    else if(game.phase===2)updateFish(dt);
+    else if(game.phase===3)updateDiver(dt);
+    scoreNum.textContent=game.score[game.phase===3?2:(game.phase===2?1:0)];
+    timeNum.textContent=Math.ceil(Math.max(0,game.time));
+  }
+  draw();requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

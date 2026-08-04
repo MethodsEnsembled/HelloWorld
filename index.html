@@ -149,6 +149,27 @@
     line-height: 1;
     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
   }
+  .sdf-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #4fc3e8 0%, #1c6ea4 55%, #0b3d66 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sdf-art::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 80% 20%, rgba(255,255,255,0.35) 6px, transparent 7px);
+    opacity: 0.8;
+  }
+  .sdf-art .sdf-emoji {
+    font-size: 26px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+    z-index: 1;
+  }
   .onek-art {
     width: 54px; height: 54px;
     border-radius: 10px;
@@ -699,6 +720,19 @@
       <div class="card-info">
         <h2>Princess Unicorn Jump</h2>
         <p>Hold to dive, release to fly! Chain perfect landings into rainbow fever, catch stars, and race the sunset from castle to castle.</p>
+        <span class="badge">PLAY</span>
+      </div>
+    </a>
+
+    <a class="game-card" href="scuba-duck-fish.html">
+      <div class="card-art">
+        <div class="sdf-art">
+          <span class="sdf-emoji">🏊🐟🦆</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Scuba, Fish &amp; Duck</h2>
+        <p>Three watery rounds in one! Tap the duck home, drag the fish to dodge divers, then catch every fish with the arrow buttons. Add up all your points!</p>
         <span class="badge">PLAY</span>
       </div>
     </a>

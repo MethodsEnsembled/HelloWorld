@@ -69,13 +69,13 @@ window.addEventListener('resize',resize);resize();
 const audio={ctx:null,muted:false};
 function ensureAudio(){if(!audio.ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audio.ctx=new AC();}if(audio.ctx.state==='suspended')audio.ctx.resume();}
 function nowT(){return audio.ctx?audio.ctx.currentTime:0;}
-function fx(freq,dur,type,vol,slide){(function(){if(!audio.ctx||audio.muted)return;const t=nowT();const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(audio.ctx.destination);o.start(t);o.stop(t+dur);})();}
+function fx(freq,dur,type,vol,slide){try{if(!audio.ctx||audio.muted)return;const t=nowT();const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);g.gain.setValueAtTime(vol||0.2,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(audio.ctx.destination);o.start(t);o.stop(t+dur);}catch(e){}}
 const SEMI=440*Math.pow(2,1/12);
 const MUSIC={duck:[57,64,60,67,64,62,69,64],fish:[48,52,53,55,53,52,59,55],diver:[60,64,67,64,72,67,64,60]};
 const DUR={duck:.3,fish:.18,diver:.22};
 const musSt={phase:null,timer:null,step:0,next:0};
 function playMusic(p){stopMusic();if(audio.muted)return;ensureAudio();if(!audio.ctx)return;musSt.phase=p;musSt.step=0;musSt.next=nowT()+0.06;sched();}
-function sched(){if(!musSt.phase||audio.muted||!audio.ctx){musSt.timer=null;return;}const seq=MUSIC[musSt.phase],d=DUR[musSt.phase];while(musSt.next<nowT()+0.4){const m=seq[musSt.step%seq.length];fx(SEMI*Math.pow(2,(m-69)/12),d*0.85,'triangle',0.06);musSt.next+=d;musSt.step++;}musSt.timer=setTimeout(sched,60);}
+function sched(){if(!musSt.phase||audio.muted||!audio.ctx){musSt.timer=null;return;}try{const seq=MUSIC[musSt.phase],d=DUR[musSt.phase];while(musSt.next<nowT()+0.4){const m=seq[musSt.step%seq.length];fx(SEMI*Math.pow(2,(m-69)/12),d*0.85,'triangle',0.06);musSt.next+=d;musSt.step++;}musSt.timer=setTimeout(sched,60);}catch(e){musSt.timer=setTimeout(sched,200);}}
 function stopMusic(){musSt.phase=null;if(musSt.timer){clearTimeout(musSt.timer);musSt.timer=null;}}
 // ---- dom ----
 const $=id=>document.getElementById(id);
@@ -167,7 +167,7 @@ function goPhase(n){state='play';game.phase=n;touching=false;list=[];
   roundLabel.textContent=['','🏠 Duck','🐟 Fish','🤿 Diver'][n];
   dpad.style.display=(n===3)?'block':'none';playMusic(['','duck','fish','diver'][n]);
   if(n===1)startDuck();else if(n===2)startFish();else if(n===3)startDiver();}
-function startGame(){ensureAudio();winner.style.display='none';game.total=0;game.score=[0,0,0];overlay.classList.add('hide');goPhase(1);}
+function startGame(){ensureAudio();winner.style.display='none';game.total=0;game.score=[0,0,0];overlay.classList.add('hide');goPhase(1);draw();}
 startBtn.addEventListener('click',()=>{
   if(state==='title'||state==='gameover'){startGame();}
   else if(state==='phaseover'){const n=game.phase+1;overlay.classList.add('hide');goPhase(n);}});
@@ -210,7 +210,7 @@ function draw(){
 }
 // ----- loop -----
 let last=performance.now();
-function loop(ts){const dt=Math.min(0.05,(ts-last)/1000);last=ts;
+function loop(ts){try{const dt=Math.min(0.05,(ts-last)/1000);last=ts;
   if(state==='play'){
     game.t+=dt;
     if(game.phase===1)updateDuck(dt);
@@ -219,7 +219,7 @@ function loop(ts){const dt=Math.min(0.05,(ts-last)/1000);last=ts;
     scoreNum.textContent=game.score[game.phase===3?2:(game.phase===2?1:0)];
     timeNum.textContent=Math.ceil(Math.max(0,game.time));
   }
-  draw();requestAnimationFrame(loop);}
+  draw();}catch(e){}requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 })();
 </script>

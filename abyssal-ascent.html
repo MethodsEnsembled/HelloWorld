@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#020818">
+<title>Abyssal Ascent</title>
+<style>
+:root{--abyss:#020818;--deep:#061428;--glow:#00e5ff;--warn:#ff4060;--gold:#ffd740;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--abyss);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+#stage{position:fixed;inset:0;}
+canvas#c{width:100vw;height:100vh;display:block;touch-action:none;}
+.hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px;pointer-events:none;z-index:5;font-weight:800;text-shadow:0 2px 6px rgba(0,0,0,0.7);}
+.hud .depth{font-size:13px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.3);padding:5px 12px;border-radius:20px;color:var(--glow);}
+.hud .score{font-size:22px;color:var(--gold);}
+.hud .lives{font-size:18px;letter-spacing:2px;}
+.hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.mute{pointer-events:auto;font-size:20px;background:rgba(255,255,255,0.1);border:none;border-radius:50%;width:38px;height:38px;color:#fff;cursor:pointer;touch-action:manipulation;}
+#overlay{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;background:rgba(2,8,24,0.85);backdrop-filter:blur(6px);}
+#overlay.hide{display:none;}
+#overlay h1{font-size:30px;margin:0 0 8px;background:linear-gradient(135deg,var(--glow),#b388ff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none;}
+#overlay .sub{font-size:15px;opacity:.9;margin:0 0 18px;max-width:320px;line-height:1.5;}
+#overlay .how{font-size:14px;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);padding:14px 18px;border-radius:14px;margin:0 0 22px;line-height:1.6;max-width:320px;text-align:left;}
+#overlay .how b{color:var(--glow);}
+.btn{background:linear-gradient(180deg,var(--glow),#0091ea);color:#001820;font-weight:800;border:none;border-radius:30px;padding:16px 36px;font-size:19px;box-shadow:0 0 20px rgba(0,229,255,0.35),0 6px 0 #006db3;transition:transform .08s;cursor:pointer;touch-action:manipulation;}
+.btn:active{transform:translateY(4px);box-shadow:0 0 10px rgba(0,229,255,0.25),0 2px 0 #006db3;}
+.final-score{font-size:48px;font-weight:900;color:var(--gold);margin:0 0 4px;text-shadow:0 0 20px rgba(255,215,64,0.5);}
+.final-label{font-size:13px;opacity:.7;margin:0 0 20px;}
+.evo-bar{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;pointer-events:none;}
+.evo-pip{width:28px;height:6px;border-radius:3px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);overflow:hidden;}
+.evo-pip .fill{height:100%;width:0%;background:var(--glow);transition:width .3s;}
+.evo-pip.lit .fill{width:100%;}
+.evo-pip.locked{opacity:.3;}
+#zoneLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:4;font-size:28px;font-weight:900;letter-spacing:4px;text-transform:uppercase;opacity:0;transition:opacity .6s;pointer-events:none;text-shadow:0 0 30px rgba(0,229,255,0.6);}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div class="hud">
+  <div>
+    <div class="depth" id="depthLabel">DEPTH 0m</div>
+  </div>
+  <div class="hud-right">
+    <div class="score" id="scoreLabel">0</div>
+    <div class="lives" id="livesLabel">♥♥♥</div>
+    <button class="mute" id="muteBtn">🔊</button>
+  </div>
+</div>
+<div class="evo-bar" id="evoBar"></div>
+<div id="zoneLabel"></div>
+<div id="overlay">
+  <h1 id="ovTitle">🌊 Abyssal Ascent</h1>
+  <p class="sub" id="ovSub">Rise from the crushing dark. Evolve. Reach the surface.</p>
+  <div class="how" id="ovHow">
+    <b>Drag</b> to steer your creature upward.<br>
+    <b>Dodge</b> predators (red).<br>
+    <b>Collect</b> light orbs (cyan) to evolve.<br>
+    <b>Grab</b> golden jellyfish (gold) for bonus.<br>
+    Each zone gets faster &amp; stranger.
+  </div>
+  <div id="finalScore" style="display:none;">
+    <div class="final-score" id="fsNum">0</div>
+    <div class="final-label">FINAL SCORE</div>
+  </div>
+  <button class="btn" id="startBtn">Dive In</button>
+</div>
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function resize(){DPR=window.devicePixelRatio||1;W=window.innerWidth;H=window.innerHeight;cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(DPR,0,0,DPR,0,0);}
+window.addEventListener('resize',resize);resize();
+
+// ---- Audio Engine ----
+const audio={ctx:null,muted:false};
+function ensureAudio(){if(!audio.ctx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;audio.ctx=new AC();}if(audio.ctx.state==='suspended')audio.ctx.resume();}
+function nowT(){return audio.ctx?audio.ctx.currentTime:0;}
+function fx(freq,dur,type,vol,slide){try{if(!audio.ctx||audio.muted)return;const t=nowT();const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type=type||'sine';o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(slide,1),t+dur);g.gain.setValueAtTime(vol||0.15,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);o.connect(g);g.connect(audio.ctx.destination);o.start(t);o.stop(t+dur);}catch(e){}}
+// Ambient drone + procedural melody
+const SCALE=[0,3,5,7,10,12,15,17]; // minor pentatonic intervals
+let droneOsc=null,droneGain=null,melTimer=null,melNext=0,melStep=0;
+function startMusic(){
+  if(audio.muted||!audio.ctx)return;
+  stopMusic();
+  // Deep drone
+  droneOsc=audio.ctx.createOscillator();droneGain=audio.ctx.createGain();
+  droneOsc.type='sine';droneOsc.frequency.value=55;
+  droneGain.gain.value=0.06;
+  droneOsc.connect(droneGain);droneGain.connect(audio.ctx.destination);
+  droneOsc.start();
+  melNext=nowT()+0.3;melStep=0;schedMel();
+}
+function stopMusic(){
+  if(droneOsc){try{droneOsc.stop();}catch(e){}droneOsc=null;}
+  if(melTimer){clearTimeout(melTimer);melTimer=null;}
+}
+function schedMel(){
+  if(audio.muted||!audio.ctx||state!=='play'){melTimer=null;return;}
+  try{
+    while(melNext<nowT()+0.5){
+      const zone=Math.min(4,Math.floor(game.depth/200));
+      const baseFreq=110*(1+zone*0.25);
+      const note=SCALE[melStep%SCALE.length]+(Math.floor(melStep/SCALE.length)*12);
+      const freq=baseFreq*Math.pow(2,note/12);
+      const dur=0.15+Math.random()*0.1;
+      fx(freq,dur,'triangle',0.04+zone*0.008);
+      melNext+=dur+0.05+Math.random()*0.15;
+      melStep++;
+    }
+    melTimer=setTimeout(schedMel,80);
+  }catch(e){melTimer=setTimeout(schedMel,200);}
+}
+function sfxCollect(){fx(880,0.12,'sine',0.12,1760);fx(1320,0.08,'sine',0.06);}
+function sfxHit(){fx(80,0.3,'sawtooth',0.2,40);fx(120,0.2,'square',0.1);}
+function sfxEvolve(){fx(440,0.3,'sine',0.15,880);setTimeout(()=>fx(660,0.3,'sine',0.12,1320),100);setTimeout(()=>fx(880,0.4,'sine',0.1,1760),200);}
+function sfxBonus(){fx(660,0.15,'sine',0.1,1320);fx(990,0.1,'sine',0.08);}
+
+// ---- DOM refs ----
+const $=id=>document.getElementById(id);
+const depthLabel=$('depthLabel'),scoreLabel=$('scoreLabel'),livesLabel=$('livesLabel'),
+      overlay=$('overlay'),ovTitle=$('ovTitle'),ovSub=$('ovSub'),ovHow=$('ovHow'),
+      startBtn=$('startBtn'),muteBtn=$('muteBtn'),evoBar=$('evoBar'),
+      zoneLabel=$('zoneLabel'),finalScore=$('finalScore'),fsNum=$('fsNum');
+
+// ---- Input ----
+let touching=false,tx=0,ty=0;
+cv.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;e.preventDefault();touching=true;tx=e.clientX;ty=e.clientY;try{cv.setPointerCapture(e.pointerId);}catch(_){}},{passive:false});
+cv.addEventListener('pointermove',e=>{if(!touching)return;tx=e.clientX;ty=e.clientY;});
+cv.addEventListener('pointerup',()=>{touching=false;});
+cv.addEventListener('pointercancel',()=>{touching=false;});
+cv.addEventListener('touchstart',e=>{e.preventDefault();const T=e.touches[0];touching=true;tx=T.clientX;ty=T.clientY;},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();const T=e.touches[0];tx=T.clientX;ty=T.clientY;},{passive:false});
+cv.addEventListener('touchend',()=>{touching=false;},{passive:true});
+
+function onMute(e){if(e)e.preventDefault();audio.muted=!audio.muted;muteBtn.textContent=audio.muted?'🔇':'🔊';if(audio.muted)stopMusic();else if(state==='play')startMusic();}
+muteBtn.addEventListener('pointerdown',onMute);
+muteBtn.addEventListener('click',onMute);
+
+// ---- Game State ----
+const ZONES=[
+  {name:'ABYSSAL PLAIN',depth:0,bg1:'#020818',bg2:'#061428',speed:1,predRate:0.012,orbRate:0.025},
+  {name:'TWILIGHT REEF',depth:200,bg1:'#061428',bg2:'#0a2844',speed:1.3,predRate:0.018,orbRate:0.028},
+  {name:'SUNLIT SHOALS',depth:450,bg1:'#0a2844',bg2:'#1a5070',speed:1.6,predRate:0.024,orbRate:0.03},
+  {name:'CORRIDOR OF LIGHT',depth:700,bg1:'#1a5070',bg2:'#3a8ab0',speed:2.0,predRate:0.03,orbRate:0.032},
+  {name:'SURFACE',depth:950,bg1:'#3a8ab0',bg2:'#80d0f0',speed:2.4,predRate:0.035,orbRate:0.035}
+];
+const EVOLUTIONS=[
+  {orbs:0,radius:14,trail:3,color:'#00e5ff',name:'Larva'},
+  {orbs:8,radius:17,trail:5,color:'#40efff',name:'Juvenile'},
+  {orbs:20,radius:21,trail:8,color:'#80f0ff',name:'Adult'},
+  {orbs:38,radius:25,trail:12,color:'#b0f8ff',name:'Elder'},
+  {orbs:60,radius:30,trail:16,color:'#ffffff',name:'Leviathan'}
+];
+
+let state='title'; // title, play, over
+const game={depth:0,score:0,lives:3,orbs:0,evoLevel:0,zoneIdx:0,t:0,shakeT:0,invulnT:0};
+const player={x:0,y:0,vx:0,vy:0,trail:[]};
+let entities=[];
+let particles=[];
+let zoneFlashT=0;
+
+// ---- Entity system ----
+function spawnEntity(){
+  const z=ZONES[game.zoneIdx];
+  const r=Math.random();
+  if(r<z.predRate){
+    // Predator
+    const type=Math.random()<0.5?'shark':'angler';
+    const side=Math.random()<0.5?-1:1;
+    entities.push({
+      kind:'predator',type,
+      x:side<0?-30:W+30,
+      y:H*0.15+Math.random()*H*0.6,
+      vx:side*(80+Math.random()*60)*z.speed,
+      vy:(Math.random()-0.5)*30,
+      r:type==='shark'?22:18,
+      phase:Math.random()*6.28
+    });
+  }else if(r<z.predRate+z.orbRate){
+    // Light orb
+    entities.push({
+      kind:'orb',
+      x:30+Math.random()*(W-60),
+      y:-20,
+      vx:(Math.random()-0.5)*20,
+      vy:40+Math.random()*30,
+      r:10,phase:Math.random()*6.28
+    });
+  }else if(r<z.predRate+z.orbRate+0.005){
+    // Golden jellyfish (rare bonus)
+    entities.push({
+      kind:'bonus',
+      x:30+Math.random()*(W-60),
+      y:-25,
+      vx:(Math.random()-0.5)*15,
+      vy:30+Math.random()*20,
+      r:14,phase:Math.random()*6.28
+    });
+  }
+}
+
+function updateEntities(dt){
+  const z=ZONES[game.zoneIdx];
+  for(let i=entities.length-1;i>=0;i--){
+    const e=entities[i];
+    e.x+=e.vx*dt;e.y+=e.vy*dt;e.phase+=dt*3;
+    if(e.kind==='predator'){
+      e.y+=Math.sin(e.phase)*20*dt;
+      // Remove if off screen
+      if((e.vx>0&&e.x>W+50)||(e.vx<0&&e.x<-50)){entities.splice(i,1);continue;}
+      // Collision with player
+      if(game.invulnT<=0){
+        const d=Math.hypot(e.x-player.x,e.y-player.y);
+        if(d<e.r+EVO.radius){
+          hitPlayer();
+          entities.splice(i,1);continue;
+        }
+      }
+    }else if(e.kind==='orb'){
+      e.x+=Math.sin(e.phase)*15*dt;
+      if(e.y>H+30){entities.splice(i,1);continue;}
+      const d=Math.hypot(e.x-player.x,e.y-player.y);
+      if(d<e.r+EVO.radius+5){
+        collectOrb(e);entities.splice(i,1);continue;
+      }
+    }else if(e.kind==='bonus'){
+      e.x+=Math.sin(e.phase)*10*dt;
+      e.y+=Math.cos(e.phase*0.7)*8*dt;
+      if(e.y>H+30){entities.splice(i,1);continue;}
+      const d=Math.hypot(e.x-player.x,e.y-player.y);
+      if(d<e.r+EVO.radius+5){
+        collectBonus(e);entities.splice(i,1);continue;
+      }
+    }
+  }
+}
+
+let EVO=EVOLUTIONS[0];
+function checkEvolution(){
+  let newLvl=0;
+  for(let i=EVOLUTIONS.length-1;i>=0;i--){
+    if(game.orbs>=EVOLUTIONS[i].orbs){newLvl=i;break;}
+  }
+  if(newLvl>game.evoLevel){
+    game.evoLevel=newLvl;
+    EVO=EVOLUTIONS[newLvl];
+    sfxEvolve();
+    showZone(EVO.name+' FORM');
+    // Burst particles
+    for(let i=0;i<20;i++){
+      particles.push({x:player.x,y:player.y,vx:(Math.random()-0.5)*200,vy:(Math.random()-0.5)*200,life:0.8,maxLife:0.8,color:EVO.color,size:3+Math.random()*3});
+    }
+  }
+  updateEvoBar();
+}
+
+function collectOrb(e){
+  game.orbs++;game.score+=10;
+  sfxCollect();
+  for(let i=0;i<5;i++){
+    particles.push({x:e.x,y:e.y,vx:(Math.random()-0.5)*100,vy:(Math.random()-0.5)*100,life:0.5,maxLife:0.5,color:'#00e5ff',size:2+Math.random()*2});
+  }
+  checkEvolution();
+}
+
+function collectBonus(e){
+  game.score+=50;game.lives=Math.min(5,game.lives+1);
+  sfxBonus();
+  for(let i=0;i<10;i++){
+    particles.push({x:e.x,y:e.y,vx:(Math.random()-0.5)*150,vy:(Math.random()-0.5)*150,life:0.6,maxLife:0.6,color:'#ffd740',size:3+Math.random()*3});
+  }
+}
+
+function hitPlayer(){
+  game.lives--;game.invulnT=1.5;game.shakeT=0.3;
+  sfxHit();
+  for(let i=0;i<12;i++){
+    particles.push({x:player.x,y:player.y,vx:(Math.random()-0.5)*250,vy:(Math.random()-0.5)*250,life:0.6,maxLife:0.6,color:'#ff4060',size:2+Math.random()*4});
+  }
+  if(game.lives<=0)endGame();
+}
+
+// ---- Particles ----
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+function drawParticles(){
+  for(const p of particles){
+    const a=p.life/p.maxLife;
+    ctx.globalAlpha=a;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*a,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+// ---- Background ----
+const bubbles=[];
+for(let i=0;i<30;i++)bubbles.push({x:Math.random(),y:Math.random(),s:1+Math.random()*3,sp:10+Math.random()*25});
+function drawBackground(dt){
+  const z=ZONES[game.zoneIdx];
+  const nz=ZONES[Math.min(ZONES.length-1,game.zoneIdx+1)];
+  // Interpolate bg within zone
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,z.bg2);grad.addColorStop(1,z.bg1);
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  // Bubbles rising
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  for(const b of bubbles){
+    b.y-=b.sp*dt/H;if(b.y<0)b.y=1;
+    ctx.beginPath();ctx.arc(b.x*W,b.y*H,b.s,0,Math.PI*2);ctx.fill();
+  }
+  // Light rays in upper zones
+  if(game.zoneIdx>=2){
+    const rayAlpha=0.03*(game.zoneIdx-1);
+    ctx.save();
+    for(let i=0;i<5;i++){
+      const rx=W*(0.15+i*0.18)+Math.sin(game.t*0.3+i)*30;
+      const rg=ctx.createLinearGradient(rx,0,rx+40,H);
+      rg.addColorStop(0,`rgba(255,255,200,${rayAlpha})`);rg.addColorStop(1,'transparent');
+      ctx.fillStyle=rg;ctx.fillRect(rx-20,0,40,H);
+    }
+    ctx.restore();
+  }
+}
+
+// ---- Player ----
+function drawPlayer(){
+  // Trail
+  const trail=EVO.trail;
+  for(let i=0;i<player.trail.length;i++){
+    const t=player.trail[i];
+    const a=(i/player.trail.length)*0.4;
+    const s=EVO.radius*(0.3+0.7*i/player.trail.length);
+    ctx.globalAlpha=a;ctx.fillStyle=EVO.color;
+    ctx.beginPath();ctx.arc(t.x,t.y,s,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  // Glow
+  if(game.invulnT>0&&Math.floor(game.t*10)%2===0)return; // blink when invuln
+  const glow=ctx.createRadialGradient(player.x,player.y,EVO.radius*0.3,player.x,player.y,EVO.radius*2.5);
+  glow.addColorStop(0,EVO.color);glow.addColorStop(1,'transparent');
+  ctx.fillStyle=glow;ctx.globalAlpha=0.3;
+  ctx.beginPath();ctx.arc(player.x,player.y,EVO.radius*2.5,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  // Body
+  ctx.fillStyle=EVO.color;
+  ctx.beginPath();ctx.arc(player.x,player.y,EVO.radius,0,Math.PI*2);ctx.fill();
+  // Eyes
+  ctx.fillStyle='#001820';
+  const ex=EVO.radius*0.3,ey=-EVO.radius*0.15,es=EVO.radius*0.18;
+  ctx.beginPath();ctx.arc(player.x-ex,player.y+ey,es,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(player.x+ex,player.y+ey,es,0,Math.PI*2);ctx.fill();
+  // Pupils
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(player.x-ex+1,player.y+ey-1,es*0.4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(player.x+ex+1,player.y+ey-1,es*0.4,0,Math.PI*2);ctx.fill();
+}
+
+// ---- Entities drawing ----
+function drawEntities(){
+  for(const e of entities){
+    if(e.kind==='predator'){
+      ctx.save();ctx.translate(e.x,e.y);
+      if(e.vx<0)ctx.scale(-1,1);
+      if(e.type==='shark'){
+        ctx.fillStyle='#ff4060';
+        ctx.beginPath();ctx.moveTo(20,0);ctx.lineTo(-18,-12);ctx.lineTo(-12,0);ctx.lineTo(-18,12);ctx.closePath();ctx.fill();
+        // Fin
+        ctx.beginPath();ctx.moveTo(-5,-12);ctx.lineTo(2,-22);ctx.lineTo(8,-10);ctx.closePath();ctx.fill();
+        // Eye
+        ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(8,-3,3,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#200';ctx.beginPath();ctx.arc(9,-3,1.5,0,Math.PI*2);ctx.fill();
+      }else{
+        // Angler fish
+        ctx.fillStyle='#cc2040';
+        ctx.beginPath();ctx.arc(0,0,16,0,Math.PI*2);ctx.fill();
+        // Lure
+        ctx.strokeStyle='#ff8080';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(8,-14);ctx.quadraticCurveTo(16,-28,12,-30);ctx.stroke();
+        ctx.fillStyle=`rgba(255,200,100,${0.5+0.5*Math.sin(e.phase*4)})`;
+        ctx.beginPath();ctx.arc(12,-30,4,0,Math.PI*2);ctx.fill();
+        // Mouth
+        ctx.fillStyle='#400';ctx.beginPath();ctx.arc(6,4,6,0,Math.PI,false);ctx.fill();
+        // Eye
+        ctx.fillStyle='#ffe040';ctx.beginPath();ctx.arc(-4,-5,4,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#200';ctx.beginPath();ctx.arc(-3,-5,2,0,Math.PI*2);ctx.fill();
+      }
+      ctx.restore();
+    }else if(e.kind==='orb'){
+      const pulse=1+0.15*Math.sin(e.phase*3);
+      const g=ctx.createRadialGradient(e.x,e.y,0,e.x,e.y,e.r*pulse*2);
+      g.addColorStop(0,'rgba(0,229,255,0.9)');g.addColorStop(0.5,'rgba(0,229,255,0.3)');g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(e.x,e.y,e.r*pulse*2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(e.x,e.y,e.r*0.4,0,Math.PI*2);ctx.fill();
+    }else if(e.kind==='bonus'){
+      const pulse=1+0.1*Math.sin(e.phase*2);
+      // Jellyfish bell
+      ctx.fillStyle=`rgba(255,215,64,${0.7+0.3*Math.sin(e.phase*2)})`;
+      ctx.beginPath();ctx.arc(e.x,e.y-4,e.r*pulse,Math.PI,0);ctx.fill();
+      // Tentacles
+      ctx.strokeStyle='rgba(255,215,64,0.5)';ctx.lineWidth=1.5;
+      for(let t=0;t<4;t++){
+        const tx=e.x-8+t*5.5;
+        ctx.beginPath();ctx.moveTo(tx,e.y-2);
+        ctx.quadraticCurveTo(tx+Math.sin(e.phase+t)*6,e.y+10,tx+Math.sin(e.phase*1.5+t)*4,e.y+18);
+        ctx.stroke();
+      }
+      // Sparkle
+      ctx.fillStyle='#fff';ctx.globalAlpha=0.6+0.4*Math.sin(e.phase*5);
+      ctx.beginPath();ctx.arc(e.x-3,e.y-8,2,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+// ---- Zone management ----
+function updateZone(){
+  let newZ=0;
+  for(let i=ZONES.length-1;i>=0;i--){
+    if(game.depth>=ZONES[i].depth){newZ=i;break;}
+  }
+  if(newZ!==game.zoneIdx){
+    game.zoneIdx=newZ;
+    showZone(ZONES[newZ].name);
+  }
+}
+function showZone(text){
+  zoneLabel.textContent=text;zoneLabel.style.opacity='1';zoneFlashT=2;
+}
+
+// ---- Evo bar ----
+function initEvoBar(){
+  evoBar.innerHTML='';
+  for(let i=0;i<EVOLUTIONS.length;i++){
+    const pip=document.createElement('div');pip.className='evo-pip'+(i===0?' lit':' locked');
+    pip.innerHTML='<div class="fill"></div>';evoBar.appendChild(pip);
+  }
+}
+function updateEvoBar(){
+  const pips=evoBar.children;
+  for(let i=0;i<pips.length;i++){
+    pips[i].className='evo-pip'+(i<=game.evoLevel?' lit':' locked');
+  }
+}
+
+// ---- HUD ----
+function updateHUD(){
+  depthLabel.textContent='DEPTH '+Math.floor(game.depth)+'m';
+  scoreLabel.textContent=game.score;
+  let hearts='';for(let i=0;i<game.lives;i++)hearts+='♥';
+  livesLabel.textContent=hearts;
+  livesLabel.style.color=game.lives<=1?'var(--warn)':'#ff8090';
+}
+
+// ---- Main loop ----
+let lastT=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(ts-lastT)/1000);lastT=ts;
+  if(state!=='play')return;
+  game.t+=dt;
+  // Depth increases over time
+  const z=ZONES[game.zoneIdx];
+  game.depth+=30*z.speed*dt;
+  game.score+=Math.floor(z.speed*dt*2);
+  // Invulnerability
+  if(game.invulnT>0)game.invulnT-=dt;
+  if(game.shakeT>0)game.shakeT-=dt;
+  // Zone flash
+  if(zoneFlashT>0){zoneFlashT-=dt;if(zoneFlashT<=0)zoneLabel.style.opacity='0';}
+  // Player movement - auto rise, drag to steer horizontally
+  const targetX=touching?tx:player.x;
+  player.x+=(targetX-player.x)*Math.min(1,dt*8);
+  player.x=Math.max(EVO.radius,Math.min(W-EVO.radius,player.x));
+  // Gentle bob
+  player.y=H*0.65+Math.sin(game.t*2)*8;
+  // Trail
+  player.trail.push({x:player.x,y:player.y});
+  while(player.trail.length>EVO.trail)player.trail.shift();
+  // Spawn & update entities
+  spawnEntity();
+  updateEntities(dt);
+  updateParticles(dt);
+  updateZone();
+  updateHUD();
+  // Check win
+  if(game.depth>=1100){winGame();return;}
+  // Draw
+  ctx.save();
+  if(game.shakeT>0){
+    const sx=(Math.random()-0.5)*8*game.shakeT;
+    const sy=(Math.random()-0.5)*8*game.shakeT;
+    ctx.translate(sx,sy);
+  }
+  drawBackground(dt);
+  drawEntities();
+  drawPlayer();
+  drawParticles();
+  ctx.restore();
+}
+requestAnimationFrame(loop);
+
+// ---- Game flow ----
+function startGame(){
+  ensureAudio();
+  game.depth=0;game.score=0;game.lives=3;game.orbs=0;game.evoLevel=0;game.zoneIdx=0;game.t=0;game.shakeT=0;game.invulnT=0;
+  EVO=EVOLUTIONS[0];
+  player.x=W/2;player.y=H*0.65;player.trail=[];
+  entities=[];particles=[];
+  initEvoBar();updateHUD();
+  overlay.classList.add('hide');
+  finalScore.style.display='none';
+  state='play';
+  startMusic();
+  showZone(ZONES[0].name);
+}
+function endGame(){
+  state='over';stopMusic();
+  fx(200,0.5,'sawtooth',0.15,50);
+  ovTitle.textContent='💀 Crushed by the Deep';
+  ovSub.textContent='The abyss claimed you at '+Math.floor(game.depth)+'m.';
+  ovHow.style.display='none';
+  fsNum.textContent=game.score;
+  finalScore.style.display='block';
+  startBtn.textContent='Try Again';
+  overlay.classList.remove('hide');
+}
+function winGame(){
+  state='over';stopMusic();
+  sfxEvolve();
+  ovTitle.textContent='🌅 Surface Reached!';
+  ovSub.textContent='You ascended from the abyss and evolved into a '+EVO.name+'!';
+  ovHow.style.display='none';
+  fsNum.textContent=game.score;
+  finalScore.style.display='block';
+  startBtn.textContent='Dive Again';
+  overlay.classList.remove('hide');
+}
+startBtn.addEventListener('click',()=>{ovHow.style.display='block';startGame();});
+
+// Initial draw
+drawBackground(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0520">
+<title>Abyssal Ascent</title>
+<style>
+:root{--bg:#0a0520;--panel:#1a1040;--text:#f0ecff;--accent:#00e5ff;--gold:#ffd166;}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:radial-gradient(ellipse at top,#1a1040 0%,var(--bg) 60%,#020010 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;height:100%;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;}
+body{display:flex;flex-direction:column;align-items:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);height:100vh;}
+header{width:100%;max-width:520px;padding:14px 18px 6px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-shrink:0;}
+.header-left{display:flex;align-items:center;gap:10px;min-width:0;}
+.back,.icon-btn{background:var(--panel);border:1px solid rgba(255,255,255,0.08);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--text);font-size:18px;flex-shrink:0;cursor:pointer;padding:0;}
+.back:active,.icon-btn:active{background:var(--accent);color:#0a0520;transform:scale(0.94);}
+h1{margin:0;font-size:clamp(17px,4.5vw,25px);letter-spacing:2px;font-weight:800;background:linear-gradient(90deg,#00e5ff,#7c4dff,#ff4081,#ffd166,#00e5ff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rainbowflow 7s linear infinite;white-space:nowrap;}
+@keyframes rainbowflow{to{background-position:300% 0;}}
+.stats{display:flex;align-items:center;gap:8px;}
+.stat{background:var(--panel);border-radius:10px;padding:6px 12px;font-size:11px;text-align:center;min-width:56px;line-height:1.2;opacity:0.95;}
+.stat b{display:block;font-size:16px;color:var(--accent);}
+.play{flex:1;width:100%;position:relative;min-height:0;touch-action:none;}
+#game{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;}
+footer{width:100%;max-width:520px;padding:8px 18px 14px;display:flex;flex-direction:column;gap:8px;align-items:center;flex-shrink:0;}
+.help{font-size:12px;opacity:0.7;text-align:center;line-height:1.45;}
+.phase-bar{display:flex;gap:6px;align-items:center;}
+.phase-pip{width:40px;height:6px;border-radius:3px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);overflow:hidden;transition:all .3s;}
+.phase-pip.active{border-color:var(--accent);box-shadow:0 0 8px rgba(0,229,255,0.4);}
+.phase-pip.done{background:var(--accent);border-color:var(--accent);}
+.phase-pip .fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#7c4dff);transition:width .3s;}
+.phase-pip.active .fill{width:100%;}
+button.primary{background:var(--accent);color:#0a0520;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;}
+button.primary:active{transform:scale(0.97);}
+button.ghost{background:transparent;color:var(--text);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;}
+button.ghost:active{transform:scale(0.97);border-color:var(--accent);}
+.overlay{position:fixed;inset:0;background:rgba(5,2,20,0.85);display:none;align-items:center;justify-content:center;z-index:10;backdrop-filter:blur(6px);}
+.overlay.show{display:flex;}
+.modal{background:var(--panel);border-radius:16px;padding:24px 28px;text-align:center;max-width:340px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.6);}
+.modal h2{margin:0 0 10px;background:linear-gradient(90deg,#00e5ff,#7c4dff,#ff4081,#ffd166);-webkit-background-clip:text;background-clip:text;color:transparent;font-size:22px;}
+.modal p{margin:0 0 8px;opacity:0.85;font-size:14px;line-height:1.5;}
+.modal .score-row{display:flex;gap:10px;justify-content:center;margin:12px 0;}
+.modal .score-chip{background:rgba(255,255,255,0.06);border-radius:12px;padding:10px 14px;min-width:70px;}
+.modal .score-chip small{display:block;font-size:11px;opacity:.7;}
+.modal .score-chip b{display:block;font-size:24px;color:var(--accent);}
+.modal .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+.modal .how{text-align:left;background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.12);border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;line-height:1.6;}
+.modal .how b{color:var(--accent);}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <a class="back" href="index.html" aria-label="Back to arcade">←</a>
+    <h1>ABYSSAL ASCENT</h1>
+  </div>
+  <div class="stats">
+    <button class="icon-btn" id="soundBtn" aria-label="Toggle sound">🔊</button>
+    <div class="stat">SCORE<b id="scoreEl">0</b></div>
+    <div class="stat" id="phaseStat">PHASE<b id="phaseEl">—</b></div>
+  </div>
+</header>
+<div class="play" id="play"><canvas id="game"></canvas></div>
+<footer>
+  <div class="phase-bar" id="phaseBar">
+    <div class="phase-pip" id="pip1"><div class="fill"></div></div>
+    <div class="phase-pip" id="pip2"><div class="fill"></div></div>
+    <div class="phase-pip" id="pip3"><div class="fill"></div></div>
+  </div>
+  <div class="help" id="helpText">Three creatures. One ocean. Swim, dodge, hunt.</div>
+</footer>
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="mTitle">Abyssal Ascent</h2>
+    <p id="mText">Three watery challenges in one deep dive.</p>
+    <div class="how" id="mHow">
+      <b>Phase 1 — Duck:</b> Tap to swim home. Dodge predators.<br>
+      <b>Phase 2 — Fish:</b> Drag to dodge the dive-raid.<br>
+      <b>Phase 3 — Diver:</b> Swipe to catch every fish.<br><br>
+      Each phase scores points. Chain combos for multipliers. Total decides your rank.
+    </div>
+    <div class="score-row" id="mScores" style="display:none;">
+      <div class="score-chip"><small>🦆 Duck</small><b id="ms1">0</b></div>
+      <div class="score-chip"><small>🐟 Fish</small><b id="ms2">0</b></div>
+      <div class="score-chip"><small>🤿 Diver</small><b id="ms3">0</b></div>
+    </div>
+    <p id="mTotal" style="display:none;font-size:18px;font-weight:800;color:var(--gold);margin:8px 0;"></p>
+    <div class="btn-row">
+      <button class="primary" id="mBtn">Dive In</button>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';
+/* ============================================================
+   ABYSSAL ASCENT
+   Three related deep-sea phases rendered on one canvas with
+   the visual fidelity of Zero Gravity 2048: prerendered
+   nebula backgrounds, parallax particles, glow sprites,
+   additive-blend explosions, screen shake, floating popups,
+   synthesized audio, and smooth eased animations.
+
+   Phase 1 (Duck): Tap/hold to swim right toward home.
+     Predators patrol vertically. Hits knock you back + cost HP.
+     Reach the flag or survive the timer. Score = time bonus + home bonus - hits.
+
+   Phase 2 (Fish): Drag to dodge a horizontal dive-raid.
+     Divers sweep left. Getting tagged costs HP. Survive the timer.
+     Score = survival time + dodge streaks.
+
+   Phase 3 (Diver): Swipe/arrow keys to chase fish in all directions.
+     Catch all fish before time runs out. Time bonus for speed.
+     Score = fish caught × 10 + time remaining × 2.
+
+   All three share: lives (3 total across phases), combo system,
+   particle effects, procedural music that shifts per phase.
+   ============================================================ */
+
+// ---- Constants ----
+const PHASE_DUCK = 1, PHASE_FISH = 2, PHASE_DIVER = 3;
+const T_DUCK = 14, T_FISH = 16, T_DIVER = 40;
+const MAX_LIVES = 5;
+const INVULN_TIME = 1.2;
+const BEST_KEY = 'abyssal_best';
+const MUTE_KEY = 'abyssal_muted';
+
+// ---- State ----
+const G = {
+  phase: 0, // 0=title, 1-3=playing, 4=phaseover, 5=gameover
+  t: 0, timeLeft: 0,
+  score: [0, 0, 0],
+  totalScore: 0,
+  best: 0,
+  lives: 3,
+  invulnT: 0,
+  combo: 0, comboTimer: 0,
+  hits: 0,
+  duckHome: false,
+  fishCaught: 0, fishTotal: 0,
+  overAt: 0,
+};
+let nowSec = 0;
+
+// Player positions
+const player = { x: 0, y: 0, vx: 0, vy: 0 };
+// Entity list
+let entities = [];
+// Particles
+const parts = [];
+const MAXP = 300;
+// Popups
+const pops = [];
+// Screen shake
+let shakeMag = 0;
+
+// ---- DOM ----
+const playEl = document.getElementById('play');
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+const scoreEl = document.getElementById('scoreEl');
+const phaseEl = document.getElementById('phaseEl');
+const overlay = document.getElementById('overlay');
+const mTitle = document.getElementById('mTitle');
+const mText = document.getElementById('mText');
+const mHow = document.getElementById('mHow');
+const mBtn = document.getElementById('mBtn');
+const mScores = document.getElementById('mScores');
+const mTotal = document.getElementById('mTotal');
+const soundBtn = document.getElementById('soundBtn');
+const helpText = document.getElementById('helpText');
+const pip1 = document.getElementById('pip1'), pip2 = document.getElementById('pip2'), pip3 = document.getElementById('pip3');
+
+// ---- Layout ----
+let W = 0, H = 0, DPR = 1;
+let bgCv = null;
+
+function layout() {
+  const r = playEl.getBoundingClientRect();
+  W = Math.max(1, Math.floor(r.width));
+  H = Math.max(1, Math.floor(r.height));
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  cvs.width = W * DPR; cvs.height = H * DPR;
+  buildBg();
+}
+
+// ---- Helpers ----
+function rr(c, x, y, w, h, rad) {
+  const r2 = Math.min(rad, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r2, y);
+  c.arcTo(x + w, y, x + w, y + h, r2); c.arcTo(x + w, y + h, x, y + h, r2);
+  c.arcTo(x, y + h, x, y, r2); c.arcTo(x, y, x + w, y, r2); c.closePath();
+}
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < 0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function dist(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+function randRange(a, b) { return a + Math.random() * (b - a); }
+
+// ---- Prerendered Background ----
+const PHASE_BG = [
+  null,
+  // Phase 1: Deep teal ocean
+  { g1: '#0d4f6e', g2: '#041828', blobs: [[0.2,0.3,'0,180,220',0.12],[0.8,0.7,'0,100,160',0.08]] },
+  // Phase 2: Darker blue-purple
+  { g1: '#1a2060', g2: '#080820', blobs: [[0.3,0.2,'80,40,200',0.14],[0.7,0.8,'20,80,180',0.10]] },
+  // Phase 3: Bright aqua
+  { g1: '#0a6080', g2: '#042030', blobs: [[0.5,0.3,'0,220,200',0.10],[0.2,0.7,'0,160,255',0.08]] },
+];
+
+function buildBg() {
+  const cfg = PHASE_BG[G.phase] || PHASE_BG[1];
+  bgCv = document.createElement('canvas');
+  bgCv.width = W * DPR; bgCv.height = H * DPR;
+  const c = bgCv.getContext('2d');
+  c.scale(DPR, DPR);
+  const g = c.createRadialGradient(W/2, -H*0.2, H*0.2, W/2, H*0.4, H*1.3);
+  g.addColorStop(0, cfg.g1); g.addColorStop(1, cfg.g2);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.globalCompositeOperation = 'screen';
+  for (const [nx, ny, col, a] of cfg.blobs) {
+    const rad = 0.4 * Math.max(W, H);
+    const ng = c.createRadialGradient(nx*W, ny*H, 0, nx*W, ny*H, rad);
+    ng.addColorStop(0, `rgba(${col},${a})`); ng.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = ng; c.fillRect(nx*W-rad, ny*H-rad, rad*2, rad*2);
+  }
+  c.globalCompositeOperation = 'source-over';
+  // Vignette
+  const v = c.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.75);
+  v.addColorStop(0, 'rgba(0,0,10,0)'); v.addColorStop(1, 'rgba(0,0,10,0.5)');
+  c.fillStyle = v; c.fillRect(0, 0, W, H);
+}
+
+// ---- Parallax Particles (bubbles/particles in background) ----
+const bgParts = [];
+(function initBgParts() {
+  for (let i = 0; i < 60; i++) {
+    bgParts.push({
+      x: Math.random(), y: Math.random(),
+      s: 1 + Math.random() * 3,
+      sp: 8 + Math.random() * 20,
+      tw: 2 + Math.random() * 3,
+      ph: Math.random() * Math.PI * 2,
+      layer: 0.5 + Math.random() * 1.5,
+    });
+  }
+})();
+
+function drawBgParticles(now) {
+  for (const p of bgParts) {
+    p.y -= p.sp / H * 0.016;
+    if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); }
+    const alpha = 0.15 + 0.1 * Math.sin(now * p.tw + p.ph);
+    const px = p.x * W + Math.sin(now * 0.5 + p.ph) * 8 * p.layer;
+    const py = p.y * H;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(px, py, p.s, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Glow Sprites (pre-rendered radial gradients for particles) ----
+const glowSprites = [];
+(function buildGlowSprites() {
+  for (let i = 0; i <= 12; i++) {
+    const cv2 = document.createElement('canvas');
+    cv2.width = cv2.height = 64;
+    const c = cv2.getContext('2d');
+    const hue = i === 12 ? null : i * 30;
+    const col = hue === null ? '255,255,255' : hslToRgbStr(hue, 100, 65);
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.3, `rgba(${col},0.8)`);
+    g.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    glowSprites.push(cv2);
+  }
+})();
+function hslToRgbStr(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return [Math.round(f(0)*255), Math.round(f(8)*255), Math.round(f(4)*255)].join(',');
+}
+
+// ---- Particle System ----
+function addPart(p) { if (parts.length >= MAXP) parts.shift(); p.life = 0; parts.push(p); }
+
+function explode(x, y, hue, power) {
+  // Ring
+  addPart({ kind:'ring', x, y, r0: 10, grow: 40 + power * 25, max: 0.45, hue });
+  // Glow particles
+  const n = Math.min(50, 10 + power * 10);
+  for (let i = 0; i < n; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = (50 + Math.random() * 180) * (0.7 + power * 0.25);
+    const hj = (power >= 2 && Math.random() < 0.4) ? Math.random() * 360 : (hue + randRange(-30, 30) + 360) % 360;
+    addPart({ kind:'glow', x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp, s: 8 + Math.random()*14*(0.8+power*0.15), max: 0.4+Math.random()*0.4, hue: hj, a: 0.85 });
+  }
+  // Cross sparkles
+  for (let i = 0; i < 2 + power * 2; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 30 + Math.random() * 100;
+    addPart({ kind:'cross', x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp, s: 10+Math.random()*10, max: 0.4+Math.random()*0.3, hue: (hue+randRange(-40,40)+360)%360, rot: Math.random()*Math.PI, vr: (Math.random()-0.5)*6 });
+  }
+  // Rainbow ring for big explosions
+  if (power >= 3) addPart({ kind:'rainbow', x, y, r0: 15, grow: 80, max: 0.6 });
+  shakeMag = Math.min(12, shakeMag + power * 1.5);
+}
+
+function spawnSparkle(x, y, hue) {
+  for (let i = 0; i < 6; i++) {
+    const ang = Math.random() * Math.PI * 2;
+    const sp = 20 + Math.random() * 50;
+    addPart({ kind:'glow', x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp, s: 5+Math.random()*6, max: 0.35+Math.random()*0.2, hue: hue||180, a: 0.6 });
+  }
+}
+
+function updateParts(dt) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.life += dt;
+    if (p.life >= p.max) { parts.splice(i, 1); continue; }
+    if (p.kind === 'glow' || p.kind === 'cross') {
+      const damp = Math.max(0, 1 - 2.2 * dt);
+      p.vx *= damp; p.vy *= damp;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.kind === 'cross') p.rot += p.vr * dt;
+    }
+  }
+}
+
+function drawParts(now) {
+  ctx.globalCompositeOperation = 'lighter';
+  for (const p of parts) {
+    const k = p.life / p.max;
+    if (p.kind === 'glow') {
+      const a = (1-k) * (p.a || 0.8);
+      const s = p.s * (1 - k * 0.3);
+      const spr = glowSprites[Math.floor(((p.hue % 360) + 360) % 360 / 30)] || glowSprites[12];
+      ctx.globalAlpha = a;
+      ctx.drawImage(spr, p.x - s/2, p.y - s/2, s, s);
+    } else if (p.kind === 'cross') {
+      ctx.globalAlpha = 1 - k;
+      ctx.strokeStyle = `hsl(${p.hue},100%,75%)`;
+      ctx.lineWidth = 1.5;
+      const s = p.s * (1 - k * 0.3);
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.beginPath(); ctx.moveTo(-s/2,0); ctx.lineTo(s/2,0); ctx.moveTo(0,-s/2); ctx.lineTo(0,s/2); ctx.stroke();
+      ctx.restore();
+    } else if (p.kind === 'ring') {
+      const r2 = p.r0 + easeOut(k) * p.grow;
+      ctx.globalAlpha = (1-k) * 0.8;
+      ctx.strokeStyle = `hsl(${p.hue},100%,70%)`;
+      ctx.lineWidth = 3 * (1-k) + 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r2, 0, 7); ctx.stroke();
+    } else if (p.kind === 'rainbow') {
+      const base = p.r0 + easeOut(k) * p.grow;
+      ctx.lineWidth = 2.5;
+      for (let i = 0; i < 7; i++) {
+        ctx.globalAlpha = (1-k) * 0.45;
+        ctx.strokeStyle = `hsl(${i*50},100%,60%)`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, base + i*3, 0, 7); ctx.stroke();
+      }
+    }
+  }
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+}
+
+// ---- Floating Score Popups ----
+function addPopup(x, y, txt, opt) {
+  opt = opt || {};
+  pops.push({ x, y, txt, sub: opt.sub||null, hue: opt.hue||180, rainbow: !!opt.rainbow, big: !!opt.big, life: 0, max: opt.big ? 1.1 : 0.85 });
+  if (pops.length > 12) pops.shift();
+}
+function updatePops(dt) {
+  for (let i = pops.length - 1; i >= 0; i--) { pops[i].life += dt; if (pops[i].life >= pops[i].max) pops.splice(i, 1); }
+}
+function drawPops(now) {
+  for (const p of pops) {
+    const k = p.life / p.max;
+    const a = 1 - k * k;
+    const y = p.y - easeOut(k) * 50;
+    const sc = k < 0.1 ? 0.5 + 0.5*(k/0.1) : 1;
+    const fs = (p.big ? 28 : 20) * sc;
+    ctx.font = `900 ${fs}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = a;
+    if (p.rainbow) {
+      const w2 = ctx.measureText(p.txt).width / 2 + 4;
+      const lg = ctx.createLinearGradient(p.x-w2, y, p.x+w2, y);
+      for (let i = 0; i <= 4; i++) lg.addColorStop(i/4, `hsl(${(now*160+i*70)%360},100%,64%)`);
+      ctx.fillStyle = lg; ctx.shadowColor = 'rgba(255,255,255,0.5)'; ctx.shadowBlur = 12;
+    } else {
+      ctx.fillStyle = '#fff'; ctx.shadowColor = `hsl(${p.hue},100%,55%)`; ctx.shadowBlur = 10;
+    }
+    ctx.fillText(p.txt, p.x, y);
+    if (p.sub) { ctx.font = `800 ${fs*0.55}px -apple-system, sans-serif`; ctx.fillText(p.sub, p.x, y + fs*0.75); }
+    ctx.shadowBlur = 0;
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Screen Shake ----
+function shakeOffset(dt) {
+  shakeMag *= Math.pow(0.003, dt);
+  if (shakeMag < 0.05) { shakeMag = 0; return [0, 0]; }
+  return [(Math.random()-0.5)*2*shakeMag, (Math.random()-0.5)*2*shakeMag];
+}
+
+// ---- Audio Engine ----
+let audioCtx = null, master = null, audioFailed = false;
+let muted = false;
+try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch(e) {}
+
+function initAudio() {
+  if (audioCtx || audioFailed) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    master = audioCtx.createGain(); master.gain.value = 0.2; master.connect(audioCtx.destination);
+  } catch(e) { audioFailed = true; }
+}
+function tone(opt) {
+  if (!audioCtx || muted) return;
+  try {
+    const t0 = audioCtx.currentTime + (opt.delay || 0);
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = opt.type || 'sine';
+    o.frequency.setValueAtTime(opt.f, t0);
+    if (opt.f2) o.frequency.exponentialRampToValueAtTime(Math.max(opt.f2, 1), t0 + opt.dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(opt.gain || 0.15, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + opt.dur + 0.03);
+  } catch(e) {}
+}
+
+const NOTES = [262,294,330,392,440,523,587,659,784,880,1047];
+function sndCollect() { tone({f:660,f2:1320,dur:0.1,gain:0.12}); tone({f:990,dur:0.08,gain:0.06,delay:0.04}); }
+function sndHit() { tone({f:100,f2:50,type:'sawtooth',dur:0.25,gain:0.18}); tone({f:150,f2:60,type:'square',dur:0.15,gain:0.08,delay:0.05}); }
+function sndCatch() { const idx=Math.min(NOTES.length-1,G.fishCaught); tone({f:NOTES[idx],dur:0.12,gain:0.15,type:'triangle'}); tone({f:NOTES[idx]*1.5,dur:0.1,gain:0.08,delay:0.04}); }
+function sndPhaseDone() { [523,659,784,1047].forEach((f,i)=>tone({f,dur:0.2,gain:0.14,type:'triangle',delay:i*0.08})); }
+function sndGameOver() { tone({f:220,f2:80,type:'sawtooth',dur:0.5,gain:0.12}); tone({f:165,f2:60,type:'sawtooth',dur:0.6,gain:0.1,delay:0.15}); }
+function sndWin() { [523,659,784,1047,1319].forEach((f,i)=>tone({f,dur:0.22,gain:0.16,type:'triangle',delay:i*0.09})); tone({f:2093,dur:0.4,gain:0.07,delay:0.45}); }
+
+// Procedural ambient music per phase
+let musTimer = null, musStep = 0, musNext = 0;
+const MUS_SEQ = [
+  null,
+  [48,52,55,60,55,52,48,45], // duck: minor, underwater
+  [45,48,53,57,53,48,45,41], // fish: darker, tense
+  [52,55,60,64,67,64,60,55], // diver: brighter, active
+];
+const MUS_DUR = [0, 0.28, 0.22, 0.18];
+
+function startMusic() {
+  stopMusic();
+  if (muted || !audioCtx || G.phase < 1 || G.phase > 3) return;
+  musStep = 0; musNext = audioCtx.currentTime + 0.1; schedMusic();
+}
+function stopMusic() { if (musTimer) { clearTimeout(musTimer); musTimer = null; } }
+function schedMusic() {
+  if (muted || !audioCtx || G.phase < 1 || G.phase > 3) { musTimer = null; return; }
+  try {
+    const seq = MUS_SEQ[G.phase], dur = MUS_DUR[G.phase];
+    while (musNext < audioCtx.currentTime + 0.5) {
+      const m = seq[musStep % seq.length];
+      const freq = 440 * Math.pow(2, (m - 69) / 12);
+      tone({ f: freq, dur: dur * 0.8, type: 'triangle', gain: 0.04 });
+      musNext += dur; musStep++;
+    }
+    musTimer = setTimeout(schedMusic, 70);
+  } catch(e) { musTimer = setTimeout(schedMusic, 200); }
+}
+
+function updateSoundBtn() { soundBtn.textContent = muted ? '🔇' : '🔊'; }
+soundBtn.addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch(e) {}
+  if (!muted) { initAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); if (G.phase >= 1 && G.phase <= 3) startMusic(); }
+  else stopMusic();
+  updateSoundBtn();
+});
+
+// ---- Input ----
+let touching = false, tx = 0, ty = 0;
+let swipeStart = null;
+const keys = { up:false, down:false, left:false, right:false };
+
+document.addEventListener('touchstart', e => {
+  initAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (e.target.closest('button') || e.target.closest('a')) return;
+  const t = e.changedTouches[0];
+  touching = true; tx = t.clientX - playEl.getBoundingClientRect().left; ty = t.clientY - playEl.getBoundingClientRect().top;
+  swipeStart = { x: t.clientX, y: t.clientY, t: performance.now() };
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (e.target.closest('button') || e.target.closest('a')) return;
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  tx = t.clientX - playEl.getBoundingClientRect().left; ty = t.clientY - playEl.getBoundingClientRect().top;
+}, { passive: false });
+document.addEventListener('touchend', e => {
+  touching = false;
+  if (swipeStart && G.phase === PHASE_DIVER) {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - swipeStart.x, dy = t.clientY - swipeStart.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 20 && performance.now() - swipeStart.t < 300) {
+      // Quick swipe = dash in that direction
+      const ang = Math.atan2(dy, dx);
+      player.vx += Math.cos(ang) * 400;
+      player.vy += Math.sin(ang) * 400;
+    }
+  }
+  swipeStart = null;
+}, { passive: true });
+
+// Mouse fallback
+let mouseDown = false;
+document.addEventListener('mousedown', e => {
+  initAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (e.target.closest('button') || e.target.closest('a')) return;
+  mouseDown = true; touching = true;
+  const r = playEl.getBoundingClientRect();
+  tx = e.clientX - r.left; ty = e.clientY - r.top;
+  swipeStart = { x: e.clientX, y: e.clientY, t: performance.now() };
+});
+document.addEventListener('mousemove', e => {
+  if (!mouseDown) return;
+  const r = playEl.getBoundingClientRect();
+  tx = e.clientX - r.left; ty = e.clientY - r.top;
+});
+document.addEventListener('mouseup', e => {
+  mouseDown = false; touching = false;
+  if (swipeStart && G.phase === PHASE_DIVER) {
+    const dx = e.clientX - swipeStart.x, dy = e.clientY - swipeStart.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 20 && performance.now() - swipeStart.t < 300) {
+      const ang = Math.atan2(dy, dx);
+      player.vx += Math.cos(ang) * 400;
+      player.vy += Math.sin(ang) * 400;
+    }
+  }
+  swipeStart = null;
+});
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  initAudio();
+  if (e.key === 'ArrowUp' || e.key === 'w') { keys.up = true; e.preventDefault(); }
+  if (e.key === 'ArrowDown' || e.key === 's') { keys.down = true; e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key === 'a') { keys.left = true; e.preventDefault(); }
+  if (e.key === 'ArrowRight' || e.key === 'd') { keys.right = true; e.preventDefault(); }
+});
+window.addEventListener('keyup', e => {
+  if (e.key === 'ArrowUp' || e.key === 'w') keys.up = false;
+  if (e.key === 'ArrowDown' || e.key === 's') keys.down = false;
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+// ---- Entity Drawing ----
+function drawDuck(x, y, scale) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  // Body
+  ctx.fillStyle = '#ffe066';
+  ctx.beginPath(); ctx.ellipse(0, 0, 22, 18, 0, 0, Math.PI*2); ctx.fill();
+  // Head
+  ctx.beginPath(); ctx.arc(16, -8, 12, 0, Math.PI*2); ctx.fill();
+  // Beak
+  ctx.fillStyle = '#ff8c00';
+  ctx.beginPath(); ctx.moveTo(26, -8); ctx.lineTo(34, -6); ctx.lineTo(26, -4); ctx.closePath(); ctx.fill();
+  // Eye
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(20, -10, 3, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(21, -11, 1.2, 0, Math.PI*2); ctx.fill();
+  // Wing
+  ctx.fillStyle = '#ffcc00';
+  ctx.beginPath(); ctx.ellipse(-5, 2, 12, 8, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawFish(x, y, scale, flipX) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale * (flipX ? -1 : 1), scale);
+  // Body
+  const grd = ctx.createLinearGradient(-18, 0, 18, 0);
+  grd.addColorStop(0, '#ff6b35'); grd.addColorStop(1, '#ffa040');
+  ctx.fillStyle = grd;
+  ctx.beginPath(); ctx.ellipse(0, 0, 18, 11, 0, 0, Math.PI*2); ctx.fill();
+  // Tail
+  ctx.fillStyle = '#ff4500';
+  ctx.beginPath(); ctx.moveTo(-16, 0); ctx.lineTo(-28, -10); ctx.lineTo(-28, 10); ctx.closePath(); ctx.fill();
+  // Fin
+  ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(4, -18); ctx.lineTo(10, -9); ctx.closePath(); ctx.fill();
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(8, -3, 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(9, -3, 2, 0, Math.PI*2); ctx.fill();
+  // Stripe
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(2, 0, 8, -0.8, 0.8); ctx.stroke();
+  ctx.restore();
+}
+
+function drawDiver(x, y, scale) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  // Body
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.ellipse(0, 4, 14, 20, 0, 0, Math.PI*2); ctx.fill();
+  // Head/mask
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(0, -16, 12, 0, Math.PI*2); ctx.fill();
+  // Mask glass
+  ctx.fillStyle = '#40e0d0';
+  ctx.beginPath(); ctx.ellipse(0, -16, 9, 7, 0, 0, Math.PI*2); ctx.fill();
+  // Mask shine
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.ellipse(-3, -18, 4, 3, -0.3, 0, Math.PI*2); ctx.fill();
+  // Snorkel
+  ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(8, -14); ctx.quadraticCurveTo(16, -20, 14, -30); ctx.stroke();
+  // Flippers
+  ctx.fillStyle = '#1a6090';
+  ctx.beginPath(); ctx.ellipse(-8, 24, 6, 10, 0.2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8, 24, 6, 10, -0.2, 0, Math.PI*2); ctx.fill();
+  // Tank
+  ctx.fillStyle = '#c0c0c0';
+  rr(ctx, -8, -4, 16, 22, 4); ctx.fill();
+  ctx.restore();
+}
+
+function drawShark(x, y, scale, dir) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale * dir, scale);
+  // Body
+  ctx.fillStyle = '#4a5568';
+  ctx.beginPath(); ctx.moveTo(28, 0); ctx.quadraticCurveTo(10, -14, -20, -8); ctx.quadraticCurveTo(-28, 0, -20, 8); ctx.quadraticCurveTo(10, 14, 28, 0); ctx.closePath(); ctx.fill();
+  // Belly
+  ctx.fillStyle = '#a0aec0';
+  ctx.beginPath(); ctx.moveTo(24, 2); ctx.quadraticCurveTo(5, 10, -16, 5); ctx.quadraticCurveTo(5, 6, 24, 2); ctx.closePath(); ctx.fill();
+  // Dorsal fin
+  ctx.fillStyle = '#2d3748';
+  ctx.beginPath(); ctx.moveTo(-2, -12); ctx.lineTo(6, -26); ctx.lineTo(12, -10); ctx.closePath(); ctx.fill();
+  // Tail
+  ctx.beginPath(); ctx.moveTo(-20, -6); ctx.lineTo(-32, -16); ctx.lineTo(-28, 0); ctx.lineTo(-32, 14); ctx.lineTo(-20, 6); ctx.closePath(); ctx.fill();
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(14, -4, 3.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(15, -4, 1.8, 0, Math.PI*2); ctx.fill();
+  // Teeth hint
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.moveTo(26, 1); ctx.lineTo(24, 4); ctx.lineTo(22, 1); ctx.lineTo(20, 4); ctx.lineTo(18, 1); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+function drawJellyfish(x, y, scale, phase) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  // Bell
+  const pulse = 1 + 0.08 * Math.sin(phase * 3);
+  ctx.fillStyle = `rgba(255,180,255,${0.6 + 0.2*Math.sin(phase*2)})`;
+  ctx.beginPath(); ctx.ellipse(0, -4, 16*pulse, 12*pulse, 0, Math.PI, 0); ctx.fill();
+  // Inner glow
+  const ig = ctx.createRadialGradient(0, -6, 0, 0, -6, 14);
+  ig.addColorStop(0, 'rgba(255,220,255,0.5)'); ig.addColorStop(1, 'rgba(255,180,255,0)');
+  ctx.fillStyle = ig; ctx.beginPath(); ctx.arc(0, -6, 14, 0, Math.PI*2); ctx.fill();
+  // Tentacles
+  ctx.strokeStyle = 'rgba(255,160,255,0.5)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  for (let i = 0; i < 5; i++) {
+    const tx2 = -10 + i * 5;
+    ctx.beginPath(); ctx.moveTo(tx2, 4);
+    ctx.quadraticCurveTo(tx2 + Math.sin(phase*2.5+i)*8, 16, tx2 + Math.sin(phase*3+i)*5, 28);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawHomeFlag(x, y) {
+  ctx.save(); ctx.translate(x, y);
+  // Pole
+  ctx.strokeStyle = '#aaa'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(0, 30); ctx.stroke();
+  // Flag
+  const wave = Math.sin(nowSec * 3) * 3;
+  ctx.fillStyle = '#00e676';
+  ctx.beginPath(); ctx.moveTo(0, -28); ctx.lineTo(22+wave, -22); ctx.lineTo(20+wave, -14); ctx.lineTo(0, -10); ctx.closePath(); ctx.fill();
+  // Star on flag
+  ctx.fillStyle = '#ffd740'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('★', 10+wave*0.5, -17);
+  // Base
+  ctx.fillStyle = '#666';
+  ctx.beginPath(); ctx.arc(0, 30, 5, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ---- Lives display (hearts on canvas) ----
+function drawLives() {
+  const hx = W - 20, hy = 16;
+  for (let i = 0; i < MAX_LIVES; i++) {
+    const x = hx - i * 22, y = hy;
+    ctx.globalAlpha = i < G.lives ? 1 : 0.2;
+    ctx.fillStyle = i < G.lives ? '#ff4081' : '#444';
+    ctx.font = '16px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('♥', x, y + 5);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---- Timer bar ----
+function drawTimerBar() {
+  if (G.phase < 1 || G.phase > 3) return;
+  const maxT = [0, T_DUCK, T_FISH, T_DIVER][G.phase];
+  const pct = clamp(G.timeLeft / maxT, 0, 1);
+  const bw = W * 0.6, bh = 6, bx = (W - bw) / 2, by = H - 20;
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  rr(ctx, bx, by, bw, bh, 3); ctx.fill();
+  const col = pct > 0.3 ? '#00e5ff' : pct > 0.15 ? '#ffd166' : '#ff4081';
+  ctx.fillStyle = col;
+  rr(ctx, bx, by, bw * pct, bh, 3); ctx.fill();
+  // Glow
+  ctx.shadowColor = col; ctx.shadowBlur = 8;
+  rr(ctx, bx, by, bw * pct, bh, 3); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// ---- Phase Logic ----
+function startPhase(n) {
+  G.phase = n; G.t = 0; G.hits = 0; G.combo = 0; G.comboTimer = 0;
+  entities = []; parts.length = 0; pops.length = 0;
+  buildBg();
+  if (n === PHASE_DUCK) {
+    G.timeLeft = T_DUCK; G.duckHome = false;
+    player.x = W * 0.08; player.y = H * 0.55;
+    // Spawn predators
+    for (let i = 0; i < 5; i++) {
+      entities.push({ kind:'shark', x: W*(0.25+0.15*i), y: H*(0.15+Math.random()*0.6), vy: (60+Math.random()*50)*(Math.random()<0.5?-1:1), r: 24, dir: Math.random()<0.5?1:-1, phase: Math.random()*6 });
+    }
+    // A jellyfish bonus
+    entities.push({ kind:'jelly', x: W*0.5, y: H*0.3, vy: 20, r: 16, phase: 0, collected: false });
+    helpText.textContent = '🦆 Hold to swim home! Dodge sharks. Grab the jellyfish!';
+    phaseEl.textContent = 'DUCK';
+  } else if (n === PHASE_FISH) {
+    G.timeLeft = T_FISH;
+    player.x = W * 0.5; player.y = H * 0.5;
+    // Spawn divers sweeping from right
+    for (let i = 0; i < 6; i++) {
+      entities.push({ kind:'diver', x: W + 60 + i * 120, y: H*(0.12+Math.random()*0.7), vx: -(140+Math.random()*80), r: 22, hit: false, phase: Math.random()*6 });
+    }
+    helpText.textContent = '🐟 Drag to dodge the divers! Survive the raid!';
+    phaseEl.textContent = 'FISH';
+  } else if (n === PHASE_DIVER) {
+    G.timeLeft = T_DIVER; G.fishCaught = 0; G.fishTotal = 12;
+    player.x = W * 0.5; player.y = H * 0.5; player.vx = 0; player.vy = 0;
+    // Scatter fish
+    for (let i = 0; i < G.fishTotal; i++) {
+      entities.push({ kind:'fish', x: 40+Math.random()*(W-80), y: 40+Math.random()*(H-80), vx: (Math.random()-0.5)*100, vy: (40+Math.random()*60)*(Math.random()<0.5?-1:1), r: 16, caught: false, flipX: Math.random()<0.5, phase: Math.random()*6 });
+    }
+    helpText.textContent = '🤿 Swipe/arrows to chase & catch all 12 fish!';
+    phaseEl.textContent = 'DIVER';
+  }
+  updatePips();
+  startMusic();
+}
+
+function updatePhase(dt) {
+  G.t += dt;
+  G.timeLeft -= dt;
+  if (G.invulnT > 0) G.invulnT -= dt;
+  if (G.comboTimer > 0) { G.comboTimer -= dt; if (G.comboTimer <= 0) G.combo = 0; }
+
+  if (G.phase === PHASE_DUCK) updateDuck(dt);
+  else if (G.phase === PHASE_FISH) updateFish(dt);
+  else if (G.phase === PHASE_DIVER) updateDiverPhase(dt);
+
+  if (G.timeLeft <= 0 && G.phase !== PHASE_DIVER) { G.timeLeft = 0; finishPhase(); }
+  else if (G.phase === PHASE_DIVER && G.timeLeft <= 0) { G.timeLeft = 0; finishPhase(); }
+}
+
+function updateDuck(dt) {
+  // Auto-bob
+  player.y = H * 0.55 + Math.sin(G.t * 2.5) * 12;
+  // Hold to swim right
+  if (touching) player.x = Math.min(W * 0.92, player.x + 130 * dt);
+  player.x = Math.max(20, player.x);
+
+  // Update entities
+  for (const e of entities) {
+    e.phase += dt * 2;
+    if (e.kind === 'shark') {
+      e.y += e.vy * dt;
+      e.x += Math.sin(e.phase) * 20 * dt;
+      if (e.y < e.r + 20) e.vy = Math.abs(e.vy);
+      if (e.y > H - e.r - 20) e.vy = -Math.abs(e.vy);
+      e.x = clamp(e.x, W * 0.15, W * 0.9);
+      // Collision
+      if (G.invulnT <= 0 && dist(player.x, player.y, e.x, e.y) < e.r + 20) {
+        takeHit(player.x, player.y);
+        player.x = Math.max(20, player.x - 80);
+        e.vy *= -1;
+      }
+    } else if (e.kind === 'jelly' && !e.collected) {
+      e.y += Math.sin(e.phase) * 15 * dt;
+      e.x += Math.cos(e.phase * 0.7) * 10 * dt;
+      if (dist(player.x, player.y, e.x, e.y) < e.r + 22) {
+        e.collected = true;
+        G.lives = Math.min(MAX_LIVES, G.lives + 1);
+        G.score[0] += 25;
+        sndCollect();
+        explode(e.x, e.y, 300, 2);
+        addPopup(e.x, e.y - 20, '+♥ BONUS', { hue: 300, big: true });
+      }
+    }
+  }
+
+  // Check home
+  if (player.x >= W * 0.9 && !G.duckHome) {
+    G.duckHome = true;
+    explode(W * 0.92, player.y, 120, 3);
+    addPopup(W * 0.92, player.y - 30, '🏠 HOME!', { hue: 120, rainbow: true, big: true });
+    sndPhaseDone();
+    setTimeout(() => finishPhase(), 800);
+  }
+}
+
+function updateFish(dt) {
+  // Drag to move
+  if (touching) {
+    player.x += (tx - player.x) * Math.min(1, dt * 8);
+    player.y += (ty - player.y) * Math.min(1, dt * 8);
+  }
+  player.x = clamp(player.x, 20, W - 20);
+  player.y = clamp(player.y, 20, H - 20);
+
+  for (const e of entities) {
+    e.phase += dt * 2;
+    if (e.kind === 'diver') {
+      e.x += e.vx * dt;
+      e.y += Math.sin(e.phase) * 12 * dt;
+      if (e.x < -50) { e.x = W + 50 + Math.random() * 100; e.y = H * (0.1 + Math.random() * 0.75); e.hit = false; e.vx = -(140 + Math.random() * 100 + G.t * 3); }
+      // Collision
+      if (!e.hit && G.invulnT <= 0 && dist(player.x, player.y, e.x, e.y) < e.r + 18) {
+        e.hit = true;
+        takeHit(player.x, player.y);
+      }
+    }
+  }
+
+  // Survival scoring: every 2 seconds survived = +5
+  if (Math.floor(G.t) % 2 === 0 && Math.floor(G.t) > Math.floor(G.t - dt)) {
+    G.score[1] += 5;
+    G.combo++;
+    G.comboTimer = 2;
+    if (G.combo >= 3) {
+      addPopup(player.x, player.y - 30, `×${G.combo} STREAK`, { hue: 60, rainbow: G.combo >= 5 });
+    }
+  }
+}
+
+function updateDiverPhase(dt) {
+  // Arrow keys or swipe momentum
+  const accel = 600;
+  if (keys.left) player.vx -= accel * dt;
+  if (keys.right) player.vx += accel * dt;
+  if (keys.up) player.vy -= accel * dt;
+  if (keys.down) player.vy += accel * dt;
+  // Also allow drag steering
+  if (touching) {
+    player.vx += (tx - player.x) * 3 * dt;
+    player.vy += (ty - player.y) * 3 * dt;
+  }
+  // Friction
+  player.vx *= Math.pow(0.02, dt);
+  player.vy *= Math.pow(0.02, dt);
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
+  player.x = clamp(player.x, 20, W - 20);
+  player.y = clamp(player.y, 20, H - 20);
+
+  for (const e of entities) {
+    if (e.kind === 'fish' && !e.caught) {
+      e.phase += dt * 2;
+      e.x += e.vx * dt + Math.sin(e.phase) * 15 * dt;
+      e.y += e.vy * dt;
+      if (e.y < 20) { e.vy = Math.abs(e.vy); e.flipX = !e.flipX; }
+      if (e.y > H - 20) { e.vy = -Math.abs(e.vy); e.flipX = !e.flipX; }
+      if (e.x < 20) { e.x = 20; e.vx = Math.abs(e.vx); e.flipX = false; }
+      if (e.x > W - 20) { e.x = W - 20; e.vx = -Math.abs(e.vx); e.flipX = true; }
+      // Catch
+      if (dist(player.x, player.y, e.x, e.y) < e.r + 22) {
+        e.caught = true;
+        G.fishCaught++;
+        G.score[2] += 10;
+        sndCatch();
+        explode(e.x, e.y, 30, 1.5);
+        addPopup(e.x, e.y - 15, `+10 (${G.fishCaught}/${G.fishTotal})`, { hue: 30 });
+        if (G.fishCaught >= G.fishTotal) {
+          // Time bonus
+          const tb = Math.max(0, Math.ceil(G.timeLeft)) * 2;
+          G.score[2] += tb;
+          if (tb > 0) addPopup(W/2, H/2 - 40, `TIME BONUS +${tb}`, { hue: 50, rainbow: true, big: true });
+          sndPhaseDone();
+          setTimeout(() => finishPhase(), 600);
+        }
+      }
+    }
+  }
+}
+
+function takeHit(x, y) {
+  G.lives--;
+  G.invulnT = INVULN_TIME;
+  G.hits++;
+  G.combo = 0;
+  sndHit();
+  explode(x, y, 0, 2);
+  addPopup(x, y - 25, '💥 HIT!', { hue: 0, big: true });
+  shakeMag = Math.min(12, shakeMag + 4);
+  if (G.lives <= 0) {
+    G.lives = 0;
+    sndGameOver();
+    G.phase = 5; // gameover
+    stopMusic();
+    setTimeout(() => showGameOver(), 600);
+  }
+}
+
+function finishPhase() {
+  if (G.phase === 5) return; // already dead
+  stopMusic();
+  const p = G.phase;
+  // Calculate phase score
+  if (p === PHASE_DUCK) {
+    G.score[0] += Math.max(0, Math.ceil(G.timeLeft)) * 8 + (G.duckHome ? 30 : 0) - G.hits * 8;
+    G.score[0] = Math.max(0, G.score[0]);
+  } else if (p === PHASE_FISH) {
+    G.score[1] += Math.max(0, Math.ceil(G.timeLeft)) * 3 + 20 - G.hits * 5;
+    G.score[1] = Math.max(0, G.score[1]);
+  } else if (p === PHASE_DIVER) {
+    G.score[2] = Math.max(0, G.score[2]);
+  }
+  G.totalScore = G.score[0] + G.score[1] + G.score[2];
+  scoreEl.textContent = G.totalScore;
+
+  if (p < 3) {
+    // Show phase transition
+    showPhaseTransition(p);
+  } else {
+    // Game complete
+    sndWin();
+    showGameComplete();
+  }
+}
+
+function showPhaseTransition(completedPhase) {
+  const names = ['', 'Duck made it!', 'Fish survived!', 'All fish caught!'];
+  mTitle.textContent = `✨ ${names[completedPhase]}`;
+  mText.textContent = `Phase ${completedPhase} complete! Score so far: ${G.totalScore}`;
+  mHow.style.display = 'none';
+  mScores.style.display = 'flex';
+  mTotal.style.display = 'block';
+  document.getElementById('ms1').textContent = G.score[0];
+  document.getElementById('ms2').textContent = G.score[1];
+  document.getElementById('ms3').textContent = G.score[2];
+  mTotal.textContent = `Total: ${G.totalScore} | Lives: ${'♥'.repeat(G.lives)}`;
+  mBtn.textContent = completedPhase < 3 ? 'Next Phase ▶' : 'See Results';
+  overlay.classList.add('show');
+  G.phase = 4; // waiting
+}
+
+function showGameComplete() {
+  G.phase = 5;
+  let rank = '🌊 Minnow';
+  if (G.totalScore >= 200) rank = '🐬 Dolphin';
+  if (G.totalScore >= 350) rank = '🦈 Shark';
+  if (G.totalScore >= 500) rank = '🐋 Leviathan';
+  if (G.totalScore >= 650) rank = '👑 Poseidon';
+  mTitle.textContent = '🎉 Dive Complete!';
+  mText.textContent = `You earned the rank of ${rank}!`;
+  mHow.style.display = 'none';
+  mScores.style.display = 'flex';
+  mTotal.style.display = 'block';
+  document.getElementById('ms1').textContent = G.score[0];
+  document.getElementById('ms2').textContent = G.score[1];
+  document.getElementById('ms3').textContent = G.score[2];
+  mTotal.textContent = `TOTAL: ${G.totalScore}`;
+  if (G.totalScore > G.best) {
+    G.best = G.totalScore;
+    try { localStorage.setItem(BEST_KEY, String(G.best)); } catch(e) {}
+    mText.textContent += ' 🏆 NEW BEST!';
+  }
+  mBtn.textContent = 'Dive Again 🔄';
+  overlay.classList.add('show');
+  // Confetti explosion
+  for (let i = 0; i < 5; i++) explode(W*(0.2+Math.random()*0.6), H*(0.2+Math.random()*0.6), Math.random()*360, 3);
+}
+
+function showGameOver() {
+  G.totalScore = G.score[0] + G.score[1] + G.score[2];
+  mTitle.textContent = '💀 Lost at Sea';
+  mText.textContent = `The deep claimed you in Phase ${G.phase === 5 ? '?' : G.phase}. Score: ${G.totalScore}`;
+  mHow.style.display = 'none';
+  mScores.style.display = 'flex';
+  mTotal.style.display = 'block';
+  document.getElementById('ms1').textContent = G.score[0];
+  document.getElementById('ms2').textContent = G.score[1];
+  document.getElementById('ms3').textContent = G.score[2];
+  mTotal.textContent = `Total: ${G.totalScore}`;
+  mBtn.textContent = 'Try Again 🔄';
+  overlay.classList.add('show');
+}
+
+function updatePips() {
+  [pip1, pip2, pip3].forEach((pip, i) => {
+    pip.className = 'phase-pip';
+    if (i + 1 < G.phase) pip.classList.add('done');
+    else if (i + 1 === G.phase) pip.classList.add('active');
+  });
+}
+
+function updateHUD() {
+  scoreEl.textContent = G.totalScore;
+}
+
+// ---- Main Render ----
+function drawEntities() {
+  for (const e of entities) {
+    if (e.kind === 'shark') drawShark(e.x, e.y, 1, e.dir);
+    else if (e.kind === 'diver') drawDiver(e.x, e.y, 0.9);
+    else if (e.kind === 'fish' && !e.caught) drawFish(e.x, e.y, 0.85, e.flipX);
+    else if (e.kind === 'jelly' && !e.collected) drawJellyfish(e.x, e.y, 1, e.phase);
+  }
+}
+
+function drawPlayer() {
+  if (G.invulnT > 0 && Math.floor(G.t * 8) % 2 === 0) return; // blink
+  // Glow under player
+  const glowR = 35;
+  const glow = ctx.createRadialGradient(player.x, player.y, 0, player.x, player.y, glowR);
+  const glowCol = G.phase === 1 ? '0,229,255' : G.phase === 2 ? '255,140,0' : '0,200,100';
+  glow.addColorStop(0, `rgba(${glowCol},0.3)`); glow.addColorStop(1, `rgba(${glowCol},0)`);
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(player.x, player.y, glowR, 0, Math.PI*2); ctx.fill();
+
+  if (G.phase === PHASE_DUCK) drawDuck(player.x, player.y, 1);
+  else if (G.phase === PHASE_FISH) drawFish(player.x, player.y, 1.1, false);
+  else if (G.phase === PHASE_DIVER) drawDiver(player.x, player.y, 1);
+}
+
+function drawHomeZone() {
+  if (G.phase !== PHASE_DUCK) return;
+  const hx = W * 0.92;
+  // Glowing zone
+  const zg = ctx.createRadialGradient(hx, H*0.55, 0, hx, H*0.55, 60);
+  zg.addColorStop(0, 'rgba(0,230,118,0.15)'); zg.addColorStop(1, 'rgba(0,230,118,0)');
+  ctx.fillStyle = zg; ctx.beginPath(); ctx.arc(hx, H*0.55, 60, 0, Math.PI*2); ctx.fill();
+  drawHomeFlag(hx, H * 0.55);
+}
+
+// ---- Main Loop ----
+let lastTs = 0;
+function frame(ts) {
+  const now = ts / 1000;
+  const dt = Math.min(0.05, Math.max(0.001, now - lastTs));
+  lastTs = now; nowSec = now;
+
+  if (G.phase >= 1 && G.phase <= 3) {
+    updatePhase(dt);
+    updateHUD();
+  }
+  updateParts(dt);
+  updatePops(dt);
+
+  // Draw
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (bgCv) ctx.drawImage(bgCv, 0, 0, W, H);
+  else { ctx.fillStyle = '#0a0520'; ctx.fillRect(0, 0, W, H); }
+  drawBgParticles(now);
+
+  const [sx, sy] = shakeOffset(dt);
+  ctx.save(); ctx.translate(sx, sy);
+
+  if (G.phase >= 1 && G.phase <= 3) {
+    drawHomeZone();
+    drawEntities();
+    drawPlayer();
+  }
+  drawParts(now);
+  drawPops(now);
+  ctx.restore();
+
+  if (G.phase >= 1 && G.phase <= 3) {
+    drawLives();
+    drawTimerBar();
+  }
+
+  requestAnimationFrame(frame);
+}
+
+// ---- Boot ----
+function newGame() {
+  G.phase = 0; G.t = 0; G.timeLeft = 0;
+  G.score = [0, 0, 0]; G.totalScore = 0;
+  G.lives = 3; G.invulnT = 0; G.combo = 0; G.comboTimer = 0;
+  G.hits = 0; G.duckHome = false; G.fishCaught = 0; G.fishTotal = 12;
+  entities = []; parts.length = 0; pops.length = 0; shakeMag = 0;
+  player.x = W/2; player.y = H/2; player.vx = 0; player.vy = 0;
+  keys.up = keys.down = keys.left = keys.right = false;
+  touching = false;
+  scoreEl.textContent = '0'; phaseEl.textContent = '—';
+  updatePips();
+  helpText.textContent = 'Three creatures. One ocean. Swim, dodge, hunt.';
+}
+
+function showTitle() {
+  newGame();
+  mTitle.textContent = '🌊 Abyssal Ascent';
+  mText.textContent = 'Three watery challenges in one deep dive.';
+  mHow.style.display = 'block';
+  mHow.innerHTML = '<b>Phase 1 — Duck:</b> Hold to swim home. Dodge sharks.<br><b>Phase 2 — Fish:</b> Drag to dodge the dive-raid.<br><b>Phase 3 — Diver:</b> Swipe/arrows to catch all fish.<br><br>3 lives shared across all phases. Chain dodges for combos. Earn your rank!';
+  mScores.style.display = 'none';
+  mTotal.style.display = 'none';
+  mBtn.textContent = 'Dive In';
+  overlay.classList.add('show');
+}
+
+mBtn.addEventListener('click', () => {
+  initAudio(); if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  overlay.classList.remove('show');
+  if (G.phase === 0 || G.phase === 5) {
+    // Start fresh or from phase 1
+    if (G.phase === 5) newGame();
+    startPhase(1);
+  } else if (G.phase === 4) {
+    // Continue to next phase
+    const next = [0, 2, 3, 0][[...document.querySelectorAll('.phase-pip')].findIndex(p => p.classList.contains('done')) + 1] || 0;
+    // Determine which phase just finished
+    const doneCount = [pip1, pip2, pip3].filter(p => p.classList.contains('done')).length;
+    startPhase(doneCount + 1);
+  }
+});
+
+try { G.best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch(e) {}
+updateSoundBtn();
+layout();
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 100));
+showTitle();
+requestAnimationFrame(ts => { lastTs = ts / 1000; requestAnimationFrame(frame); });
+</script>
+</body>
+</html>

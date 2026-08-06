@@ -945,6 +945,8 @@ function finishPhase() {
   }
   G.totalScore = G.score[0] + G.score[1] + G.score[2];
   scoreEl.textContent = G.totalScore;
+  lastCompleted = p;
+  updatePips();
 
   if (p < 3) {
     // Show phase transition
@@ -1014,11 +1016,20 @@ function showGameOver() {
   overlay.classList.add('show');
 }
 
+// Tracks the most recently completed phase (0 = none), used to drive
+// the transition button and pip display between phases.
+let lastCompleted = 0;
+
 function updatePips() {
+  // Mark pips: done for completed phases, active for current, dim rest.
+  // After a phase completes G.phase is 4 (waiting) but we show the finished
+  // phase as 'done' and the next one as pending.
   [pip1, pip2, pip3].forEach((pip, i) => {
     pip.className = 'phase-pip';
-    if (i + 1 < G.phase) pip.classList.add('done');
-    else if (i + 1 === G.phase) pip.classList.add('active');
+    const idx = i + 1;
+    if (lastCompleted >= idx) pip.classList.add('done');
+    else if (lastCompleted > 0 && idx === lastCompleted + 1) pip.classList.add('active');
+    else if (lastCompleted === 0 && idx === G.phase) pip.classList.add('active');
   });
 }
 
@@ -1133,14 +1144,21 @@ mBtn.addEventListener('click', () => {
   overlay.classList.remove('show');
   if (G.phase === 0 || G.phase === 5) {
     // Start fresh or from phase 1
+    lastCompleted = 0;
     if (G.phase === 5) newGame();
+    updatePips();
     startPhase(1);
   } else if (G.phase === 4) {
-    // Continue to next phase
-    const next = [0, 2, 3, 0][[...document.querySelectorAll('.phase-pip')].findIndex(p => p.classList.contains('done')) + 1] || 0;
-    // Determine which phase just finished
-    const doneCount = [pip1, pip2, pip3].filter(p => p.classList.contains('done')).length;
-    startPhase(doneCount + 1);
+    // Continue to the next phase after the last completed one
+    const nextPhase = lastCompleted + 1;
+    if (nextPhase <= 3) {
+      startPhase(nextPhase);
+    } else {
+      // Shouldn't normally happen, but guard against it
+      newGame();
+      lastCompleted = 0;
+      showTitle();
+    }
   }
 });
 

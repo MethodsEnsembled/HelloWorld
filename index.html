@@ -515,6 +515,29 @@
   .tutu-art .tutu-spark-c.b { right: 7px; bottom: 8px; }
   .tutu-art .tutu-spark-c .tutu-spark { display:inline-block; }
 
+  /* Merge the Numbers: colored tiles flowing together */
+  .merge-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: radial-gradient(circle at 40% 30%, #2a2a4a, #14142e 70%);
+    position: relative;
+    overflow: hidden;
+  }
+  .merge-art .mng {
+    position: absolute;
+    width: 17px; height: 17px;
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #fff; font-size: 10px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+  }
+  .merge-art .mng.a { left: 6px; top: 8px; background: #66bb6a; }
+  .merge-art .mng.b { right: 6px; top: 8px; background: #66bb6a; }
+  .merge-art .mng.c { left: 18px; bottom: 7px; background: linear-gradient(135deg,#e94560,#ff6b6b); box-shadow: 0 0 8px rgba(255,107,107,0.8); }
+  .merge-art .mg-arrow { position:absolute; left:24px; top:15px; color:#ffd700; font-size:9px; line-height:1; z-index:2; }
+  @keyframes mng-pulse { 0%,100%{box-shadow:0 0 0 rgba(255,255,255,0)} 50%{box-shadow:0 0 8px rgba(255,255,255,0.4)} }
+  .merge-art .mng.c { animation:mng-pulse 1.2s ease infinite; }
+
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -551,6 +574,21 @@
       <div class="card-info">
         <h2>Tutu's Bunny Friends</h2>
         <p>Help little Tutu collect her bunny friends! Tap all the matching-colored bunnies — pink, blue, rainbow, sparkle and more — to fill the basket.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
+    <a class="game-card" href="merge-the-numbers.html">
+      <div class="card-art">
+        <div class="merge-art">
+          <span class="mng a">2</span>
+          <span class="mng b">2</span>
+          <span class="mg-arrow">➜</span>
+          <span class="mng c">3</span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Merge the Numbers</h2>
+        <p>Tap matching numbers side-by-side to merge them — 1 + 1 = 2, 2 + 2 = 3! Chain big merges to score points and hit 2000 to win. Don't let the board fill up!</p>
         <span class="badge new">NEW</span>
       </div>
     </a>

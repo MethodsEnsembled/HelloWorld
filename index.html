@@ -496,6 +496,25 @@
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
   }
 
+  /* Tutu\'s Bunny Friends: a pastel bunny meadow */
+  .tutu-art {
+    width: 54px; height: 54px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffe9f4, #e8f7ff);
+    position: relative;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tutu-art img { width: 46px; height: 46px; object-fit: cover; border-radius: 8px; }
+  .tutu-art .tutu-spark-c {
+    position: absolute; width: 6px; height: 6px; border-radius: 50%;
+    background: radial-gradient(circle, #ffd166 0%, transparent 70%);
+    box-shadow: 0 0 6px #ffd166;
+  }
+  .tutu-art .tutu-spark-c.a { left: 5px; top: 9px; }
+  .tutu-art .tutu-spark-c.b { right: 7px; bottom: 8px; }
+  .tutu-art .tutu-spark-c .tutu-spark { display:inline-block; }
+
   /* Coming-soon placeholder art */
   .coming-art {
     width: 54px; height: 54px;
@@ -521,6 +540,20 @@
   </header>
 
   <main>
+    <a class="game-card" href="tutu-bunny-match.html">
+      <div class="card-art">
+        <div class="tutu-art">
+          <img src="assets/tutu-bunnies/bunny_rainbow.png" alt="Rainbow bunny">
+          <span class="tutu-spark-c a"><span class="tutu-spark"></span></span>
+          <span class="tutu-spark-c b"><span class="tutu-spark"></span></span>
+        </div>
+      </div>
+      <div class="card-info">
+        <h2>Tutu's Bunny Friends</h2>
+        <p>Help little Tutu collect her bunny friends! Tap all the matching-colored bunnies — pink, blue, rainbow, sparkle and more — to fill the basket.</p>
+        <span class="badge new">NEW</span>
+      </div>
+    </a>
     <a class="game-card" href="abyssal-ascent.html">
       <div class="card-art">
         <div class="abyss-art">

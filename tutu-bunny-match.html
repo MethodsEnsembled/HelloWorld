@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffd8ec">
+<title>Tutu's Bunny Friends</title>
+<style>
+  :root {
+    --bg-top:#ffe9f4; --bg-mid:#e8f7ff; --bg-bot:#fff4e6;
+    --panel:#fff; --ink:#7a5a8c; --accent:#ff7eb3;
+    --green:#7bc96f; --muted:rgba(122,90,140,0.6);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none; }
+  html,body { margin:0; padding:0; min-height:100%; }
+  body {
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC",sans-serif;
+    background:linear-gradient(180deg,var(--bg-top),var(--bg-mid) 55%,var(--bg-bot));
+    background-attachment:fixed;
+    color:var(--ink);
+    overflow-x:hidden;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  #app { width:100%; max-width:520px; min-height:100vh; padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom); display:flex; flex-direction:column; align-items:center; }
+
+  /* ---------------- Header ---------------- */
+  header { width:100%; display:flex; align-items:center; justify-content:space-between; padding:10px 2px 6px; }
+  .logo { display:flex; align-items:center; gap:9px; }
+  .logo img { width:46px; height:46px; border-radius:14px; box-shadow:0 3px 10px rgba(255,126,179,0.4); filter:saturate(1.05); }
+  .logo h1 { margin:0; font-size:19px; font-weight:800; letter-spacing:.5px; background:linear-gradient(90deg,#ff7eb3,#ff9a76); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .logo small { display:block; font-size:10px; font-weight:600; color:var(--muted); letter-spacing:1px; margin-top:1px; }
+
+  /* ---------------- Screen shells ---------------- */
+  .screen { display:none; width:100%; flex-direction:column; align-items:center; animation:fade .35s ease; }
+  .screen.show { display:flex; }
+  @keyframes fade { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+  @keyframes pop { 0%{transform:scale(.6);} 70%{transform:scale(1.08);} 100%{transform:scale(1);} }
+
+  /* ---------------- Buttons ---------------- */
+  .btn {
+    appearance:none; border:0; cursor:pointer;
+    font-family:inherit; font-weight:800;
+    border-radius:999px; color:#fff; padding:15px 30px; font-size:19px;
+    background:linear-gradient(135deg,#ff8ab5,#ff6f91);
+    box-shadow:0 6px 18px rgba(255,111,145,.45);
+    transition:transform .08s, box-shadow .15s;
+  }
+  .btn:active { transform:scale(.96); box-shadow:0 3px 10px rgba(255,111,145,.4); }
+  .btn.secondary { background:linear-gradient(135deg,#9be1ff,#6cb9ff); box-shadow:0 6px 18px rgba(108,185,255,.4); }
+  .btn.ghost { background:rgba(255,255,255,.7); color:var(--accent); box-shadow:none; border:2px solid var(--accent); }
+
+  /* ---------------- Home ---------------- */
+  .home-hero { text-align:center; margin:10px 0 6px; }
+  .home-hero img.hero-bunny { width:150px; height:150px; border-radius:28px; box-shadow:0 8px 24px rgba(255,126,179,.45); animation:pop .5s ease; }
+  .home-hero h2 { margin:14px 0 6px; font-size:24px; }
+  .home-hero p { margin:0 auto; max-width:340px; font-size:14px; color:var(--muted); line-height:1.5; font-weight:600; }
+  .home-actions { margin-top:22px; display:flex; flex-direction:column; gap:12px; align-items:center; width:220px; }
+
+  /* ---------------- Bunny sprite ---------------- */
+  .bunny-card {
+    width:64px; height:64px; border-radius:18px; border:4px solid transparent;
+    background:#fff; box-shadow:0 4px 14px rgba(180,120,180,.25);
+    padding:5px; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .1s, border-color .1s, box-shadow .1s;
+    position:relative;
+  }
+  .bunny-card img { width:100%; height:100%; object-fit:cover; border-radius:13px; pointer-events:none; }
+  .bunny-card.selected { transform:scale(1.06); border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,126,179,.28), 0 6px 20px rgba(255,126,179,.35); }
+  .bunny-card.matched { pointer-events:none; opacity:.15; transform:scale(.9); }
+  .bunny-card.flash { animation:matchPop .5s ease; }
+  @keyframes matchPop { 0%{transform:scale(.7);} 50%{transform:scale(1.18); opacity:.5;} 100%{transform:scale(.9); opacity:.15;} }
+
+  /* ---------------- Board ---------------- */
+  .statusbar { width:100%; display:flex; align-items:center; justify-content:space-between; padding:6px 4px 10px; font-weight:800; font-size:15px; }
+  .progress { width:100%; height:12px; border-radius:999px; background:rgba(255,255,255,.6); overflow:hidden; box-shadow:inset 0 1px 3px rgba(0,0,0,.08); }
+  .progress-fill { height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,#ffb199,#ff8ab5,#b98bff); transition:width .4s ease; }
+  .board {
+    width:100%; display:grid; gap:10px;
+    grid-template-columns:repeat(4,1fr); justify-items:center;
+    padding:8px 0 4px;
+  }
+  .board.big { grid-template-columns:repeat(5,1fr); }
+  .board.big .bunny-card { width:56px; height:56px; }
+  .board.wide { grid-template-columns:repeat(6,1fr); }
+
+  .hintbox { margin:10px 0 2px; font-size:13px; font-weight:700; color:var(--accent); min-height:18px; }
+
+  /* ---------------- Game Over / success ---------------- */
+  .win-hero { text-align:center; margin-top:20px; }
+  .win-hero img { width:150px; height:150px; border-radius:26px; box-shadow:0 8px 24px rgba(255,126,179,.5); animation:pop .5s ease; }
+  .win-title { font-size:28px; font-weight:900; margin:14px 0 4px; }
+  .win-sub { color:var(--muted); font-size:15px; font-weight:700; }
+  .stars-row { display:flex; gap:6px; justify-content:center; margin:14px 0 6px; }
+  .stars-row img { width:46px; height:46px; animation:pop .5s ease; }
+  .win-actions { display:flex; gap:12px; margin-top:18px; }
+
+  /* ---------------- Confetti ---------------- */
+  .confetti { position:fixed; pointer-events:none; z-index:50; animation:confFall linear forwards; }
+  @keyframes confFall { to { transform:translateY(110vh) rotate(720deg); opacity:.1; } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= HOME ================= -->
+  <section id="home" class="screen show">
+    <header>
+      <div class="logo">
+        <img src="assets/tutu-bunnies/tutu.png" alt="Tutu">
+        <div>
+          <h1>Tutu's Bunny Friends</h1>
+          <small>help Tutu find her bunny friends!</small>
+        </div>
+      </div>
+    </header>
+    <div class="home-hero">
+      <img class="hero-bunny" src="assets/tutu-bunnies/bunny_rainbow.png" alt="Rainbow bunny">
+      <h2>Hello friend! 💖</h2>
+      <p>Tutu is collecting her bunny friends. Tap all the bunnies that have the same color to bring them together!</p>
+    </div>
+    <div class="home-actions">
+      <button class="btn" id="playBtn">▶ Play</button>
+    </div>
+  </section>
+
+  <!-- ================= GAME ================= -->
+  <section id="game" class="screen">
+    <header>
+      <div class="logo">
+        <img src="assets/tutu-bunnies/tutu.png" alt="Tutu">
+        <div><h1>Tutu's Bunny Friends</h1></div>
+      </div>
+      <button class="btn ghost" id="quitBtn" style="padding:8px 16px; font-size:14px;">✕</button>
+    </header>
+    <div class="statusbar">
+      <div>⭐ <span id="stars">0</span></div>
+      <div>🐰 <span id="remaining">0</span></div>
+    </div>
+    <div class="progress"><div class="progress-fill" id="fill"></div></div>
+    <div class="hintbox" id="hint">Tap the same-colored bunnies!</div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- ================= WIN ================= -->
+  <section id="win" class="screen">
+    <header><div class="logo"><img src="assets/tutu-bunnies/tutu.png" alt="Tutu"><div><h1>Tutu's Bunny Friends</h1></div></div></header>
+    <div class="win-hero">
+      <img id="winImg" src="assets/tutu-bunnies/bunny_sparkle.png" alt="Yay!">
+      <div class="win-title">YAY! 🎉</div>
+      <div class="win-sub">Tutu found all her bunny friends!</div>
+      <div class="stars-row" id="winStars"></div>
+      <div class="win-sub" id="winMsg"></div>
+    </div>
+    <div class="win-actions">
+      <button class="btn" id="againBtn">▶ Play Again</button>
+      <button class="btn secondary" id="homeBtn">🏠 Home</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var ASSET = "assets/tutu-bunnies/";
+  // 8 bunny colors + specials. The "target" bunny is picked per round.
+  var COLORS = [
+    { id:"pink",    name:"Pink",    file:"bunny_pink.png" },
+    { id:"blue",    name:"Blue",    file:"bunny_blue.png" },
+    { id:"yellow",  name:"Yellow",  file:"bunny_yellow.png" },
+    { id:"lavender",name:"Lavender",file:"bunny_lavender.png" },
+    { id:"mint",    name:"Mint",    file:"bunny_mint.png" },
+    { id:"peach",   name:"Peach",   file:"bunny_peach.png" },
+    { id:"rainbow", name:"Rainbow", file:"bunny_rainbow.png" },
+    { id:"sparkle", name:"Sparkle", file:"bunny_sparkle.png" }
+  ];
+  var WHITE = { id:"white", name:"White", file:"bunny_white.png" };
+
+  // Level config: increasing difficulty. [matchSize, bunnyCount, decoys]
+  var LEVELS = [
+    { m:2, b:6,  pick:2 },  // 1: find 2 matching from 6
+    { m:3, b:9,  pick:1 },
+    { m:3, b:12, pick:1 },
+    { m:4, b:12, pick:1 },
+    { m:4, b:16, pick:2 },
+    { m:5, b:16, pick:2 },
+    { m:6, b:20, pick:2 }
+  ];
+  // Which special bunnies can appear as the TARGET of a round
+  var SPECIAL_TARGETS = ["rainbow","sparkle"];
+
+  var boardEl = document.getElementById("board");
+  var hintEl  = document.getElementById("hint");
+  var starsEl = document.getElementById("stars");
+  var remainEl= document.getElementById("remaining");
+  var fillEl  = document.getElementById("fill");
+
+  var state = {
+    level: 0,          // index into LEVELS
+    stars: 0,
+    targetId: null,
+    targetName: "",
+    cells: [],         // array of {file, name, id}
+    selected: [],
+    totalToMatch: 0,
+    matched: 0
+  };
+
+  function show(id){
+    document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("show"); });
+    document.getElementById(id).classList.add("show");
+  }
+
+  /* ---------- audio: playful synth blips ---------- */
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
+  var actx = null;
+  function audio(){ if(!AudioCtx) return null; if(!actx){ try{ actx=new AudioCtx(); }catch(e){ return null; } } if(actx.state==="suspended") actx.resume(); return actx; }
+  function tone(freq,dur,when,type,vol){
+    var a=audio(); if(!a) return; var t=a.currentTime+(when||0);
+    var o=a.createOscillator(); var g=a.createGain();
+    o.type=type||"sine"; o.frequency.value=freq;
+    g.gain.setValueAtTime(vol||0.15,t);
+    g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+    o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+0.02);
+  }
+  function sfxMatch(){ tone(660,0.16,0,"triangle",0.2); tone(880,0.18,0.09,"triangle",0.18); tone(1320,0.22,0.18,"triangle",0.15); }
+  function sfxWrong(){ tone(240,0.18,0,"sawtooth",0.12); tone(200,0.22,0.12,"sawtooth",0.1); }
+  function sfxWin(){ [523,659,784,1047,1319].forEach(function(f,i){ tone(f,0.22,i*0.11,"triangle",0.18); }); }
+
+  /* ---------- world-building ---------- */
+  function pickTarget(colors){
+    // prefer a real bunny; sometimes make it rainbow/sparkle for delight
+    var specials = SPECIAL_TARGETS.filter(function(id){ return colors.some(function(c){ return c.id===id; }); });
+    if(specials.length && Math.random()<0.35){
+      var sp = specials[Math.floor(Math.random()*specials.length)];
+      var c = colors.filter(function(x){return x.id===sp;})[0];
+      return c;
+    }
+    return colors[Math.floor(Math.random()*colors.length)];
+  }
+
+  function buildLevel(levelIdx){
+    var cfg = LEVELS[Math.min(levelIdx, LEVELS.length-1)];
+    // COLORS + WHITE as possible bunny kinds (white is a plain bunny too)
+    var kinds = COLORS.slice();
+    kinds.push(WHITE);
+    var need = Math.min(cfg.m, kinds.length);
+
+    // Pick the target color first
+    var target = pickTarget(kinds);
+    // Other kinds for decoys
+    var pool = kinds.filter(function(c){ return c.id!==target.id; });
+
+    // Assemble: total = cfg.b bunnies; exactly cfg.m are target(color), rest decoys
+    var cells = [];
+    for(var i=0;i<cfg.m;i++){
+      cells.push({same:true, file:target.file, name:target.name, id:target.id});
+    }
+    while(cells.length < cfg.b){
+      var other = pool[Math.floor(Math.random()*pool.length)];
+      cells.push({same:false, file:other.file, name:other.name, id:other.id});
+    }
+    // shuffle
+    for(i=cells.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=cells[i]; cells[i]=cells[j]; cells[j]=tmp; }
+
+    return {
+      target: target,
+      cells: cells,
+      matchSize: cfg.m
+    };
+  }
+
+  function renderBoard(lvl){
+    state.targetId = lvl.target.id;
+    state.targetName = lvl.target.name;
+    state.cells = lvl.cells;
+    state.selected = [];
+    state.totalToMatch = lvl.matchSize;
+    state.matched = 0;
+    lvl.cells.forEach(function(c){ c.collected = false; });
+
+    var n = lvl.cells.length;
+    // pick sensible grid
+    boardEl.className = "board";
+    if(n<=6) boardEl.classList.add("wide");       // 6 per row
+    else if(n<=9) boardEl.classList.add("big");    // 5 per row
+    // default 4 per row for bigger boards
+
+    hintEl.textContent = "Find " + state.totalToMatch + " " + state.targetName + " bunnies to collect! 🐰";
+
+    boardEl.innerHTML = "";
+    lvl.cells.forEach(function(cell, idx){
+      var card = document.createElement("div");
+      card.className = "bunny-card";
+      card.dataset.idx = idx;
+      var img = document.createElement("img");
+      img.src = ASSET + cell.file;
+      img.alt = cell.name;
+      card.appendChild(img);
+      card.addEventListener("click", function(){ onCardClick(idx, card); });
+      boardEl.appendChild(card);
+    });
+
+    updateHUD();
+  }
+
+  function onCardClick(idx, cardEl){
+    var cell = state.cells[idx];
+    if(cardEl.classList.contains("matched")) return;
+    // Already collected? shouldn't happen
+    if(cell.collected) return;
+
+    if(cell.same){
+      // Collect this bunny right away
+      cell.collected = true;
+      state.matched += 1;
+      state.stars += 1;   // generous: 1 star per bunny collected
+      sfxMatch();
+      cardEl.classList.add("matched","flash");
+      cardEl.classList.remove("selected");
+      updateHUD();
+      startConfetti();
+
+      var remaining = state.cells.filter(function(c){ return c.same && !c.collected; }).length;
+      if(remaining === 0){
+        // Level complete — all target bunnies collected
+        hintEl.textContent = "Yay! All the " + state.targetName + " bunnies are together! 🎉";
+        audio();
+        // brief pause then next level / win
+        setTimeout(function(){
+          advance(1);
+        }, 1300);
+      } else {
+        hintEl.textContent = "Great! " + (state.matched) + " of " + state.totalToMatch + " " + state.targetName + " bunnies in! 🐰";
+      }
+    } else {
+      // wrong one: gentle wiggle feedback, no penalty
+      sfxWrong();
+      hintEl.textContent = "Oops! That's a " + cell.name + " bunny. Tap the " + state.targetName + " ones!";
+      cardEl.style.animation = "none";
+      void cardEl.offsetWidth;
+      cardEl.style.animation = "pop .3s ease";
+      setTimeout(function(){ cardEl.style.animation=""; }, 320);
+    }
+  }
+
+  function advance(steps){
+    state.level += steps;
+    if(state.level >= LEVELS.length){
+      handleWin();
+      return;
+    }
+    var lvl = buildLevel(state.level);
+    renderBoard(lvl);
+  }
+
+  function handleWin(){
+    sfxWin();
+    bigConfetti();
+    // count stars
+    var earned = state.stars;
+    document.getElementById("stars").textContent = earned;
+    document.getElementById("remaining").textContent = "0";
+    // win stars (3 max)
+    var winStars = Math.min(3, Math.max(1, Math.floor(earned/4)+1));
+    var ws = document.getElementById("winStars");
+    ws.innerHTML = "";
+    for(var i=0;i<winStars;i++){
+      var s=document.createElement("img");
+      s.src = ASSET+"star.png"; s.alt="star";
+      ws.appendChild(s);
+    }
+    document.getElementById("winImg").src = ASSET+"bunny_sparkle.png";
+    document.getElementById("winMsg").textContent = "You earned " + earned + " stars!";
+    show("win");
+  }
+
+  function updateHUD(){
+    starsEl.textContent = state.stars;
+    var done = state.matched;
+    var total = state.totalToMatch;
+    remainEl.textContent = Math.max(0, total - done);
+    var pct = total ? Math.round((done/total)*100) : 0;
+    fillEl.style.width = pct + "%";
+  }
+  var confCount=0;
+  function confettiBurst(n, rate){
+    for(var i=0;i<n;i++){
+      var el=document.createElement("div");
+      el.className="confetti";
+      el.style.left = (Math.random()*100)+"vw";
+      el.style.top = "-10px";
+      var size = 6+Math.random()*8;
+      el.style.width=size+"px"; el.style.height=size+"px";
+      el.style.background = ["#ff8ab5","#ffd166","#9be1ff","#b98bff","#7bc96f","#ff9a76"][Math.floor(Math.random()*6)];
+      el.style.borderRadius = Math.random()<0.5? "50%":"2px";
+      el.style.animationDuration = (1.5+Math.random()*1.5)+"s";
+      el.style.animationDelay = (Math.random()*0.4)+"s";
+      document.body.appendChild(el);
+      setTimeout(function(node){ if(node.parentNode) node.parentNode.removeChild(node); }, 3500);
+      confCount++;
+      if(confCount>200) break;
+    }
+  }
+  function startConfetti(){ confettiBurst(18, 3); }
+  function bigConfetti(){ confettiBurst(60, 4); confettiBurst(40, 0.3); }
+
+  /* ---------- flow ---------- */
+  document.getElementById("playBtn").addEventListener("click", function(){
+    audio();
+    state.level = 0; state.stars = 0;
+    var lvl = buildLevel(0);
+    renderBoard(lvl);
+    show("game");
+    tone(523,0.12,0,"triangle",0.15);
+  });
+
+  document.getElementById("quitBtn").addEventListener("click", function(){ show("home"); });
+  document.getElementById("againBtn").addEventListener("click", function(){
+    state.level=0; state.stars=0;
+    var lvl=buildLevel(0);
+    renderBoard(lvl);
+    show("game");
+  });
+  document.getElementById("homeBtn").addEventListener("click", function(){
+    document.querySelectorAll(".confetti").forEach(function(c){ if(c.parentNode)c.parentNode.removeChild(c); });
+    show("home");
+  });
+
+  /* ---------- init ---------- */
+  show("home");
+})();
+</script>
+</body>
+</html>

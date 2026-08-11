@@ -180,13 +180,13 @@
 
   // Level config: increasing difficulty. [matchSize, bunnyCount, decoys]
   var LEVELS = [
-    { m:2, b:6,  pick:2 },  // 1: find 2 matching from 6
-    { m:3, b:9,  pick:1 },
-    { m:3, b:12, pick:1 },
-    { m:4, b:12, pick:1 },
-    { m:4, b:16, pick:2 },
-    { m:5, b:16, pick:2 },
-    { m:6, b:20, pick:2 }
+    { m:2, b:6  },  // 1: find 2 matching from 6
+    { m:3, b:9  },
+    { m:3, b:12 },
+    { m:4, b:12 },
+    { m:4, b:16 },
+    { m:5, b:16 },
+    { m:6, b:20 }
   ];
   // Which special bunnies can appear as the TARGET of a round
   var SPECIAL_TARGETS = ["rainbow","sparkle"];
@@ -246,7 +246,6 @@
     // COLORS + WHITE as possible bunny kinds (white is a plain bunny too)
     var kinds = COLORS.slice();
     kinds.push(WHITE);
-    var need = Math.min(cfg.m, kinds.length);
 
     // Pick the target color first
     var target = pickTarget(kinds);
@@ -385,9 +384,11 @@
     var pct = total ? Math.round((done/total)*100) : 0;
     fillEl.style.width = pct + "%";
   }
-  var confCount=0;
-  function confettiBurst(n, rate){
+  var activeConfetti=0;
+  function confettiBurst(n){
     for(var i=0;i<n;i++){
+      if(activeConfetti>150) break;   // cap concurrent pieces to keep the DOM light
+      activeConfetti++;
       var el=document.createElement("div");
       el.className="confetti";
       el.style.left = (Math.random()*100)+"vw";
@@ -399,13 +400,16 @@
       el.style.animationDuration = (1.5+Math.random()*1.5)+"s";
       el.style.animationDelay = (Math.random()*0.4)+"s";
       document.body.appendChild(el);
-      setTimeout(function(node){ if(node.parentNode) node.parentNode.removeChild(node); }, 3500);
-      confCount++;
-      if(confCount>200) break;
+      (function(node){
+        setTimeout(function(){
+          if(node.parentNode) node.parentNode.removeChild(node);
+          activeConfetti--;
+        }, 3500);
+      })(el);
     }
   }
-  function startConfetti(){ confettiBurst(18, 3); }
-  function bigConfetti(){ confettiBurst(60, 4); confettiBurst(40, 0.3); }
+  function startConfetti(){ confettiBurst(18); }
+  function bigConfetti(){ confettiBurst(60); confettiBurst(40); }
 
   /* ---------- flow ---------- */
   document.getElementById("playBtn").addEventListener("click", function(){

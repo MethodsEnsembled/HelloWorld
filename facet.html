@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12081c">
+<title>Facet</title>
+<style>
+  :root {
+    --bg: #12081c;
+    --ink: #f7f1ff;
+    --muted: rgba(247,241,255,0.7);
+    --gold: #ffd56a;
+    --panel: rgba(18, 8, 28, 0.72);
+    --cw: 78px;
+    --ch: 46px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  body {
+    min-height: 100vh;
+    background:
+      linear-gradient(180deg, rgba(18,8,28,0.55) 0%, rgba(10,4,18,0.72) 100%),
+      url("assets/facet/bg.jpg") center/cover no-repeat,
+      #12081c;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    width: 100%; max-width: 560px;
+    padding: 10px 14px 4px;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    position: relative; z-index: 2;
+  }
+  .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 17px;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(0.94); background: var(--gold); color: #1a1033; }
+  h1 {
+    margin: 0; font-size: clamp(20px, 5vw, 28px);
+    letter-spacing: 4px; font-weight: 800;
+    background: linear-gradient(135deg, #fff6c8, #ffd56a 40%, #ef476f 80%, #c77dff);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .stats { display: flex; gap: 6px; align-items: center; }
+  .stat {
+    min-width: 54px; text-align: center;
+    background: var(--panel);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 5px 9px;
+    font-size: 10px; letter-spacing: 1px; color: var(--muted);
+    backdrop-filter: blur(10px);
+    line-height: 1.15;
+  }
+  .stat b { display: block; font-size: 16px; color: var(--gold); letter-spacing: 0; }
+
+  .play {
+    flex: 1; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    padding: 4px 8px 0;
+    position: relative; z-index: 1;
+  }
+  .stage {
+    position: relative;
+    width: min(96vw, 520px);
+    height: min(62vh, 420px);
+  }
+  .tray {
+    position: absolute;
+    left: 50%; top: 52%;
+    width: 92%; height: 84%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: linear-gradient(160deg, rgba(62, 28, 92, 0.92), rgba(16, 8, 28, 0.94));
+    border: 1px solid rgba(255, 213, 106, 0.38);
+    border-radius: 28px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45), inset 0 0 40px rgba(255,213,106,0.06);
+    pointer-events: none;
+  }
+  .sockets, .crystals, .fx {
+    position: absolute; inset: 0;
+  }
+  .fx { pointer-events: none; overflow: visible; }
+
+  .socket, .crystal {
+    position: absolute;
+    width: var(--cw); height: var(--ch);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  .socket {
+    background: linear-gradient(135deg, rgba(255,230,170,0.38), rgba(80,40,110,0.55));
+    box-shadow: 0 0 0 1.5px rgba(255,213,106,0.45), inset 0 0 8px rgba(0,0,0,0.2);
+  }
+  .socket::after {
+    content: "";
+    position: absolute; inset: 24%;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: rgba(12, 6, 24, 0.55);
+  }
+
+  .crystal {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    transition: left 0.16s cubic-bezier(.2,.8,.2,1), top 0.16s cubic-bezier(.2,.8,.2,1);
+    z-index: 2;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
+  }
+  .crystal span { pointer-events: none; line-height: 1; }
+  .crystal.d4 span { font-size: clamp(9px, 2.6vmin, 12px); }
+  .crystal.d3 span { font-size: clamp(11px, 3.1vmin, 15px); }
+  .crystal.d2 span { font-size: clamp(13px, 3.6vmin, 18px); }
+  .crystal.d1 span { font-size: clamp(15px, 4.2vmin, 22px); }
+  .crystal.spawn { animation: pop 0.22s cubic-bezier(.2,1.4,.3,1); }
+  .crystal.merge { animation: flash 0.28s ease-out; }
+  .crystal.leaving { opacity: 0; transform: scale(0.4); transition: opacity 0.14s, transform 0.14s; }
+  @keyframes pop {
+    0% { transform: scale(0.2); opacity: 0; }
+    70% { transform: scale(1.12); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes flash {
+    0% { transform: scale(1.18); filter: drop-shadow(0 0 16px #fff); }
+    100% { transform: scale(1); }
+  }
+
+  .v2048 { background:
+      linear-gradient(160deg, rgba(255,180,180,0.4), transparent 42%),
+      url("assets/facet/gem-2048.png") center/cover no-repeat,
+      linear-gradient(135deg, #ff4d6d, #7a0014); }
+  .v1024 { background: linear-gradient(135deg, #ff9a6a 0%, #e23a1a 42%, #6a0a0c 100%); }
+  .v512  { background: linear-gradient(135deg, #ffc56a 0%, #f06d16 45%, #7a2200 100%); }
+  .v256  { background: linear-gradient(135deg, #ffe9a8 0%, #f4a261 40%, #9a4d09 100%); color: #2a1600; text-shadow: none; }
+  .v128  { background: linear-gradient(135deg, #fff6c4 0%, #e9c46a 40%, #7d5a12 100%); color: #2a1c00; text-shadow: none; }
+  .v64   { background: linear-gradient(135deg, #c8f7d2 0%, #2a9d8f 45%, #0b4f44 100%); }
+  .v32   { background: linear-gradient(135deg, #a8eef8 0%, #00b4d8 45%, #023e8a 100%); }
+  .v16   { background: linear-gradient(135deg, #a8d4f5 0%, #2d5be3 42%, #1e1b4b 100%); }
+  .v8    { background: linear-gradient(135deg, #d4a0ff 0%, #8b3ad1 45%, #240046 100%); }
+  .v4    { background: linear-gradient(135deg, #efc4ff 0%, #d08cff 40%, #5a189a 100%); }
+  .v2    {
+    background: linear-gradient(135deg, #fffce8 0%, #ffe08a 35%, #fff 70%, #ffd56a 100%);
+    color: #3a2a00; text-shadow: none;
+    box-shadow: 0 0 22px rgba(255,213,106,0.9);
+    z-index: 3;
+  }
+  .crystal::before {
+    content: "";
+    position: absolute; inset: 0;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: linear-gradient(115deg, rgba(255,255,255,0.55) 0 14%, transparent 15% 62%, rgba(0,0,0,0.22) 100%);
+    pointer-events: none;
+  }
+
+  .arrow {
+    position: absolute; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(18,8,28,0.7);
+    border: 1px solid rgba(255,213,106,0.4);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer;
+    backdrop-filter: blur(8px);
+    z-index: 4;
+  }
+  .arrow:active { background: var(--gold); color: #1a1033; transform: scale(0.92); }
+  .arrow.nw { left: 2%; top: 18%; }
+  .arrow.ne { right: 2%; top: 18%; }
+  .arrow.sw { left: 2%; bottom: 10%; }
+  .arrow.se { right: 2%; bottom: 10%; }
+
+  .combo {
+    position: absolute; left: 50%; top: 6%;
+    transform: translateX(-50%);
+    font-weight: 800; letter-spacing: 2px;
+    color: var(--gold);
+    text-shadow: 0 0 16px rgba(255,213,106,0.8);
+    opacity: 0; pointer-events: none;
+    font-size: 18px;
+  }
+  .combo.show { animation: comboIn 0.7s ease-out; }
+  @keyframes comboIn {
+    0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); }
+    20% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
+    100% { opacity: 0; transform: translate(-50%, -16px) scale(1); }
+  }
+
+  .shard {
+    position: absolute; width: 7px; height: 7px;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    pointer-events: none;
+    animation: shard 0.45s ease-out forwards;
+  }
+  @keyframes shard {
+    to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  footer {
+    width: 100%; max-width: 560px;
+    padding: 6px 14px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; z-index: 2;
+  }
+  .help { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.4; }
+  .help b { color: var(--gold); font-weight: 700; }
+  .row { display: flex; gap: 8px; }
+  button.primary {
+    background: linear-gradient(135deg, #ffe08a, #ffd56a);
+    color: #1a1033; border: none; border-radius: 12px;
+    padding: 10px 18px; font-size: 14px; font-weight: 800;
+    letter-spacing: 0.4px; cursor: pointer;
+  }
+  button.primary:active { transform: scale(0.97); }
+  button.ghost {
+    background: var(--panel); color: var(--ink);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px; padding: 10px 14px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(8, 3, 16, 0.72);
+    display: none; align-items: center; justify-content: center;
+    z-index: 20; backdrop-filter: blur(8px);
+    padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    width: min(360px, 92vw);
+    background: linear-gradient(180deg, rgba(52,28,78,0.97), rgba(16,8,28,0.98));
+    border: 1px solid rgba(255,213,106,0.28);
+    border-radius: 18px;
+    padding: 26px 22px 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h2 {
+    margin: 0 0 8px;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #fff6c8, #ffd56a, #ef476f);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .modal p { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .modal .gem-hero {
+    width: 72px; height: 42px; margin: 0 auto 14px;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    background: linear-gradient(135deg, #fffce8, #ffd56a);
+    box-shadow: 0 0 24px rgba(255,213,106,0.7);
+  }
+  .how { text-align: left; font-size: 13px; color: var(--ink); margin: 0 0 16px; line-height: 1.55; padding-left: 18px; }
+  .how li { margin: 6px 0; }
+  .title-gems { display: flex; justify-content: center; gap: 6px; margin: 4px 0 14px; }
+  .title-gems i {
+    display: block; width: 22px; height: 14px;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="left">
+      <a class="icon-btn" href="index.html" aria-label="Back to arcade">←</a>
+      <h1>FACET</h1>
+    </div>
+    <div class="stats">
+      <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="stat">BEST<b id="best">0</b></div>
+      <div class="stat">CUTS<b id="cuts">0</b></div>
+      <button class="icon-btn" id="muteBtn" aria-label="Mute">♪</button>
+    </div>
+  </header>
+
+  <div class="play" id="play">
+    <div class="stage" id="stage">
+      <div class="tray" aria-hidden="true"></div>
+      <button class="arrow nw" data-dir="left" aria-label="Cut northwest">↖</button>
+      <button class="arrow ne" data-dir="up" aria-label="Cut northeast">↗</button>
+      <button class="arrow sw" data-dir="down" aria-label="Cut southwest">↙</button>
+      <button class="arrow se" data-dir="right" aria-label="Cut southeast">↘</button>
+      <div class="sockets" id="sockets"></div>
+      <div class="crystals" id="crystals"></div>
+      <div class="fx" id="fx"></div>
+      <div class="combo" id="combo"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="help">Swipe the <b>crystal axes</b> (diagonals). Matching gems collide and are <b>cut in half</b>. Polish a stone down to <b>2</b>.</div>
+    <div class="row">
+      <button class="primary" id="newGame">New Cut</button>
+      <button class="ghost" id="howBtn">How to play</button>
+    </div>
+  </footer>
+
+  <div class="overlay show" id="overlay">
+    <div class="modal" id="modal">
+      <div class="title-gems" aria-hidden="true">
+        <i style="background:#ff2a4a"></i>
+        <i style="background:#e85d04"></i>
+        <i style="background:#e9c46a"></i>
+        <i style="background:#2a9d8f"></i>
+        <i style="background:#1d4ed8"></i>
+        <i style="background:#c77dff"></i>
+        <i style="background:#ffe08a"></i>
+      </div>
+      <div class="gem-hero" id="gemHero"></div>
+      <h2 id="modalTitle">FACET</h2>
+      <p id="modalText">A raw ruby starts at 2048. Every merge cuts the stone in half. Reach a perfect diamond — 2.</p>
+      <ol class="how" id="howList">
+        <li>Swipe <b>diagonally</b> (or tap the corner arrows). Stones slide along the crystal lattice.</li>
+        <li>Two of the <b>same value</b> collide and become the next smaller cut.</li>
+        <li>2048 → 1024 → … → 4 → <b>2</b>. A 2 is finished and will not cut again.</li>
+        <li>Keep cutting after your first diamond. The vein dies when nothing can slide.</li>
+      </ol>
+      <button class="primary" id="modalBtn">Begin the cut</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const SIZE = 4;
+  const START = 2048;
+  const WIN = 2;
+  const BEST_KEY = 'facet_best';
+  const MUTE_KEY = 'facet_mute';
+
+  const stage = document.getElementById('stage');
+  const socketsEl = document.getElementById('sockets');
+  const crystalsEl = document.getElementById('crystals');
+  const fxEl = document.getElementById('fx');
+  const comboEl = document.getElementById('combo');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const cutsEl = document.getElementById('cuts');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const howList = document.getElementById('howList');
+  const modalBtn = document.getElementById('modalBtn');
+  const muteBtn = document.getElementById('muteBtn');
+
+  let board, tiles, nextId, score, best, cuts, won, over, busy, started;
+  let cellW = 78, cellH = 46, originX = 0, originY = 0;
+
+  best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
+  bestEl.textContent = best;
+
+  let audioCtx = null, master = null, audioFailed = false, muted = false;
+  try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
+  muteBtn.textContent = muted ? '🔇' : '♪';
+
+  function initAudio() {
+    if (audioCtx || audioFailed) return;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      master = audioCtx.createGain();
+      master.gain.value = 0.18;
+      master.connect(audioCtx.destination);
+    } catch (e) { audioFailed = true; }
+  }
+  function tone(opt) {
+    if (!audioCtx || muted) return;
+    try {
+      const t0 = audioCtx.currentTime + (opt.delay || 0);
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = opt.type || 'triangle';
+      o.frequency.setValueAtTime(opt.f, t0);
+      if (opt.f2) o.frequency.exponentialRampToValueAtTime(Math.max(opt.f2, 1), t0 + opt.dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(opt.gain || 0.14, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0 + opt.dur + 0.03);
+    } catch (e) {}
+  }
+  function sfxSlide() { tone({ f: 220, f2: 140, dur: 0.08, type: 'sine', gain: 0.05 }); }
+  function sfxMerge(v) {
+    const step = Math.max(0, 11 - Math.log2(v));
+    const f = 320 + step * 70;
+    tone({ f, f2: f * 1.5, dur: 0.16, type: 'triangle', gain: 0.16 });
+    tone({ f: f * 2, f2: f * 2.4, dur: 0.1, type: 'sine', gain: 0.06, delay: 0.02 });
+  }
+  function sfxSpawn() { tone({ f: 680, f2: 900, dur: 0.07, type: 'sine', gain: 0.05 }); }
+  function sfxWin() {
+    [523, 659, 784, 1046].forEach((f, i) => tone({ f, dur: 0.22, type: 'triangle', gain: 0.14, delay: i * 0.09 }));
+  }
+  function sfxLose() {
+    tone({ f: 300, f2: 90, dur: 0.45, type: 'sawtooth', gain: 0.07 });
+  }
+
+  function layout() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    const maxW = Math.min(w * 0.78, 420);
+    const maxH = Math.min(h * 0.82, 280);
+    cellW = Math.floor(Math.min(maxW / 4, maxH / 2.05));
+    cellH = Math.round(cellW * 0.58);
+    originX = w / 2;
+    originY = (h - 4 * cellH) / 2 + cellH * 0.15;
+    document.documentElement.style.setProperty('--cw', cellW + 'px');
+    document.documentElement.style.setProperty('--ch', cellH + 'px');
+  }
+  function cellPos(r, c) {
+    return {
+      x: originX + (c - r) * (cellW / 2) - cellW / 2,
+      y: originY + (c + r) * (cellH / 2) - cellH / 2
+    };
+  }
+
+  function drawSockets() {
+    socketsEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const el = document.createElement('div');
+        el.className = 'socket';
+        const p = cellPos(r, c);
+        el.style.left = p.x + 'px';
+        el.style.top = p.y + 'px';
+        socketsEl.appendChild(el);
+      }
+    }
+  }
+
+  function digits(v) {
+    const n = String(v).length;
+    return 'd' + Math.max(1, Math.min(4, 5 - n));
+  }
+
+  function placeCrystal(tile, animate) {
+    const p = cellPos(tile.r, tile.c);
+    if (!animate) tile.el.style.transition = 'none';
+    tile.el.style.left = p.x + 'px';
+    tile.el.style.top = p.y + 'px';
+    if (!animate) {
+      tile.el.offsetHeight;
+      tile.el.style.transition = '';
+    }
+  }
+
+  function makeCrystal(tile) {
+    const el = document.createElement('div');
+    el.className = `crystal v${tile.v} ${digits(tile.v)}`;
+    el.innerHTML = '<span>' + tile.v + '</span>';
+    tile.el = el;
+    crystalsEl.appendChild(el);
+    placeCrystal(tile, false);
+    return el;
+  }
+
+  function spawn() {
+    const empty = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] === 0) empty.push([r, c]);
+    if (!empty.length) return null;
+    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    const v = Math.random() < 0.9 ? START : START / 2;
+    board[r][c] = v;
+    const tile = { id: nextId++, r, c, v };
+    tiles.push(tile);
+    makeCrystal(tile);
+    tile.el.classList.add('spawn');
+    setTimeout(() => tile.el && tile.el.classList.remove('spawn'), 240);
+    return tile;
+  }
+
+  function slideLine(vals) {
+    const nz = vals.filter(v => v !== 0);
+    const out = [];
+    const merges = [];
+    let gained = 0, nMerges = 0, i = 0;
+    while (i < nz.length) {
+      if (i + 1 < nz.length && nz[i] === nz[i + 1] && nz[i] > WIN) {
+        const merged = nz[i] / 2;
+        out.push(merged);
+        gained += nz[i];
+        nMerges++;
+        merges.push(out.length - 1);
+        i += 2;
+      } else {
+        out.push(nz[i]);
+        i++;
+      }
+    }
+    while (out.length < SIZE) out.push(0);
+    return { line: out, gained, nMerges, merges };
+  }
+
+  function extractLine(dir, i) {
+    const cells = [];
+    if (dir === 'left')  for (let c = 0; c < SIZE; c++) cells.push([i, c]);
+    if (dir === 'right') for (let c = SIZE - 1; c >= 0; c--) cells.push([i, c]);
+    if (dir === 'up')    for (let r = 0; r < SIZE; r++) cells.push([r, i]);
+    if (dir === 'down')  for (let r = SIZE - 1; r >= 0; r--) cells.push([r, i]);
+    return cells;
+  }
+
+  function anyMovesLeft() {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] === 0) return true;
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        const v = board[r][c];
+        if (v <= WIN) continue;
+        if (c + 1 < SIZE && board[r][c + 1] === v) return true;
+        if (r + 1 < SIZE && board[r + 1][c] === v) return true;
+      }
+    return false;
+  }
+
+  function shards(x, y, v) {
+    const colors = {
+      1024: '#ff2a4a', 512: '#e85d04', 256: '#f4a261', 128: '#e9c46a',
+      64: '#2a9d8f', 32: '#00b4d8', 16: '#1d4ed8', 8: '#7b2cbf', 4: '#c77dff', 2: '#ffe08a'
+    };
+    const color = colors[v] || '#fff';
+    for (let i = 0; i < 7; i++) {
+      const s = document.createElement('div');
+      s.className = 'shard';
+      const ang = (Math.PI * 2 * i) / 7 + Math.random() * 0.4;
+      const dist = 18 + Math.random() * 28;
+      s.style.left = (x + cellW / 2 - 3) + 'px';
+      s.style.top = (y + cellH / 2 - 3) + 'px';
+      s.style.background = color;
+      s.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
+      s.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
+      fxEl.appendChild(s);
+      setTimeout(() => s.remove(), 480);
+    }
+  }
+
+  function showCombo(n) {
+    if (n < 2) return;
+    const labels = { 2: 'DOUBLE CUT', 3: 'TRIPLE FACET', 4: 'QUAD SPLIT' };
+    comboEl.textContent = labels[n] || (n + ' CUTS');
+    comboEl.classList.remove('show');
+    comboEl.offsetHeight;
+    comboEl.classList.add('show');
+  }
+
+  function setHud() {
+    scoreEl.textContent = score;
+    bestEl.textContent = best;
+    cutsEl.textContent = cuts;
+  }
+
+  function showModal(title, text, btn, showHow) {
+    modalTitle.textContent = title;
+    modalText.textContent = text;
+    modalBtn.textContent = btn;
+    howList.style.display = showHow ? 'block' : 'none';
+    document.getElementById('gemHero').style.display = (showHow || title === 'FACET') ? 'block' : 'none';
+    overlay.classList.add('show');
+  }
+
+  function move(dir) {
+    if (over || busy || !started) return;
+
+    const occupied = {};
+    tiles.forEach(t => { occupied[t.r + ',' + t.c] = t; });
+
+    const nextBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    const plan = [];
+    let gained = 0, nMerges = 0, madeWin = false;
+
+    for (let i = 0; i < SIZE; i++) {
+      const cells = extractLine(dir, i);
+      const vals = cells.map(([r, c]) => board[r][c]);
+      const res = slideLine(vals);
+      gained += res.gained;
+      nMerges += res.nMerges;
+
+      const sources = [];
+      cells.forEach(([r, c], idx) => {
+        if (vals[idx] !== 0) sources.push({ r, c, v: vals[idx], tile: occupied[r + ',' + c] });
+      });
+
+      let si = 0;
+      res.line.forEach((v, di) => {
+        if (!v) return;
+        const dest = cells[di];
+        const a = sources[si++];
+        const merged = res.merges.includes(di);
+        if (merged) {
+          const b = sources[si++];
+          plan.push({ tile: a.tile, toR: dest[0], toC: dest[1], v, merged: true, drop: false });
+          plan.push({ tile: b.tile, toR: dest[0], toC: dest[1], v, merged: true, drop: true });
+          if (v === WIN) madeWin = true;
+        } else {
+          plan.push({ tile: a.tile, toR: dest[0], toC: dest[1], v, merged: false, drop: false });
+        }
+        nextBoard[dest[0]][dest[1]] = v;
+      });
+    }
+
+    let changed = false;
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] !== nextBoard[r][c]) changed = true;
+    if (!changed) return;
+
+    busy = true;
+    board = nextBoard;
+    score += gained;
+    cuts += nMerges;
+    if (score > best) {
+      best = score;
+      localStorage.setItem(BEST_KEY, String(best));
+    }
+    setHud();
+    sfxSlide();
+    if (nMerges) showCombo(nMerges);
+
+    plan.forEach(p => {
+      p.tile.r = p.toR;
+      p.tile.c = p.toC;
+      placeCrystal(p.tile, true);
+    });
+
+    setTimeout(() => {
+      plan.forEach(p => {
+        if (p.drop) {
+          const pos = cellPos(p.toR, p.toC);
+          shards(pos.x, pos.y, p.v);
+          p.tile.el.classList.add('leaving');
+          setTimeout(() => p.tile.el && p.tile.el.remove(), 140);
+          tiles = tiles.filter(t => t !== p.tile);
+        } else if (p.merged) {
+          p.tile.v = p.v;
+          p.tile.el.className = `crystal v${p.v} ${digits(p.v)} merge`;
+          p.tile.el.innerHTML = '<span>' + p.v + '</span>';
+          sfxMerge(p.v);
+        }
+      });
+
+      spawn();
+      sfxSpawn();
+
+      if (madeWin && !won) {
+        won = true;
+        sfxWin();
+        setTimeout(() => {
+          showModal('A DIAMOND', 'You cut a stone all the way to 2. Keep faceting for a higher score, or start a fresh geode.', 'Keep cutting', false);
+          busy = false;
+        }, 280);
+        return;
+      }
+
+      if (!anyMovesLeft()) {
+        over = true;
+        sfxLose();
+        setTimeout(() => {
+          showModal('THE VEIN IS DRY', 'No more cuts left. Score ' + score + ' · ' + cuts + ' facets.', 'New cut', false);
+          busy = false;
+        }, 280);
+        return;
+      }
+      busy = false;
+    }, 170);
+  }
+
+  function newGame() {
+    board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    tiles = [];
+    nextId = 1;
+    score = 0;
+    cuts = 0;
+    won = false;
+    over = false;
+    busy = false;
+    started = true;
+    crystalsEl.innerHTML = '';
+    fxEl.innerHTML = '';
+    setHud();
+    spawn();
+    spawn();
+    overlay.classList.remove('show');
+  }
+
+  function onFirstInput() {
+    initAudio();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  const DIAGONALS = [
+    { angle: -135, dir: 'left' },
+    { angle: -45,  dir: 'up' },
+    { angle: 45,   dir: 'right' },
+    { angle: 135,  dir: 'down' }
+  ];
+  function handleSwipe(dx, dy) {
+    if (Math.hypot(dx, dy) < 24) return;
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    let bestD = DIAGONALS[0], bestDiff = 999;
+    for (const d of DIAGONALS) {
+      const diff = Math.abs(((angle - d.angle + 540) % 360) - 180);
+      if (diff < bestDiff) { bestDiff = diff; bestD = d; }
+    }
+    move(bestD.dir);
+  }
+
+  let touchStart = null, mouseStart = null;
+  document.addEventListener('touchstart', e => {
+    if (e.target.closest('button, a')) return;
+    const t = e.changedTouches[0];
+    touchStart = { x: t.clientX, y: t.clientY };
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!touchStart) return;
+    const t = e.changedTouches[0];
+    handleSwipe(t.clientX - touchStart.x, t.clientY - touchStart.y);
+    touchStart = null;
+  }, { passive: true });
+  document.addEventListener('mousedown', e => {
+    if (e.target.closest('button, a')) return;
+    mouseStart = { x: e.clientX, y: e.clientY };
+  });
+  document.addEventListener('mouseup', e => {
+    if (!mouseStart) return;
+    handleSwipe(e.clientX - mouseStart.x, e.clientY - mouseStart.y);
+    mouseStart = null;
+  });
+  window.addEventListener('keydown', e => {
+    const map = {
+      ArrowUp: 'up', w: 'up', W: 'up',
+      ArrowDown: 'down', s: 'down', S: 'down',
+      ArrowLeft: 'left', a: 'left', A: 'left',
+      ArrowRight: 'right', d: 'right', D: 'right'
+    };
+    if (map[e.key]) { e.preventDefault(); onFirstInput(); move(map[e.key]); }
+  });
+
+  document.querySelectorAll('.arrow').forEach(btn => {
+    btn.addEventListener('click', () => { onFirstInput(); move(btn.dataset.dir); });
+  });
+  document.getElementById('newGame').addEventListener('click', () => { onFirstInput(); newGame(); });
+  document.getElementById('howBtn').addEventListener('click', () => {
+    showModal('FACET', 'A raw ruby starts at 2048. Every merge cuts the stone in half. Reach a perfect diamond — 2.', 'Back to the vein', true);
+  });
+  modalBtn.addEventListener('click', () => {
+    onFirstInput();
+    if (!started || over) newGame();
+    else overlay.classList.remove('show');
+  });
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? '🔇' : '♪';
+    try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
+    if (!muted) onFirstInput();
+  });
+
+  window.addEventListener('resize', () => {
+    layout();
+    drawSockets();
+    tiles && tiles.forEach(t => placeCrystal(t, false));
+  });
+
+  layout();
+  drawSockets();
+  document.addEventListener('pointerdown', onFirstInput, { once: true });
+
+  window.__FACET = {
+    move, newGame,
+    state() {
+      return {
+        board: board.map(r => r.slice()),
+        score, cuts, won, over, started,
+        tiles: tiles.map(t => ({ r: t.r, c: t.c, v: t.v }))
+      };
+    },
+    plant(cells) {
+      if (!nextId) nextId = 1;
+      if (typeof score !== 'number') score = 0;
+      if (typeof cuts !== 'number') cuts = 0;
+      board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      tiles = [];
+      crystalsEl.innerHTML = '';
+      cells.forEach(([r, c, v]) => {
+        board[r][c] = v;
+        const tile = { id: nextId++, r, c, v };
+        tiles.push(tile);
+        makeCrystal(tile);
+      });
+      won = false; over = false; busy = false; started = true;
+      overlay.classList.remove('show');
+      setHud();
+    }
+  };
+})();
+</script>
+</body>
+</html>

@@ -50,6 +50,12 @@
   .btn:active { transform:scale(.96); box-shadow:0 3px 10px rgba(255,111,145,.4); }
   .btn.secondary { background:linear-gradient(135deg,#9be1ff,#6cb9ff); box-shadow:0 6px 18px rgba(108,185,255,.4); }
   .btn.ghost { background:rgba(255,255,255,.7); color:var(--accent); box-shadow:none; border:2px solid var(--accent); }
+  .back {
+    background:rgba(255,255,255,.75); border:2px solid var(--accent); border-radius:50%;
+    width:40px; height:40px; display:flex; align-items:center; justify-content:center;
+    text-decoration:none; color:var(--accent); font-size:18px; flex-shrink:0;
+  }
+  .back:active { transform:scale(.9); }
 
   /* ---------------- Home ---------------- */
   .home-hero { text-align:center; margin:10px 0 6px; }
@@ -114,6 +120,7 @@
           <small>help Tutu find her bunny friends!</small>
         </div>
       </div>
+      <a class="back" href="index.html" aria-label="Back to arcade">←</a>
     </header>
     <div class="home-hero">
       <img class="hero-bunny" src="assets/tutu-bunnies/bunny_rainbow.png" alt="Rainbow bunny">
@@ -132,7 +139,10 @@
         <img src="assets/tutu-bunnies/tutu.png" alt="Tutu">
         <div><h1>Tutu's Bunny Friends</h1></div>
       </div>
-      <button class="btn ghost" id="quitBtn" style="padding:8px 16px; font-size:14px;">✕</button>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a class="back" href="index.html" aria-label="Back to arcade">←</a>
+        <button class="btn ghost" id="quitBtn" style="padding:8px 16px; font-size:14px;">✕</button>
+      </div>
     </header>
     <div class="statusbar">
       <div>⭐ <span id="stars">0</span></div>
@@ -145,7 +155,7 @@
 
   <!-- ================= WIN ================= -->
   <section id="win" class="screen">
-    <header><div class="logo"><img src="assets/tutu-bunnies/tutu.png" alt="Tutu"><div><h1>Tutu's Bunny Friends</h1></div></div></header>
+    <header><div class="logo"><img src="assets/tutu-bunnies/tutu.png" alt="Tutu"><div><h1>Tutu's Bunny Friends</h1></div></div><a class="back" href="index.html" aria-label="Back to arcade">←</a></header>
     <div class="win-hero">
       <img id="winImg" src="assets/tutu-bunnies/bunny_sparkle.png" alt="Yay!">
       <div class="win-title">YAY! 🎉</div>

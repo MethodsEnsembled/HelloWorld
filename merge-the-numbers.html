@@ -23,6 +23,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .btn.sec{background:linear-gradient(135deg,#4d96ff,#3a7bd5);box-shadow:0 6px 20px rgba(77,150,255,.4)}
 .btn.sm{padding:10px 20px;font-size:14px}
 .btn:disabled{opacity:.4}
+.back{position:absolute;top:calc(env(safe-area-inset-top,0px) + 16px);left:16px;z-index:10;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#fff;font-size:18px}
+.back:active{background:rgba(255,255,255,.3);transform:scale(.9)}
 
 .hud{display:flex;align-items:center;justify-content:space-between;width:min(calc(100vw - 24px),400px);padding:6px 4px;font-weight:800}
 .hud-score{color:#ffd700;font-size:22px}
@@ -100,6 +102,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 <body>
 
 <div id="scr-title" class="screen show">
+  <a class="back" href="index.html" aria-label="Back to arcade">←</a>
   <div class="title-logo"><span>Merge the<br>Numbers</span></div>
   <div class="title-sub">Swipe up, down, left or right — all the numbers slide that way. Slide two matching numbers together and they merge into the next one! Score <b>2000</b> points to win.</div>
   <button class="btn" onclick="G.start()">Play!</button>
@@ -470,7 +473,7 @@ var G = (function(){
 
   document.addEventListener('dblclick', function(e){e.preventDefault()});
 
-  return {start:start, move:move, shuffle:shuffle, menu:function(){show('scr-title')}};
+  return {start:start, move:move, shuffle:shuffle, menu:function(){ location.href='index.html'; }};
 })();
 </script>
 </body>

@@ -153,26 +153,44 @@ let level=1, diamonds=0, target=0; // diamonds collected this level / target
 
 function levelTarget(l){ return 2 + Math.floor(l*1.5); } // L1=3, L2=5, L3=6, L4=8 ...
 
+// Gem value range for a given level. Early levels use small gems so that
+// halving quickly reaches 2 (a diamond); later levels use bigger gems so the
+// descent takes real planning. This keeps the game flowing AND challenging.
+function gemPoolForLevel(l){
+  // TIERS order is descending (index 0 = 2048 ... index 10 = 2). Higher index
+  // = smaller value, so small gems reach 2 in fewer halvings.
+  const hi = Math.min(10, 5 + l);   // smallest-value index
+  const lo = Math.max(0, 8 - l);    // largest-value index (smaller number = bigger gem)
+  if(lo > hi) return [hi, lo];
+  return [lo, hi];
+}
+
+function spriteValue(l, rnd){
+  const [lo, hi] = gemPoolForLevel(l);
+  const span = hi - lo + 1;
+  const idx = lo + Math.floor(rnd()*span);
+  return TIERS[Math.max(0, Math.min(10, idx))];
+}
+
 function newGame(){
   board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   score=0; over=false; newCells.clear(); particles=[];
   level=1; diamonds=0; target=levelTarget(1);
-  seedBoard();
+  seedBoard(1);
   render(); updateMeter();
   ovEnd.classList.add('hide');
 }
 
-function seedBoard(){
+function seedBoard(l){
   board = Array.from({length:SIZE},()=>Array(SIZE).fill(0));
   const cells=[];for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)cells.push([r,c]);
   for(let i=cells.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]];}
-  const N=Math.floor(SIZE*SIZE*0.45);
-  const pool=[256,256,512,512,128,256,512,1024];
-  for(let i=0;i<N;i++){const[r,c]=cells[i];board[r][c]=pool[Math.floor(Math.random()*pool.length)];}
-  // guarantee a few twin pairs so the opening always has an available merge
-  const twinList=[256,512,128,256,512,1024];
-  for(let t=0;t<3;t++){
-    const v=twinList[t];
+  const N=Math.floor(SIZE*SIZE*0.5);
+  for(let i=0;i<N;i++){const[r,c]=cells[i];board[r][c]=spriteValue(l,Math.random);}
+  // guarantee several twin pairs so there are always merges available
+  let twinCount=4;
+  while(twinCount-->0){
+    const v=spriteValue(l,Math.random);
     let spots=[];for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)if(board[r][c]===0)spots.push([r,c]);
     if(spots.length<2)break;
     const a=spots[Math.floor(Math.random()*spots.length)];
@@ -186,10 +204,12 @@ function spawn(){
   const empty=[];for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)if(board[r][c]===0)empty.push([r,c]);
   if(!empty.length)return;
   const [r,c]=empty[Math.floor(Math.random()*empty.length)];
+  // Feed the cascade: prefer the board's DOMINANT non-2 value so twins pile up
+  // and can halve; otherwise a level-appropriate gem to seed a new chain.
   const freq={};
   for(let rr=0;rr<SIZE;rr++)for(let cc=0;cc<SIZE;cc++){const v=board[rr][cc];if(v>2)freq[v]=(freq[v]||0)+1;}
   let v;
-  if(Object.keys(freq).length===0){ v=512; }
+  if(Object.keys(freq).length===0){ v=spriteValue(level,Math.random); }
   else { let best=0,f=-1;for(const k in freq){const n=+k;if(freq[k]>f||(freq[k]===f&&n>best)){best=n;f=freq[k];}} v=best; }
   board[r][c]=v; newCells.add(r+','+c);
 }
@@ -213,7 +233,7 @@ const reverseRows=m=>m.map(r=>[...r].reverse());
 function eq(a,b){for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++)if(a[r][c]!==b[r][c])return false;return true;}
 
 function move(dir){
-  if(over||won)return;
+  if(over)return;
   mergesThisMove=0;
   let b=board.map(r=>[...r]);
   if(dir==='right') b=reverseRows(b);
@@ -251,7 +271,10 @@ function checkState(){
 }
 function nextLevel(){
   level++; diamonds=0; target=levelTarget(level);
-  sWin(); spawn(); spawn();
+  sWin();
+  // advance the vein: clear the board and re-seed with the new level's (larger) gems
+  newCells.clear();
+  seedBoard(level);
   updateMeter();
 }
 function anyMovesLeft(){
@@ -306,40 +329,43 @@ function gemColor(v){
 function fmtVal(v){return v.toLocaleString('en-US');}
 
 function layout(){
-  // diamond board geometry — rotate a square grid cell by cell
-  const side=Math.min(W*0.9,H*0.62);
-  const boardPx=side*0.72;
-  const cell=boardPx/SIZE;
-  const cx=W/2, cy=H*0.48;
-  return {boardPx,cell,cx,cy};
+  // The board is a square grid rotated 45° (a true diamond). We compute the
+  // spacing such that the rotated board fits the stage, then rotate the whole
+  // drawing context by 45° around the board center so that grid rows/columns
+  // line up with the screen diagonals — exactly matching the swipe directions.
+  const side=Math.min(W*0.86, H*0.56);
+  const cell=side/(SIZE+1);
+  const cx=W/2, cy=H*0.47;
+  const rot=-Math.PI/4; // board rotated 45° counter-clockwise on screen
+  return {cell,cx,cy,rot};
 }
 
 function cellCenter(r,c,L){
-  // rotated 45deg: screen pos
-  return {x:L.cx+(c-(SIZE-1)/2)*L.cell, y:L.cy+(r-(SIZE-1)/2)*L.cell};
+  // Position in board-local coords, then rotate + translate to screen.
+  const ox=(c-(SIZE-1)/2)*L.cell, oy=(r-(SIZE-1)/2)*L.cell;
+  const cs=Math.cos(L.rot), sn=Math.sin(L.rot);
+  return { x:L.cx+ox*cs-oy*sn, y:L.cy+ox*sn+oy*cs };
 }
 
 function drawGem(x,y,size,v,isNew){
   const col=gemColor(v);
   // glow
-  const g=ctx.createRadialGradient(x,y,size*0.05,x,y,size*0.75);
+  const g=ctx.createRadialGradient(x,y,size*0.08,x,y,size*0.8);
   g.addColorStop(0,'rgba(255,255,255,0.25)');g.addColorStop(0.6,col.glow);g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.globalAlpha=0.9;ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,size*0.75,0,7);ctx.fill();ctx.globalAlpha=1;
-  // diamond (rotated square) body with facet
-  ctx.save();ctx.translate(x,y);ctx.rotate(Math.PI/4);
-  const half=size*0.46;
-  const grad=ctx.createLinearGradient(-half,-half,half,half);
+  ctx.globalAlpha=0.9;ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,size*0.8,0,7);ctx.fill();ctx.globalAlpha=1;
+  // square gem body (the board is rotated 45°, so on screen these read as diamonds)
+  const half=size*0.44;
+  const grad=ctx.createLinearGradient(x-half,y-half,x+half,y+half);
   grad.addColorStop(0,col.b);grad.addColorStop(1,col.a);
-  ctx.fillStyle=grad;ctx.shadowColor='rgba(0,0,0,0.45)';ctx.shadowBlur=6;
-  ctx.beginPath();ctx.rect(-half,-half,half*2,half*2);ctx.fill();
+  ctx.fillStyle=grad;ctx.shadowColor='rgba(0,0,0,0.45)';ctx.shadowBlur=5;
+  ctx.beginPath();ctx.rect(x-half,y-half,half*2,half*2);ctx.fill();
   ctx.shadowBlur=0;
-  // inner facet highlight
-  ctx.fillStyle='rgba(255,255,255,0.35)';
-  ctx.beginPath();ctx.moveTo(-half,-half);ctx.lineTo(half*0.3,-half);ctx.lineTo(-half,half*0.3);ctx.closePath();ctx.fill();
-  ctx.restore();
-  // value (counter-rotated, horizontal)
+  // facet highlight (upper-left triangle)
+  ctx.fillStyle='rgba(255,255,255,0.32)';
+  ctx.beginPath();ctx.moveTo(x-half,y-half);ctx.lineTo(x+half*0.3,y-half);ctx.lineTo(x-half,y+half*0.3);ctx.closePath();ctx.fill();
+  // value
   ctx.fillStyle=v===2?'#3d2a00':(v>=128?'#fff':'#222');
-  ctx.font='bold '+Math.max(11,size*0.34)+'px -apple-system,Segoe UI,sans-serif';
+  ctx.font='bold '+Math.max(12,size*0.34)+'px -apple-system,Segoe UI,sans-serif';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.shadowColor='rgba(0,0,0,0.5)';ctx.shadowBlur=2;
   ctx.fillText(fmtVal(v),x,y+1);
@@ -367,14 +393,15 @@ function drawBackground(){
 function render(){
   drawBackground();
   const L=layout();
-  // draw cell sockets (empty diamond slots)
-  ctx.fillStyle='rgba(255,255,255,0.04)';
+  // draw cell sockets (square slots; the board rotation makes them diamonds)
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
     const p=cellCenter(r,c,L);
-    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.PI/4);
-    const h=L.cell*0.42;
-    ctx.fillStyle='rgba(255,255,255,0.045)';
-    ctx.beginPath();ctx.rect(-h,-h,h*2,h*2);ctx.fill();ctx.restore();
+    const h=L.cell*0.44;
+    ctx.fillStyle='rgba(255,255,255,0.05)';
+    ctx.strokeStyle='rgba(255,213,106,0.12)';ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(p.x-h,p.y-h);ctx.lineTo(p.x+h,p.y-h);ctx.lineTo(p.x+h,p.y+h);ctx.lineTo(p.x-h,p.y+h);
+    ctx.closePath();ctx.fill();ctx.stroke();
   }
   // draw gems
   for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
@@ -386,22 +413,42 @@ function render(){
 }
 
 // ---------- input ----------
-const DIAGONALS=[{a:-135,d:'left'},{a:-45,d:'up'},{a:45,d:'down'},{a:135,d:'right'}];
+// Screen-diagonal swipe → grid direction. The board is rotated -45°, so:
+//   grid up    (row--)  → screen up-left   (NW, -135°)
+//   grid right (col++)  → screen up-right  (NE,  -45°)
+//   grid down  (row++)  → screen down-right(SE,   45°)
+//   grid left  (col--)  → screen down-left (SW,  135°)
+const DIAGONALS=[
+  {a:-135,d:'up'},
+  {a:-45, d:'right'},
+  {a:45,  d:'down'},
+  {a:135, d:'left'},
+];
 function handleSwipe(dx,dy){
-  const dist=Math.hypot(dx,dy);if(dist<22)return;
+  const dist=Math.hypot(dx,dy);if(dist<18)return;
   const ang=Math.atan2(dy,dx)*180/Math.PI;
   let best=DIAGONALS[0],bd=999;
   for(const o of DIAGONALS){let diff=Math.abs(((ang-o.a+540)%360)-180);if(diff<bd){bd=diff;best=o;}}
   move(best.d);
 }
 let ts=null;
-cv.addEventListener('touchstart',e=>{ensureAudio();const t=e.changedTouches[0];ts={x:t.clientX,y:t.clientY};},{passive:true});
-cv.addEventListener('touchmove',e=>{if(!ts)return;const t=e.changedTouches[0];
-  const dx=t.clientX-ts.x,dy=t.clientY-ts.y;if(Math.hypot(dx,dy)>22){handleSwipe(dx,dy);ts={x:t.clientX,y:t.clientY};}},{passive:true});
-cv.addEventListener('touchend',()=>{ts=null;});
-let ms=null;
-cv.addEventListener('mousedown',e=>{ensureAudio();ms={x:e.clientX,y:e.clientY};});
-window.addEventListener('mouseup',e=>{if(!ms)return;handleSwipe(e.clientX-ms.x,e.clientY-ms.y);ms=null;});
+function swipeStart(x,y){ ensureAudio(); ts={x,y}; }
+function swipeEnd(x,y){ if(!ts)return; handleSwipe(x-ts.x,y-ts.y); ts=null; }
+
+// Use Pointer Events when available (modern mobile browsers), else fall back
+// to touch events — never both, to avoid double-firing a swipe.
+if(window.PointerEvent){
+  cv.addEventListener('pointerdown',e=>{swipeStart(e.clientX,e.clientY);},{passive:true});
+  window.addEventListener('pointerup',e=>{swipeEnd(e.clientX,e.clientY);},{passive:true});
+  cv.addEventListener('pointercancel',()=>{ts=null;},{passive:true});
+}else{
+  cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];swipeStart(t.clientX,t.clientY);},{passive:false});
+  cv.addEventListener('touchend',e=>{e.preventDefault();const t=e.changedTouches[0];swipeEnd(t.clientX,t.clientY);},{passive:false});
+  cv.addEventListener('touchcancel',()=>{ts=null;},{passive:true});
+}
+// Desktop mouse fallback.
+cv.addEventListener('mousedown',e=>{swipeStart(e.clientX,e.clientY);});
+window.addEventListener('mouseup',e=>{swipeEnd(e.clientX,e.clientY);});
 window.addEventListener('keydown',e=>{
   const k=e.key;const map={'ArrowUp':'up','ArrowDown':'down','ArrowLeft':'left','ArrowRight':'right','w':'up','s':'down','a':'left','d':'right'};
   if(map[k]){ensureAudio();move(map[k]);}

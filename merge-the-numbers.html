@@ -10,37 +10,37 @@
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 html,body{margin:0;padding:0;height:100%;overflow:hidden}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#1a1a2e;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:manipulation}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#1a1a2e;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
 
 .screen{display:none;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;position:fixed;top:0;left:0;z-index:100;background:#1a1a2e}
 .screen.show{display:flex}
 
 .title-logo{font-size:42px;font-weight:900;text-align:center;line-height:1.1;margin-bottom:8px}
 .title-logo span{display:block;background:linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff,#9b59b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.title-sub{font-size:15px;opacity:.7;margin-bottom:30px;text-align:center;max-width:300px;line-height:1.4}
+.title-sub{font-size:15px;opacity:.7;margin-bottom:30px;text-align:center;max-width:320px;line-height:1.5}
 .btn{appearance:none;border:0;cursor:pointer;font-family:inherit;font-weight:800;border-radius:999px;color:#fff;padding:16px 40px;font-size:20px;background:linear-gradient(135deg,#e94560,#c23152);box-shadow:0 6px 20px rgba(233,69,96,.5);transition:transform .1s;margin:6px}
 .btn:active{transform:scale(.95)}
 .btn.sec{background:linear-gradient(135deg,#4d96ff,#3a7bd5);box-shadow:0 6px 20px rgba(77,150,255,.4)}
 .btn.sm{padding:10px 20px;font-size:14px}
 .btn:disabled{opacity:.4}
 
-.hud{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:420px;padding:8px 16px;font-weight:800}
+.hud{display:flex;align-items:center;justify-content:space-between;width:min(calc(100vw - 24px),400px);padding:6px 4px;font-weight:800}
 .hud-score{color:#ffd700;font-size:22px}
 .hud-best{font-size:12px;opacity:.6}
 .hud-shuf{font-size:14px;color:#6bcb77}
 
-.progress-wrap{position:relative;width:min(calc(100vw - 24px),400px);height:14px;background:rgba(255,255,255,.08);border-radius:999px;margin:0 0 12px;overflow:hidden}
+.progress-wrap{position:relative;width:min(calc(100vw - 24px),400px);height:13px;background:rgba(255,255,255,.08);border-radius:999px;margin:4px 0 8px;overflow:hidden}
 .progress-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#ffd700,#ff6b6b,#9b59b6);transition:width .4s ease}
-.progress-txt{position:absolute;top:0;left:0;right:0;text-align:center;font-size:10px;font-weight:800;line-height:14px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);pointer-events:none}
+.progress-txt{position:absolute;top:0;left:0;right:0;text-align:center;font-size:9px;font-weight:800;line-height:13px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);pointer-events:none}
 
 .board{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;padding:8px;background:#16213e;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);width:min(calc(100vw - 24px),400px)}
 .cell{aspect-ratio:1;border-radius:7px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;position:relative;overflow:hidden}
-.cell.has-tile{cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}
-.cell.sel{box-shadow:0 0 0 3px #fff,0 0 12px rgba(255,255,255,.6);transform:scale(1.08);z-index:2}
-.cell.pop-in{animation:popIn .25s ease}
-.cell.merge-pop{animation:mPop .25s ease}
+.cell.has-tile{box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2)}
+.cell.pop-in{animation:popIn .22s ease}
+.cell.merge-pop{animation:mPop .24s ease;z-index:3}
+.cell.just-moved{transition:transform .12s ease}
 @keyframes popIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
-@keyframes mPop{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes mPop{0%{transform:scale(1)}35%{transform:scale(1.3)}100%{transform:scale(1)}}
 
 /* Tile colors via data attribute */
 .cell[data-v="1"]{background:#69f0ae}
@@ -76,19 +76,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 .score-pop{position:absolute;pointer-events:none;z-index:60;font-weight:900;font-size:18px;color:#ffd700;text-shadow:0 2px 4px rgba(0,0,0,.5);animation:sPop .6s ease-out forwards;left:50%;top:0}
 @keyframes sPop{0%{opacity:1;transform:translateX(-50%) translateY(0) scale(.5)}30%{transform:translateX(-50%) translateY(-8px) scale(1.2)}100%{opacity:0;transform:translateX(-50%) translateY(-30px) scale(1)}}
 
+/* On-screen D-pad */
+.dpad-wrap{margin-top:10px;display:grid;grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px;gap:6px;justify-content:center}
+.dpad-btn{appearance:none;border:0;cursor:pointer;background:rgba(255,255,255,.1);color:#fff;font-size:20px;border-radius:10px;font-family:inherit;transition:transform .08s,background .1s;touch-action:manipulation}
+.dpad-btn:active{transform:scale(.9);background:rgba(255,255,255,.25)}
+.dpad-btn.up{grid-column:2;grid-row:1}
+.dpad-btn.left{grid-column:1;grid-row:2}
+.dpad-btn.down{grid-column:2;grid-row:2}
+.dpad-btn.right{grid-column:3;grid-row:2}
+.dpad-center{grid-column:2;grid-row:2;display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(255,255,255,.45);font-weight:700;letter-spacing:.5px}
+
+.bottom-bar{margin-top:10px;display:flex;gap:8px;align-items:center}
+.bottom-bar .btn.sm{padding:10px 18px;font-size:13px}
+
 .overlay-msg{text-align:center}
 .overlay-msg h2{font-size:34px;margin:0 0 10px}
 .overlay-msg p{font-size:16px;opacity:.8;margin:0 0 20px}
 .overlay-msg .fs{font-size:28px;color:#ffd700;font-weight:900;margin-bottom:20px}
 
-@media(max-width:360px){.board{gap:3px;padding:6px}}
+@media(max-width:360px){.board{gap:3px;padding:6px}.dpad-wrap{grid-template-columns:40px 40px 40px;grid-template-rows:40px 40px;gap:5px}}
 </style>
 </head>
 <body>
 
 <div id="scr-title" class="screen show">
   <div class="title-logo"><span>Merge the<br>Numbers</span></div>
-  <div class="title-sub">Tap two matching numbers side-by-side to merge them into the next number. Score <b>2000</b> points to win!</div>
+  <div class="title-sub">Swipe up, down, left or right — all the numbers slide that way. Slide two matching numbers together and they merge into the next one! Score <b>2000</b> points to win.</div>
   <button class="btn" onclick="G.start()">Play!</button>
 </div>
 
@@ -102,9 +115,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     <div class="progress-txt" id="progTxt">0 / 2000</div>
   </div>
   <div class="board" id="board"></div>
-  <div style="margin-top:12px;display:flex;gap:8px">
+  <div class="bottom-bar">
     <button class="btn sm sec" id="btnShuf" onclick="G.shuffle()">🔀 Shuffle</button>
     <button class="btn sm" style="background:rgba(255,255,255,.1);box-shadow:none" onclick="G.menu()">Menu</button>
+  </div>
+  <div class="dpad-wrap">
+    <button class="dpad-btn up" onclick="G.move('up')">▲</button>
+    <button class="dpad-btn left" onclick="G.move('left')">◀</button>
+    <button class="dpad-btn right" onclick="G.move('right')">▶</button>
+    <button class="dpad-btn down" onclick="G.move('down')">▼</button>
   </div>
 </div>
 
@@ -130,9 +149,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 
 <script>
 var G = (function(){
-  var N = 8, WIN = 2000, INIT = 8, SPAWN = 2, SHUF_PTS = 300, INIT_SHUF = 3;
-  var grid, tid, score, best, shuffles, nextShuf, highest, sel, busy;
-  var cells = []; // DOM references cells[r][c]
+  var N = 8, WIN = 2000, INIT = 2, SPAWN = 1, SHUF_PTS = 300, INIT_SHUF = 3;
+  var grid, tid, score, best, shuffles, nextShuf, highest, busy;
+  var cells = []; // DOM refs cells[r][c]
   var board = document.getElementById('board');
 
   best = parseInt(localStorage.getItem('mtnBest')||'0');
@@ -147,7 +166,6 @@ var G = (function(){
         d.className='cell';
         d.setAttribute('data-r',r);
         d.setAttribute('data-c',c);
-        d.addEventListener('click', onTap);
         board.appendChild(d);
         cells[r][c]=d;
       }
@@ -158,7 +176,6 @@ var G = (function(){
   function renderCell(r,c,anim){
     var el=cells[r][c];
     var t=grid[r][c];
-    // Remove old classes
     el.className='cell';
     el.removeAttribute('data-v');
     el.textContent='';
@@ -166,7 +183,6 @@ var G = (function(){
       el.classList.add('has-tile');
       el.setAttribute('data-v', Math.min(t.value,50));
       el.textContent=t.value;
-      // Font size based on cell width
       var w=el.offsetWidth||40;
       var fs = t.value<=9 ? w*.45 : t.value<=20 ? w*.4 : t.value<=35 ? w*.35 : w*.3;
       el.style.fontSize=Math.max(11,fs)+'px';
@@ -176,7 +192,6 @@ var G = (function(){
       el.style.fontSize='';
     }
   }
-
   function renderAll(){
     for(var r=0;r<N;r++) for(var c=0;c<N;c++) renderCell(r,c);
   }
@@ -190,107 +205,155 @@ var G = (function(){
   function start(){
     grid=[];
     for(var r=0;r<N;r++){grid[r]=[];for(var c=0;c<N;c++) grid[r][c]=null;}
-    tid=0;score=0;shuffles=INIT_SHUF;nextShuf=SHUF_PTS;highest=1;sel=null;busy=false;
+    tid=0;score=0;shuffles=INIT_SHUF;nextShuf=SHUF_PTS;highest=1;busy=false;
     show('scr-game');
-    // Spawn after layout
     setTimeout(function(){
-      for(var i=0;i<INIT;i++) spawn(1);
+      spawnAt(2); // two starting tiles like 2048
       hud();
     },30);
   }
 
-  function spawn(fv){
-    var empty=[];
-    for(var r=0;r<N;r++) for(var c=0;c<N;c++) if(!grid[r][c]) empty.push([r,c]);
-    if(!empty.length) return false;
-    var s=empty[Math.floor(Math.random()*empty.length)];
-    var v=fv;
-    if(v===undefined){
-      var roll=Math.random();
-      if(highest>=15&&roll<.12) v=3;
-      else if(highest>=8&&roll<.25) v=2;
-      else if(highest>=4&&roll<.12) v=2;
-      else v=1;
-    }
+  // Spawn one tile in a random empty cell
+  function spawn(){
+    var empt=[];
+    for(var r=0;r<N;r++) for(var c=0;c<N;c++) if(!grid[r][c]) empt.push([r,c]);
+    if(!empt.length) return false;
+    var s=empt[Math.floor(Math.random()*empt.length)];
+    var v=pickSpawnValue();
     grid[s[0]][s[1]]={id:++tid,value:v};
     renderCell(s[0],s[1],'new');
     return true;
   }
+  function spawnAt(n){
+    for(var i=0;i<n;i++) spawn();
+  }
 
-  function onTap(e){
+  function pickSpawnValue(){
+    var roll=Math.random();
+    if(highest>=20&&roll<.14) return 3;
+    else if(highest>=12&&roll<.28) return 2;
+    else if(highest>=6&&roll<.16) return 2;
+    else return 1;
+  }
+
+  // ---- 2048-style collapse ----
+  // Move all tiles in `dir` ('up'|'down'|'left'|'right'). Returns points gained.
+  // ---- 2048-style move ----
+  // Moves all tiles toward `dir`. Returns true if the board changed.
+  function move(dir){
     if(busy) return;
-    e.preventDefault();
-    var r=parseInt(this.getAttribute('data-r'));
-    var c=parseInt(this.getAttribute('data-c'));
-    if(!grid[r][c]) return;
-
-    if(full()&&!anyMerge()&&shuffles>0){ flashShuffleHint(); return; }
-
-    if(!sel){doSelect(r,c);return;}
-    if(sel.r===r&&sel.c===c){doDeselect();return;}
-
-    var dr=Math.abs(sel.r-r),dc=Math.abs(sel.c-c);
-    if(dr+dc===1){
-      var other=grid[sel.r][sel.c];
-      if(other&&other.value===grid[r][c].value){
-        doMerge(sel.r,sel.c,r,c);
-      } else {doDeselect();doSelect(r,c);}
-    } else {doDeselect();doSelect(r,c);}
-  }
-
-  function doSelect(r,c){
-    sel={r:r,c:c};
-    cells[r][c].classList.add('sel');
-  }
-  function doDeselect(){
-    if(sel) cells[sel.r][sel.c].classList.remove('sel');
-    sel=null;
-  }
-
-  var hintTimer=null;
-  function flashShuffleHint(){
-    var b=document.getElementById('btnShuf');
-    b.style.transform='scale(1.15)';
-    b.style.boxShadow='0 0 0 3px #ffd700, 0 6px 20px rgba(255,215,0,.6)';
-    clearTimeout(hintTimer);
-    hintTimer=setTimeout(function(){ b.style.transform=''; b.style.boxShadow=''; },900);
-  }
-
-  function doMerge(r1,c1,r2,c2){
     busy=true;
-    doDeselect();
-    var nv=grid[r1][c1].value+1;
-    var pts=nv*10;
 
-    // Visual: briefly show source moving (just flash target)
-    grid[r1][c1]=null;
-    grid[r2][c2]={id:++tid,value:nv};
-    renderCell(r1,c1);
-    renderCell(r2,c2,'merge');
+    var gained=0;
+    var mergeSpots=[]; // [r,c] of all tiles created by merging this move
+    var anyChange=false;
 
-    score+=pts;
-    if(nv>highest) highest=nv;
-    while(score>=nextShuf){shuffles++;nextShuf+=SHUF_PTS;}
+    // Make a copy-preserving approach: build a fresh grid each move.
+    var newGrid=[];
+    for(var r0=0;r0<N;r0++){newGrid[r0]=[];for(var c0=0;c0<N;c0++) newGrid[r0][c0]=null;}
 
-    particles(r2,c2,nv);
-    scorePop(r2,c2,'+'+pts);
+    for(var i=0;i<N;i++){
+      // Gather values along the line, walking from the wall side inward.
+      var vals=[]; // ordered so vals[0] is nearest the wall
+      var coords=[];
+      for(var j=0;j<N;j++){
+        var pos=linePos(dir,i,j);
+        coords.push(pos);
+        if(grid[pos.r][pos.c]) vals.push(grid[pos.r][pos.c].value);
+        else vals.push(null);
+      }
+      var line=vals.slice();
+      var res=collapse(line); // res.vals array (length N, may contain null), res.gained
+      gained+=res.gained;
+
+      // Write resulting tiles into newGrid
+      for(var k=0;k<N;k++){
+        var vv=res.vals[k];
+        if(vv!=null){
+          var pc=coords[k];
+          newGrid[pc.r][pc.c]={id:++tid,value:vv};
+          if(res.mergedVals.indexOf(k)>=0) mergeSpots.push([pc.r,pc.c]);
+        }
+      }
+      // Detect change for this line by comparing old vs new occupancy at each coord
+      for(var k2=0;k2<N;k2++){
+        var pc2=coords[k2];
+        var old=grid[pc2.r][pc2.c];
+        var neu=newGrid[pc2.r][pc2.c];
+        var oldV = old?old.value:null;
+        var newV = neu?neu.value:null;
+        if(oldV!==newV) anyChange=true;
+      }
+    }
+
+    if(!anyChange){ busy=false; return; } // no-op move
+
+    grid=newGrid;
+
+    // Scoring
+    if(gained>0){
+      score+=gained;
+      while(score>=nextShuf){ shuffles++; nextShuf+=SHUF_PTS; }
+    }
+
+    renderAll();
+    // Pop animation on merged tiles
+    for(var m=0;m<mergeSpots.length;m++){
+      cells[mergeSpots[m][0]][mergeSpots[m][1]].classList.add('merge-pop');
+    }
     hud();
 
+    // Spawn a new tile after the move settles
     setTimeout(function(){
-      for(var i=0;i<SPAWN;i++) spawn();
+      spawn();
       busy=false;
+      hud();
       if(score>=WIN){
-        setTimeout(function(){
-          document.getElementById('winSc').textContent=score;
-          saveBest();show('scr-win');confetti();
-        },200);
-      } else if(full()&&!anyMerge()&&shuffles<=0){
-        setTimeout(function(){
-          document.getElementById('loseSc').textContent=score;
-          saveBest();show('scr-lose');
-        },200);
+        setTimeout(function(){ document.getElementById('winSc').textContent=score; saveBest(); show('scr-win'); confetti(); },150);
+      } else if(full()&&!anyMerge()){
+        if(shuffles>0){ flashShuffleHint(); }
+        else {
+          setTimeout(function(){ document.getElementById('loseSc').textContent=score; saveBest(); show('scr-lose'); },150);
+        }
       }
-    },120);
+    },60);
+  }
+
+  // Map traversal index (i = line index, j = position along line, j=0 is wall side)
+  function linePos(dir,i,j){
+    if(dir==='left')  return {r:i, c:j};
+    if(dir==='right') return {r:i, c:N-1-j};
+    if(dir==='up')    return {r:j, c:i};
+    if(dir==='down')  return {r:N-1-j, c:i};
+  }
+
+  // Collapse a line (already oriented with index 0 nearest the wall).
+  // Returns {vals:[N], gained, mergedVals:[indices in vals that are new merge results]}
+  function collapse(line){
+    // 1) Compress: drop null gaps (tiles slide to the wall first)
+    var c=[];
+    for(var i2=0;i2<N;i2++) if(line[i2]!=null) c.push(line[i2]);
+    // 2) Merge adjacent equal values (once each)
+    var out=[];
+    var gained=0;
+    var mergedVals=[];
+    var i=0;
+    while(i<c.length){
+      if(i+1<c.length && c[i]===c[i+1]){
+        var nv=c[i]+1;
+        out.push(nv);
+        gained+=nv*10;
+        mergedVals.push(out.length-1);
+        i+=2;
+      } else {
+        out.push(c[i]);
+        i+=1;
+      }
+    }
+    // 3) Pad with nulls to length N
+    var vals=[];
+    for(var k=0;k<N;k++) vals.push(k<out.length?out[k]:null);
+    return {vals:vals, gained:gained, mergedVals:mergedVals};
   }
 
   function shuffle(){
@@ -304,12 +367,14 @@ var G = (function(){
     for(var i=pos.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pos[i];pos[i]=pos[j];pos[j]=t;}
     for(var k=0;k<ts.length;k++){grid[pos[k][0]][pos[k][1]]=ts[k];}
     renderAll();
-    // Animate all as new
     for(var k2=0;k2<ts.length;k2++) cells[pos[k2][0]][pos[k2][1]].classList.add('pop-in');
     hud();
   }
 
-  function full(){for(var r=0;r<N;r++) for(var c=0;c<N;c++) if(!grid[r][c]) return false;return true;}
+  function full(){
+    for(var r=0;r<N;r++) for(var c=0;c<N;c++) if(!grid[r][c]) return false;
+    return true;
+  }
   function anyMerge(){
     for(var r=0;r<N;r++) for(var c=0;c<N;c++){
       if(!grid[r][c]) continue;
@@ -325,29 +390,22 @@ var G = (function(){
     document.getElementById('hBest').textContent='Best: '+best;
     document.getElementById('hShuf').textContent='\uD83D\uDD00 \u00D7'+shuffles;
     document.getElementById('btnShuf').disabled=shuffles<=0;
-    var p=Math.min(100, Math.round(score/WIN*100));
+    var p=Math.min(100,Math.round(score/WIN*100));
     document.getElementById('progFill').style.width=p+'%';
     document.getElementById('progTxt').textContent=score+' / '+WIN;
   }
   function saveBest(){if(score>best){best=score;localStorage.setItem('mtnBest',''+best);}}
 
-  function particles(r,c,val){
-    var el=cells[r][c];
-    var n=Math.min(4+val,14);
-    var cols=['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#9b59b6','#fff'];
-    for(var i=0;i<n;i++){
-      var p=document.createElement('div');
-      p.className='particle';
-      var ang=(Math.PI*2*i)/n+(Math.random()-.5)*.5;
-      var dist=20+Math.random()*30;
-      var dx=Math.cos(ang)*dist,dy=Math.sin(ang)*dist;
-      var sz=3+Math.random()*4;
-      p.style.cssText='width:'+sz+'px;height:'+sz+'px;left:50%;top:50%;margin-left:-'+sz/2+'px;margin-top:-'+sz/2+'px;background:'+cols[i%6]+';--dx:'+dx+'px;--dy:'+dy+'px;';
-      el.appendChild(p);
-      setTimeout((function(x){return function(){x.remove()}})(p),500);
-    }
+  var hintTimer=null;
+  function flashShuffleHint(){
+    var b=document.getElementById('btnShuf');
+    b.style.transform='scale(1.12)';
+    b.style.boxShadow='0 0 0 3px #ffd700, 0 6px 20px rgba(255,215,0,.6)';
+    clearTimeout(hintTimer);
+    hintTimer=setTimeout(function(){ b.style.transform=''; b.style.boxShadow=''; },900);
   }
-  function scorePop(r,c,txt){
+
+  function scorePopAt(r,c,txt){
     var el=document.createElement('div');
     el.className='score-pop';
     el.textContent=txt;
@@ -369,9 +427,50 @@ var G = (function(){
     }
   }
 
-  document.addEventListener('dblclick',function(e){e.preventDefault()});
+  // ---- Swipe input (touch) ----
+  var sx=0, sy=0, st=0;
+  board.addEventListener('touchstart', function(e){
+    var t=e.touches[0]; sx=t.clientX; sy=t.clientY; st=Date.now();
+  }, {passive:true});
+  board.addEventListener('touchend', function(e){
+    var t=e.changedTouches[0];
+    var dx=t.clientX-sx, dy=t.clientY-sy;
+    var ax=Math.abs(dx), ay=Math.abs(dy);
+    var min=24;
+    if(Math.max(ax,ay)<min) return;
+    var dir;
+    if(ax>ay) dir = dx>0 ? 'right':'left';
+    else      dir = dy>0 ? 'down':'up';
+    move(dir);
+  }, {passive:true});
+  // Mouse-drag fallback for desktop
+  var mx=0,my=0,md=false;
+  board.addEventListener('mousedown', function(e){ mx=e.clientX;my=e.clientY;md=true; });
+  window.addEventListener('mouseup', function(e){
+    if(!md) return; md=false;
+    var dx=e.clientX-mx, dy=e.clientY-my;
+    var ax=Math.abs(dx), ay=Math.abs(dy);
+    if(Math.max(ax,ay)<24) return;
+    var dir;
+    if(ax>ay) dir=dx>0?'right':'left';
+    else      dir=dy>0?'down':'up';
+    move(dir);
+  });
 
-  return {start:start, shuffle:shuffle, menu:function(){show('scr-title')}};
+  // ---- Keyboard ----
+  document.addEventListener('keydown', function(e){
+    var k=e.key;
+    var map={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down','a':'left','d':'right','w':'up','s':'down'};
+    if(map[k]){
+      if(document.getElementById('scr-game').className.indexOf('show')>=0){
+        e.preventDefault(); move(map[k]);
+      }
+    }
+  });
+
+  document.addEventListener('dblclick', function(e){e.preventDefault()});
+
+  return {start:start, move:move, shuffle:shuffle, menu:function(){show('scr-title')}};
 })();
 </script>
 </body>

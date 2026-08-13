@@ -5,370 +5,263 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#12081c">
+<meta name="theme-color" content="#1a1033">
 <title>Facet</title>
 <style>
   :root {
-    --bg: #12081c;
-    --ink: #f7f1ff;
-    --muted: rgba(247,241,255,0.7);
-    --gold: #ffd56a;
-    --panel: rgba(18, 8, 28, 0.72);
-    --cw: 78px;
-    --ch: 46px;
+    --bg: #1a1033;
+    --panel: #2a1a4a;
+    --cell: rgba(255,255,255,0.05);
+    --text: #f6f3ff;
+    --accent: #ffd166;
+    --muted: rgba(246,243,255,0.72);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    margin: 0; padding: 0; height: 100%;
-    color: var(--ink);
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at top, #2a1a4a 0%, var(--bg) 60%, #0a0520 100%);
+    color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%;
     overflow: hidden;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
   }
   body {
-    min-height: 100vh;
-    background:
-      linear-gradient(180deg, rgba(18,8,28,0.55) 0%, rgba(10,4,18,0.72) 100%),
-      url("assets/facet/bg.jpg") center/cover no-repeat,
-      #12081c;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    display: flex; flex-direction: column; align-items: center;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100vh;
   }
-
   header {
-    width: 100%; max-width: 560px;
-    padding: 10px 14px 4px;
-    display: flex; justify-content: space-between; align-items: center; gap: 8px;
-    position: relative; z-index: 2;
+    width: 100%; max-width: 520px;
+    padding: 14px 18px 6px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px;
   }
-  .left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .icon-btn {
-    width: 36px; height: 36px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
     background: var(--panel);
-    border: 1px solid rgba(255,255,255,0.14);
-    color: var(--ink);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
     text-decoration: none;
-    font-size: 17px;
-    backdrop-filter: blur(10px);
+    color: var(--text);
+    font-size: 18px;
     flex-shrink: 0;
     cursor: pointer;
   }
-  .icon-btn:active { transform: scale(0.94); background: var(--gold); color: #1a1033; }
+  .icon-btn:active { background: var(--accent); color: #1a1033; transform: scale(0.94); }
   h1 {
-    margin: 0; font-size: clamp(20px, 5vw, 28px);
-    letter-spacing: 4px; font-weight: 800;
-    background: linear-gradient(135deg, #fff6c8, #ffd56a 40%, #ef476f 80%, #c77dff);
+    margin: 0; font-size: clamp(18px, 4.5vw, 26px);
+    letter-spacing: 3px; font-weight: 800;
+    background: linear-gradient(135deg, #ffd166, #ef476f, #06d6a0);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .stats { display: flex; gap: 6px; align-items: center; }
   .stat {
-    min-width: 54px; text-align: center;
-    background: var(--panel);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 5px 9px;
-    font-size: 10px; letter-spacing: 1px; color: var(--muted);
-    backdrop-filter: blur(10px);
-    line-height: 1.15;
+    background: var(--panel); border-radius: 10px;
+    padding: 6px 10px; font-size: 10px; text-align: center;
+    min-width: 50px; line-height: 1.2;
+    letter-spacing: 0.8px; color: var(--muted);
   }
-  .stat b { display: block; font-size: 16px; color: var(--gold); letter-spacing: 0; }
+  .stat b { display: block; font-size: 16px; color: var(--accent); letter-spacing: 0; }
+  .stat.gems b { color: #fff3a0; }
 
   .play {
-    flex: 1; width: 100%;
+    flex: 1;
+    width: 100%;
     display: flex; align-items: center; justify-content: center;
-    padding: 4px 8px 0;
-    position: relative; z-index: 1;
+    padding: 8px;
+    touch-action: none;
   }
   .stage {
     position: relative;
-    width: min(96vw, 520px);
-    height: min(62vh, 420px);
-  }
-  .tray {
-    position: absolute;
-    left: 50%; top: 52%;
-    width: 92%; height: 84%;
-    transform: translate(-50%, -50%) rotate(45deg);
-    background: linear-gradient(160deg, rgba(62, 28, 92, 0.92), rgba(16, 8, 28, 0.94));
-    border: 1px solid rgba(255, 213, 106, 0.38);
-    border-radius: 28px;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.45), inset 0 0 40px rgba(255,213,106,0.06);
-    pointer-events: none;
-  }
-  .sockets, .crystals, .fx {
-    position: absolute; inset: 0;
-  }
-  .fx { pointer-events: none; overflow: visible; }
-
-  .socket, .crystal {
-    position: absolute;
-    width: var(--cw); height: var(--ch);
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  }
-  .socket {
-    background: linear-gradient(135deg, rgba(255,230,170,0.38), rgba(80,40,110,0.55));
-    box-shadow: 0 0 0 1.5px rgba(255,213,106,0.45), inset 0 0 8px rgba(0,0,0,0.2);
-  }
-  .socket::after {
-    content: "";
-    position: absolute; inset: 24%;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    background: rgba(12, 6, 24, 0.55);
-  }
-
-  .crystal {
+    width: min(92vmin, 460px);
+    height: min(92vmin, 460px);
     display: flex; align-items: center; justify-content: center;
+  }
+
+  .board {
+    width: 70.7%;
+    height: 70.7%;
+    transform: rotate(45deg);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 5px;
+    padding: 5px;
+    background: var(--panel);
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
+  }
+  .cell {
+    background: var(--cell);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cell span {
+    display: inline-block;
+    transform: rotate(-45deg);
     font-weight: 800;
     letter-spacing: -0.5px;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
-    transition: left 0.16s cubic-bezier(.2,.8,.2,1), top 0.16s cubic-bezier(.2,.8,.2,1);
-    z-index: 2;
-    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.55));
+    font-size: clamp(11px, 3.0vmin, 18px);
   }
-  .crystal span { pointer-events: none; line-height: 1; }
-  .crystal.d4 span { font-size: clamp(9px, 2.6vmin, 12px); }
-  .crystal.d3 span { font-size: clamp(11px, 3.1vmin, 15px); }
-  .crystal.d2 span { font-size: clamp(13px, 3.6vmin, 18px); }
-  .crystal.d1 span { font-size: clamp(15px, 4.2vmin, 22px); }
-  .crystal.spawn { animation: pop 0.22s cubic-bezier(.2,1.4,.3,1); }
-  .crystal.merge { animation: flash 0.28s ease-out; }
-  .crystal.leaving { opacity: 0; transform: scale(0.4); transition: opacity 0.14s, transform 0.14s; }
-  @keyframes pop {
-    0% { transform: scale(0.2); opacity: 0; }
-    70% { transform: scale(1.12); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes flash {
-    0% { transform: scale(1.18); filter: drop-shadow(0 0 16px #fff); }
-    100% { transform: scale(1); }
-  }
+  .cell.d3 span { font-size: clamp(13px, 3.5vmin, 22px); }
+  .cell.d2 span { font-size: clamp(16px, 4.2vmin, 28px); }
+  .cell.d1 span { font-size: clamp(20px, 5vmin, 32px); }
 
-  .v2048 { background:
-      linear-gradient(160deg, rgba(255,180,180,0.4), transparent 42%),
-      url("assets/facet/gem-2048.png") center/cover no-repeat,
-      linear-gradient(135deg, #ff4d6d, #7a0014); }
-  .v1024 { background: linear-gradient(135deg, #ff9a6a 0%, #e23a1a 42%, #6a0a0c 100%); }
-  .v512  { background: linear-gradient(135deg, #ffc56a 0%, #f06d16 45%, #7a2200 100%); }
-  .v256  { background: linear-gradient(135deg, #ffe9a8 0%, #f4a261 40%, #9a4d09 100%); color: #2a1600; text-shadow: none; }
-  .v128  { background: linear-gradient(135deg, #fff6c4 0%, #e9c46a 40%, #7d5a12 100%); color: #2a1c00; text-shadow: none; }
-  .v64   { background: linear-gradient(135deg, #c8f7d2 0%, #2a9d8f 45%, #0b4f44 100%); }
-  .v32   { background: linear-gradient(135deg, #a8eef8 0%, #00b4d8 45%, #023e8a 100%); }
-  .v16   { background: linear-gradient(135deg, #a8d4f5 0%, #2d5be3 42%, #1e1b4b 100%); }
-  .v8    { background: linear-gradient(135deg, #d4a0ff 0%, #8b3ad1 45%, #240046 100%); }
-  .v4    { background: linear-gradient(135deg, #efc4ff 0%, #d08cff 40%, #5a189a 100%); }
+  /* Solid color first so a rotated board still reads if gradients drop. */
+  .v2048 { background-color: #ff2e4d; background-image: linear-gradient(135deg, #8b0000, #ff2e4d); color: #fff; }
+  .v1024 { background-color: #ff6b35; background-image: linear-gradient(135deg, #b8390e, #ff6b35); color: #fff; }
+  .v512  { background-color: #ff9f1c; background-image: linear-gradient(135deg, #c77800, #ff9f1c); color: #fff; }
+  .v256  { background-color: #ffd23f; background-image: linear-gradient(135deg, #9a8200, #ffd23f); color: #222; }
+  .v128  { background-color: #a8dc00; background-image: linear-gradient(135deg, #5a8f00, #a8dc00); color: #222; }
+  .v64   { background-color: #06d6a0; background-image: linear-gradient(135deg, #007f3f, #06d6a0); color: #fff; }
+  .v32   { background-color: #00b7d4; background-image: linear-gradient(135deg, #007c8f, #00b7d4); color: #fff; }
+  .v16   { background-color: #118ab2; background-image: linear-gradient(135deg, #0b3d91, #118ab2); color: #fff; }
+  .v8    { background-color: #7209b7; background-image: linear-gradient(135deg, #3a0ca3, #7209b7); color: #fff; }
+  .v4    { background-color: #c77dff; background-image: linear-gradient(135deg, #6a1b9a, #c77dff); color: #fff; }
   .v2    {
-    background: linear-gradient(135deg, #fffce8 0%, #ffe08a 35%, #fff 70%, #ffd56a 100%);
-    color: #3a2a00; text-shadow: none;
-    box-shadow: 0 0 22px rgba(255,213,106,0.9);
-    z-index: 3;
-  }
-  .crystal::before {
-    content: "";
-    position: absolute; inset: 0;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    background: linear-gradient(115deg, rgba(255,255,255,0.55) 0 14%, transparent 15% 62%, rgba(0,0,0,0.22) 100%);
-    pointer-events: none;
+    background-color: #ffd700;
+    background-image: linear-gradient(135deg, #ffd700, #fff3a0);
+    color: #222;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4), 0 0 24px #ffd70088;
   }
 
   .arrow {
-    position: absolute; width: 42px; height: 42px; border-radius: 50%;
-    background: rgba(18,8,28,0.7);
-    border: 1px solid rgba(255,213,106,0.4);
-    color: var(--ink);
+    position: absolute;
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: var(--text);
     display: flex; align-items: center; justify-content: center;
-    font-size: 18px; cursor: pointer;
-    backdrop-filter: blur(8px);
-    z-index: 4;
+    font-size: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    z-index: 5;
   }
-  .arrow:active { background: var(--gold); color: #1a1033; transform: scale(0.92); }
-  .arrow.nw { left: 2%; top: 18%; }
-  .arrow.ne { right: 2%; top: 18%; }
-  .arrow.sw { left: 2%; bottom: 10%; }
-  .arrow.se { right: 2%; bottom: 10%; }
+  .arrow:active { background: var(--accent); color: #1a1033; transform: scale(0.92); }
+  .arrow.ne { top: 8%;     right: 8%; }
+  .arrow.nw { top: 8%;     left: 8%; }
+  .arrow.se { bottom: 8%;  right: 8%; }
+  .arrow.sw { bottom: 8%;  left: 8%; }
 
-  .combo {
-    position: absolute; left: 50%; top: 6%;
+  .floater {
+    position: absolute; left: 50%; top: 10%;
     transform: translateX(-50%);
-    font-weight: 800; letter-spacing: 2px;
-    color: var(--gold);
-    text-shadow: 0 0 16px rgba(255,213,106,0.8);
+    font-weight: 800; letter-spacing: 1px;
+    color: var(--accent);
+    text-shadow: 0 0 14px rgba(255,209,102,0.8);
     opacity: 0; pointer-events: none;
     font-size: 18px;
+    z-index: 6;
   }
-  .combo.show { animation: comboIn 0.7s ease-out; }
-  @keyframes comboIn {
-    0% { opacity: 0; transform: translate(-50%, 10px) scale(0.8); }
-    20% { opacity: 1; transform: translate(-50%, 0) scale(1.08); }
-    100% { opacity: 0; transform: translate(-50%, -16px) scale(1); }
-  }
-
-  .shard {
-    position: absolute; width: 7px; height: 7px;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    pointer-events: none;
-    animation: shard 0.45s ease-out forwards;
-  }
-  @keyframes shard {
-    to { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  .floater.show { animation: floatUp 0.7s ease-out; }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translate(-50%, 8px); }
+    20% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -18px); }
   }
 
   footer {
-    width: 100%; max-width: 560px;
-    padding: 6px 14px 12px;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
-    position: relative; z-index: 2;
+    width: 100%; max-width: 520px;
+    padding: 8px 18px 16px;
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
   }
-  .help { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.4; }
-  .help b { color: var(--gold); font-weight: 700; }
-  .row { display: flex; gap: 8px; }
+  .help { font-size: 12px; opacity: 0.75; text-align: center; line-height: 1.4; }
+  .help b { color: var(--accent); }
   button.primary {
-    background: linear-gradient(135deg, #ffe08a, #ffd56a);
-    color: #1a1033; border: none; border-radius: 12px;
-    padding: 10px 18px; font-size: 14px; font-weight: 800;
-    letter-spacing: 0.4px; cursor: pointer;
+    background: var(--accent); color: #1a1033;
+    border: none; border-radius: 10px;
+    padding: 10px 20px; font-size: 14px; font-weight: 700;
+    cursor: pointer;
   }
   button.primary:active { transform: scale(0.97); }
-  button.ghost {
-    background: var(--panel); color: var(--ink);
-    border: 1px solid rgba(255,255,255,0.14);
-    border-radius: 12px; padding: 10px 14px;
-    font-size: 14px; font-weight: 700; cursor: pointer;
-    backdrop-filter: blur(8px);
-  }
 
   .overlay {
     position: fixed; inset: 0;
-    background: rgba(8, 3, 16, 0.72);
-    display: none; align-items: center; justify-content: center;
-    z-index: 20; backdrop-filter: blur(8px);
-    padding: 20px;
+    background: rgba(10, 5, 30, 0.85);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(6px);
   }
   .overlay.show { display: flex; }
   .modal {
-    width: min(360px, 92vw);
-    background: linear-gradient(180deg, rgba(52,28,78,0.97), rgba(16,8,28,0.98));
-    border: 1px solid rgba(255,213,106,0.28);
-    border-radius: 18px;
-    padding: 26px 22px 20px;
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 24px 28px;
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    max-width: 300px;
+    border: 1px solid rgba(255,209,102,0.2);
   }
-  .modal h2 {
-    margin: 0 0 8px;
-    letter-spacing: 3px;
-    background: linear-gradient(135deg, #fff6c8, #ffd56a, #ef476f);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
-  .modal p { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
-  .modal .gem-hero {
-    width: 72px; height: 42px; margin: 0 auto 14px;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-    background: linear-gradient(135deg, #fffce8, #ffd56a);
-    box-shadow: 0 0 24px rgba(255,213,106,0.7);
-  }
-  .how { text-align: left; font-size: 13px; color: var(--ink); margin: 0 0 16px; line-height: 1.55; padding-left: 18px; }
-  .how li { margin: 6px 0; }
-  .title-gems { display: flex; justify-content: center; gap: 6px; margin: 4px 0 14px; }
-  .title-gems i {
-    display: block; width: 22px; height: 14px;
-    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  }
+  .modal h2 { margin: 0 0 10px; color: var(--accent); letter-spacing: 1px; }
+  .modal p { margin: 0 0 16px; opacity: 0.85; font-size: 14px; line-height: 1.45; }
 </style>
 </head>
 <body>
   <header>
-    <div class="left">
+    <div class="header-left">
       <a class="icon-btn" href="index.html" aria-label="Back to arcade">←</a>
       <h1>FACET</h1>
     </div>
     <div class="stats">
       <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="stat gems">GEMS<b id="gems">0</b></div>
       <div class="stat">BEST<b id="best">0</b></div>
-      <div class="stat">CUTS<b id="cuts">0</b></div>
       <button class="icon-btn" id="muteBtn" aria-label="Mute">♪</button>
     </div>
   </header>
 
   <div class="play" id="play">
     <div class="stage" id="stage">
-      <div class="tray" aria-hidden="true"></div>
-      <button class="arrow nw" data-dir="left" aria-label="Cut northwest">↖</button>
-      <button class="arrow ne" data-dir="up" aria-label="Cut northeast">↗</button>
-      <button class="arrow sw" data-dir="down" aria-label="Cut southwest">↙</button>
-      <button class="arrow se" data-dir="right" aria-label="Cut southeast">↘</button>
-      <div class="sockets" id="sockets"></div>
-      <div class="crystals" id="crystals"></div>
-      <div class="fx" id="fx"></div>
-      <div class="combo" id="combo"></div>
+      <button class="arrow nw" data-dir="left"  aria-label="Up-left">↖</button>
+      <button class="arrow ne" data-dir="up"    aria-label="Up-right">↗</button>
+      <button class="arrow sw" data-dir="down"  aria-label="Down-left">↙</button>
+      <button class="arrow se" data-dir="right" aria-label="Down-right">↘</button>
+      <div class="board" id="board"></div>
+      <div class="floater" id="floater"></div>
     </div>
   </div>
 
   <footer>
-    <div class="help">Swipe the <b>crystal axes</b> (diagonals). Matching gems collide and are <b>cut in half</b>. Polish a stone down to <b>2</b>.</div>
-    <div class="row">
-      <button class="primary" id="newGame">New Cut</button>
-      <button class="ghost" id="howBtn">How to play</button>
+    <div class="help">
+      Swipe the diamond. Matches <b>halve</b>. A <b>2</b> is a gem — it leaves the board.
     </div>
+    <button class="primary" id="newGame">New Game</button>
   </footer>
 
-  <div class="overlay show" id="overlay">
-    <div class="modal" id="modal">
-      <div class="title-gems" aria-hidden="true">
-        <i style="background:#ff2a4a"></i>
-        <i style="background:#e85d04"></i>
-        <i style="background:#e9c46a"></i>
-        <i style="background:#2a9d8f"></i>
-        <i style="background:#1d4ed8"></i>
-        <i style="background:#c77dff"></i>
-        <i style="background:#ffe08a"></i>
-      </div>
-      <div class="gem-hero" id="gemHero"></div>
-      <h2 id="modalTitle">FACET</h2>
-      <p id="modalText">A raw ruby starts at 2048. Every merge cuts the stone in half. Reach a perfect diamond — 2.</p>
-      <ol class="how" id="howList">
-        <li>Swipe <b>diagonally</b> (or tap the corner arrows). Stones slide along the crystal lattice.</li>
-        <li>Two of the <b>same value</b> collide and become the next smaller cut.</li>
-        <li>2048 → 1024 → … → 4 → <b>2</b>. A 2 is finished and will not cut again.</li>
-        <li>Keep cutting after your first diamond. The vein dies when nothing can slide.</li>
-      </ol>
-      <button class="primary" id="modalBtn">Begin the cut</button>
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2 id="modalTitle">Vein closed</h2>
+      <p id="modalText">No more cuts.</p>
+      <button class="primary" id="modalBtn">Play Again</button>
     </div>
   </div>
 
 <script>
 (() => {
   const SIZE = 4;
-  const START = 2048;
   const WIN = 2;
-  const BEST_KEY = 'facet_best';
+  const BEST_KEY = 'facet_best_gems';
   const MUTE_KEY = 'facet_mute';
 
-  const stage = document.getElementById('stage');
-  const socketsEl = document.getElementById('sockets');
-  const crystalsEl = document.getElementById('crystals');
-  const fxEl = document.getElementById('fx');
-  const comboEl = document.getElementById('combo');
+  const boardEl = document.getElementById('board');
   const scoreEl = document.getElementById('score');
+  const gemsEl = document.getElementById('gems');
   const bestEl = document.getElementById('best');
-  const cutsEl = document.getElementById('cuts');
   const overlay = document.getElementById('overlay');
   const modalTitle = document.getElementById('modalTitle');
   const modalText = document.getElementById('modalText');
-  const howList = document.getElementById('howList');
-  const modalBtn = document.getElementById('modalBtn');
   const muteBtn = document.getElementById('muteBtn');
+  const floater = document.getElementById('floater');
 
-  let board, tiles, nextId, score, best, cuts, won, over, busy, started;
-  let cellW = 78, cellH = 46, originX = 0, originY = 0;
+  let board, score, gems, best, over;
 
   best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10);
-  bestEl.textContent = best;
 
   let audioCtx = null, master = null, audioFailed = false, muted = false;
   try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch (e) {}
@@ -379,340 +272,224 @@
     try {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       master = audioCtx.createGain();
-      master.gain.value = 0.18;
+      master.gain.value = 0.16;
       master.connect(audioCtx.destination);
     } catch (e) { audioFailed = true; }
   }
-  function tone(opt) {
+  function tone(freq, dur, type, gain, delay) {
     if (!audioCtx || muted) return;
     try {
-      const t0 = audioCtx.currentTime + (opt.delay || 0);
+      const t0 = audioCtx.currentTime + (delay || 0);
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      o.type = opt.type || 'triangle';
-      o.frequency.setValueAtTime(opt.f, t0);
-      if (opt.f2) o.frequency.exponentialRampToValueAtTime(Math.max(opt.f2, 1), t0 + opt.dur);
+      o.type = type || 'triangle';
+      o.frequency.setValueAtTime(freq, t0);
       g.gain.setValueAtTime(0.0001, t0);
-      g.gain.exponentialRampToValueAtTime(opt.gain || 0.14, t0 + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + opt.dur);
+      g.gain.exponentialRampToValueAtTime(gain || 0.12, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       o.connect(g); g.connect(master);
-      o.start(t0); o.stop(t0 + opt.dur + 0.03);
+      o.start(t0); o.stop(t0 + dur + 0.02);
     } catch (e) {}
   }
-  function sfxSlide() { tone({ f: 220, f2: 140, dur: 0.08, type: 'sine', gain: 0.05 }); }
-  function sfxMerge(v) {
-    const step = Math.max(0, 11 - Math.log2(v));
-    const f = 320 + step * 70;
-    tone({ f, f2: f * 1.5, dur: 0.16, type: 'triangle', gain: 0.16 });
-    tone({ f: f * 2, f2: f * 2.4, dur: 0.1, type: 'sine', gain: 0.06, delay: 0.02 });
-  }
-  function sfxSpawn() { tone({ f: 680, f2: 900, dur: 0.07, type: 'sine', gain: 0.05 }); }
-  function sfxWin() {
-    [523, 659, 784, 1046].forEach((f, i) => tone({ f, dur: 0.22, type: 'triangle', gain: 0.14, delay: i * 0.09 }));
-  }
-  function sfxLose() {
-    tone({ f: 300, f2: 90, dur: 0.45, type: 'sawtooth', gain: 0.07 });
-  }
+  function sfxSlide() { tone(220, 0.05, 'sine', 0.04); }
+  function sfxMerge() { tone(360, 0.08, 'triangle', 0.1); tone(520, 0.07, 'sine', 0.05, 0.03); }
+  function sfxGem() { tone(660, 0.12, 'sine', 0.12); tone(990, 0.16, 'triangle', 0.08, 0.05); }
+  function sfxLose() { tone(196, 0.18, 'sine', 0.08); tone(130, 0.28, 'triangle', 0.07, 0.08); }
 
-  function layout() {
-    const w = stage.clientWidth, h = stage.clientHeight;
-    const maxW = Math.min(w * 0.78, 420);
-    const maxH = Math.min(h * 0.82, 280);
-    cellW = Math.floor(Math.min(maxW / 4, maxH / 2.05));
-    cellH = Math.round(cellW * 0.58);
-    originX = w / 2;
-    originY = (h - 4 * cellH) / 2 + cellH * 0.15;
-    document.documentElement.style.setProperty('--cw', cellW + 'px');
-    document.documentElement.style.setProperty('--ch', cellH + 'px');
-  }
-  function cellPos(r, c) {
-    return {
-      x: originX + (c - r) * (cellW / 2) - cellW / 2,
-      y: originY + (c + r) * (cellH / 2) - cellH / 2
-    };
-  }
-
-  function drawSockets() {
-    socketsEl.innerHTML = '';
-    for (let r = 0; r < SIZE; r++) {
-      for (let c = 0; c < SIZE; c++) {
-        const el = document.createElement('div');
-        el.className = 'socket';
-        const p = cellPos(r, c);
-        el.style.left = p.x + 'px';
-        el.style.top = p.y + 'px';
-        socketsEl.appendChild(el);
-      }
-    }
-  }
-
-  function digits(v) {
-    const n = String(v).length;
-    return 'd' + Math.max(1, Math.min(4, 5 - n));
-  }
-
-  function placeCrystal(tile, animate) {
-    const p = cellPos(tile.r, tile.c);
-    if (!animate) tile.el.style.transition = 'none';
-    tile.el.style.left = p.x + 'px';
-    tile.el.style.top = p.y + 'px';
-    if (!animate) {
-      tile.el.offsetHeight;
-      tile.el.style.transition = '';
-    }
-  }
-
-  function makeCrystal(tile) {
-    const el = document.createElement('div');
-    el.className = `crystal v${tile.v} ${digits(tile.v)}`;
-    el.innerHTML = '<span>' + tile.v + '</span>';
-    tile.el = el;
-    crystalsEl.appendChild(el);
-    placeCrystal(tile, false);
-    return el;
-  }
-
-  function spawn() {
-    const empty = [];
+  function emptyCells() {
+    const out = [];
     for (let r = 0; r < SIZE; r++)
       for (let c = 0; c < SIZE; c++)
-        if (board[r][c] === 0) empty.push([r, c]);
-    if (!empty.length) return null;
-    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
-    const v = Math.random() < 0.9 ? START : START / 2;
-    board[r][c] = v;
-    const tile = { id: nextId++, r, c, v };
-    tiles.push(tile);
-    makeCrystal(tile);
-    tile.el.classList.add('spawn');
-    setTimeout(() => tile.el && tile.el.classList.remove('spawn'), 240);
-    return tile;
+        if (board[r][c] === 0) out.push([r, c]);
+    return out;
   }
 
-  function slideLine(vals) {
-    const nz = vals.filter(v => v !== 0);
+  function spawnValue() {
+    const vals = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (board[r][c] > 0) vals.push(board[r][c]);
+    const mn = vals.length ? Math.min.apply(null, vals) : 2048;
+    const x = Math.random();
+    if (x < 0.50) return 2048;
+    if (x < 0.75) return Math.max(mn, 4);
+    return Math.max(mn / 2, 4);
+  }
+
+  function spawn(forced) {
+    const empty = emptyCells();
+    if (!empty.length) return;
+    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    board[r][c] = forced || spawnValue();
+  }
+
+  function slideRow(row) {
+    const nz = row.filter(v => v !== 0);
     const out = [];
-    const merges = [];
-    let gained = 0, nMerges = 0, i = 0;
+    let gained = 0;
+    let merges = 0;
+    let i = 0;
     while (i < nz.length) {
       if (i + 1 < nz.length && nz[i] === nz[i + 1] && nz[i] > WIN) {
-        const merged = nz[i] / 2;
-        out.push(merged);
+        out.push(nz[i] / 2);
         gained += nz[i];
-        nMerges++;
-        merges.push(out.length - 1);
+        merges += 1;
         i += 2;
       } else {
         out.push(nz[i]);
-        i++;
+        i += 1;
       }
     }
     while (out.length < SIZE) out.push(0);
-    return { line: out, gained, nMerges, merges };
+    return { row: out, gained, merges };
   }
 
-  function extractLine(dir, i) {
-    const cells = [];
-    if (dir === 'left')  for (let c = 0; c < SIZE; c++) cells.push([i, c]);
-    if (dir === 'right') for (let c = SIZE - 1; c >= 0; c--) cells.push([i, c]);
-    if (dir === 'up')    for (let r = 0; r < SIZE; r++) cells.push([r, i]);
-    if (dir === 'down')  for (let r = SIZE - 1; r >= 0; r--) cells.push([r, i]);
-    return cells;
+  const transpose = m => m[0].map((_, c) => m.map(r => r[c]));
+  const reverseRows = m => m.map(r => [...r].reverse());
+  function boardsEqual(a, b) {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (a[r][c] !== b[r][c]) return false;
+    return true;
+  }
+
+  function harvest(src) {
+    const next = src.map(r => r.slice());
+    const cut = [];
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (next[r][c] === WIN) {
+          cut.push([r, c]);
+          next[r][c] = 0;
+        }
+      }
+    }
+    return { next, cut };
+  }
+
+  function applyMove(dir) {
+    let b = board.map(r => r.slice());
+    if (dir === 'right') b = reverseRows(b);
+    else if (dir === 'up') b = transpose(b);
+    else if (dir === 'down') b = reverseRows(transpose(b));
+
+    let gained = 0, merges = 0;
+    b = b.map(row => {
+      const res = slideRow(row);
+      gained += res.gained;
+      merges += res.merges;
+      return res.row;
+    });
+
+    if (dir === 'right') b = reverseRows(b);
+    else if (dir === 'up') b = transpose(b);
+    else if (dir === 'down') b = transpose(reverseRows(b));
+
+    const slid = !boardsEqual(board, b);
+    const harvested = harvest(b);
+    return { next: harvested.next, cut: harvested.cut, gained, merges, slid };
   }
 
   function anyMovesLeft() {
-    for (let r = 0; r < SIZE; r++)
-      for (let c = 0; c < SIZE; c++)
-        if (board[r][c] === 0) return true;
-    for (let r = 0; r < SIZE; r++)
+    if (emptyCells().length) return true;
+    for (let r = 0; r < SIZE; r++) {
       for (let c = 0; c < SIZE; c++) {
         const v = board[r][c];
         if (v <= WIN) continue;
         if (c + 1 < SIZE && board[r][c + 1] === v) return true;
         if (r + 1 < SIZE && board[r + 1][c] === v) return true;
       }
+    }
     return false;
   }
 
-  function shards(x, y, v) {
-    const colors = {
-      1024: '#ff2a4a', 512: '#e85d04', 256: '#f4a261', 128: '#e9c46a',
-      64: '#2a9d8f', 32: '#00b4d8', 16: '#1d4ed8', 8: '#7b2cbf', 4: '#c77dff', 2: '#ffe08a'
-    };
-    const color = colors[v] || '#fff';
-    for (let i = 0; i < 7; i++) {
-      const s = document.createElement('div');
-      s.className = 'shard';
-      const ang = (Math.PI * 2 * i) / 7 + Math.random() * 0.4;
-      const dist = 18 + Math.random() * 28;
-      s.style.left = (x + cellW / 2 - 3) + 'px';
-      s.style.top = (y + cellH / 2 - 3) + 'px';
-      s.style.background = color;
-      s.style.setProperty('--dx', Math.cos(ang) * dist + 'px');
-      s.style.setProperty('--dy', Math.sin(ang) * dist + 'px');
-      fxEl.appendChild(s);
-      setTimeout(() => s.remove(), 480);
+  function digitClass(v) {
+    const n = String(v).length;
+    return 'd' + Math.max(1, Math.min(4, 5 - n));
+  }
+
+  function render() {
+    boardEl.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const cell = document.createElement('div');
+        const v = board[r][c];
+        cell.className = 'cell';
+        if (v > 0) {
+          cell.className += ' v' + v + ' ' + digitClass(v);
+          const span = document.createElement('span');
+          span.textContent = v;
+          cell.appendChild(span);
+        }
+        boardEl.appendChild(cell);
+      }
     }
-  }
-
-  function showCombo(n) {
-    if (n < 2) return;
-    const labels = { 2: 'DOUBLE CUT', 3: 'TRIPLE FACET', 4: 'QUAD SPLIT' };
-    comboEl.textContent = labels[n] || (n + ' CUTS');
-    comboEl.classList.remove('show');
-    comboEl.offsetHeight;
-    comboEl.classList.add('show');
-  }
-
-  function setHud() {
     scoreEl.textContent = score;
+    gemsEl.textContent = gems;
     bestEl.textContent = best;
-    cutsEl.textContent = cuts;
   }
 
-  function showModal(title, text, btn, showHow) {
-    modalTitle.textContent = title;
-    modalText.textContent = text;
-    modalBtn.textContent = btn;
-    howList.style.display = showHow ? 'block' : 'none';
-    document.getElementById('gemHero').style.display = (showHow || title === 'FACET') ? 'block' : 'none';
-    overlay.classList.add('show');
-  }
-
-  function move(dir) {
-    if (over || busy || !started) return;
-
-    const occupied = {};
-    tiles.forEach(t => { occupied[t.r + ',' + t.c] = t; });
-
-    const nextBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
-    const plan = [];
-    let gained = 0, nMerges = 0, madeWin = false;
-
-    for (let i = 0; i < SIZE; i++) {
-      const cells = extractLine(dir, i);
-      const vals = cells.map(([r, c]) => board[r][c]);
-      const res = slideLine(vals);
-      gained += res.gained;
-      nMerges += res.nMerges;
-
-      const sources = [];
-      cells.forEach(([r, c], idx) => {
-        if (vals[idx] !== 0) sources.push({ r, c, v: vals[idx], tile: occupied[r + ',' + c] });
-      });
-
-      let si = 0;
-      res.line.forEach((v, di) => {
-        if (!v) return;
-        const dest = cells[di];
-        const a = sources[si++];
-        const merged = res.merges.includes(di);
-        if (merged) {
-          const b = sources[si++];
-          plan.push({ tile: a.tile, toR: dest[0], toC: dest[1], v, merged: true, drop: false });
-          plan.push({ tile: b.tile, toR: dest[0], toC: dest[1], v, merged: true, drop: true });
-          if (v === WIN) madeWin = true;
-        } else {
-          plan.push({ tile: a.tile, toR: dest[0], toC: dest[1], v, merged: false, drop: false });
-        }
-        nextBoard[dest[0]][dest[1]] = v;
-      });
-    }
-
-    let changed = false;
-    for (let r = 0; r < SIZE; r++)
-      for (let c = 0; c < SIZE; c++)
-        if (board[r][c] !== nextBoard[r][c]) changed = true;
-    if (!changed) return;
-
-    busy = true;
-    board = nextBoard;
-    score += gained;
-    cuts += nMerges;
-    if (score > best) {
-      best = score;
-      localStorage.setItem(BEST_KEY, String(best));
-    }
-    setHud();
-    sfxSlide();
-    if (nMerges) showCombo(nMerges);
-
-    plan.forEach(p => {
-      p.tile.r = p.toR;
-      p.tile.c = p.toC;
-      placeCrystal(p.tile, true);
-    });
-
-    setTimeout(() => {
-      plan.forEach(p => {
-        if (p.drop) {
-          const pos = cellPos(p.toR, p.toC);
-          shards(pos.x, pos.y, p.v);
-          p.tile.el.classList.add('leaving');
-          setTimeout(() => p.tile.el && p.tile.el.remove(), 140);
-          tiles = tiles.filter(t => t !== p.tile);
-        } else if (p.merged) {
-          p.tile.v = p.v;
-          p.tile.el.className = `crystal v${p.v} ${digits(p.v)} merge`;
-          p.tile.el.innerHTML = '<span>' + p.v + '</span>';
-          sfxMerge(p.v);
-        }
-      });
-
-      spawn();
-      sfxSpawn();
-
-      if (madeWin && !won) {
-        won = true;
-        sfxWin();
-        setTimeout(() => {
-          showModal('A DIAMOND', 'You cut a stone all the way to 2. Keep faceting for a higher score, or start a fresh geode.', 'Keep cutting', false);
-          busy = false;
-        }, 280);
-        return;
-      }
-
-      if (!anyMovesLeft()) {
-        over = true;
-        sfxLose();
-        setTimeout(() => {
-          showModal('THE VEIN IS DRY', 'No more cuts left. Score ' + score + ' · ' + cuts + ' facets.', 'New cut', false);
-          busy = false;
-        }, 280);
-        return;
-      }
-      busy = false;
-    }, 170);
+  function pulseGems(n) {
+    floater.textContent = n === 1 ? '◆ +1' : '◆ +' + n;
+    floater.classList.remove('show');
+    void floater.offsetWidth;
+    floater.classList.add('show');
   }
 
   function newGame() {
     board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
-    tiles = [];
-    nextId = 1;
     score = 0;
-    cuts = 0;
-    won = false;
+    gems = 0;
     over = false;
-    busy = false;
-    started = true;
-    crystalsEl.innerHTML = '';
-    fxEl.innerHTML = '';
-    setHud();
-    spawn();
-    spawn();
     overlay.classList.remove('show');
+    spawn(2048);
+    spawn(2048);
+    render();
   }
 
-  function onFirstInput() {
+  function move(dir) {
+    if (over) return;
     initAudio();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    const res = applyMove(dir);
+    if (!res.slid && res.cut.length === 0) return;
+
+    board = res.next;
+    score += res.gained;
+
+    if (res.cut.length) {
+      gems += res.cut.length;
+      if (gems > best) {
+        best = gems;
+        try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+      }
+      pulseGems(res.cut.length);
+      sfxGem();
+    } else if (res.merges) {
+      sfxMerge();
+    } else {
+      sfxSlide();
+    }
+
+    spawn();
+    render();
+
+    if (!anyMovesLeft()) {
+      over = true;
+      sfxLose();
+      const line = gems
+        ? ('You cut ' + gems + ' diamond' + (gems === 1 ? '' : 's') + '.')
+        : 'No diamond this time. Pair stones until one becomes 2.';
+      modalTitle.textContent = 'Vein closed';
+      modalText.textContent = line + ' Score ' + score + '.';
+      overlay.classList.add('show');
+    }
   }
 
   const DIAGONALS = [
-    { angle: -135, dir: 'left' },
-    { angle: -45,  dir: 'up' },
-    { angle: 45,   dir: 'right' },
-    { angle: 135,  dir: 'down' }
+    { angle: -135, dir: 'left'  },
+    { angle:  -45, dir: 'up'    },
+    { angle:   45, dir: 'right' },
+    { angle:  135, dir: 'down'  },
   ];
   function handleSwipe(dx, dy) {
     if (Math.hypot(dx, dy) < 24) return;
@@ -725,93 +502,40 @@
     move(bestD.dir);
   }
 
-  let touchStart = null, mouseStart = null;
-  document.addEventListener('touchstart', e => {
+  let ptr = null;
+  document.addEventListener('pointerdown', e => {
     if (e.target.closest('button, a')) return;
-    const t = e.changedTouches[0];
-    touchStart = { x: t.clientX, y: t.clientY };
-  }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (!touchStart) return;
-    const t = e.changedTouches[0];
-    handleSwipe(t.clientX - touchStart.x, t.clientY - touchStart.y);
-    touchStart = null;
-  }, { passive: true });
-  document.addEventListener('mousedown', e => {
-    if (e.target.closest('button, a')) return;
-    mouseStart = { x: e.clientX, y: e.clientY };
+    ptr = { x: e.clientX, y: e.clientY };
   });
-  document.addEventListener('mouseup', e => {
-    if (!mouseStart) return;
-    handleSwipe(e.clientX - mouseStart.x, e.clientY - mouseStart.y);
-    mouseStart = null;
+  document.addEventListener('pointerup', e => {
+    if (!ptr) return;
+    handleSwipe(e.clientX - ptr.x, e.clientY - ptr.y);
+    ptr = null;
   });
+
   window.addEventListener('keydown', e => {
-    const map = {
-      ArrowUp: 'up', w: 'up', W: 'up',
-      ArrowDown: 'down', s: 'down', S: 'down',
-      ArrowLeft: 'left', a: 'left', A: 'left',
-      ArrowRight: 'right', d: 'right', D: 'right'
-    };
-    if (map[e.key]) { e.preventDefault(); onFirstInput(); move(map[e.key]); }
+    const k = e.key;
+    if (k === 'ArrowUp'    || k === 'w' || k === 'W') { move('up');    e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { move('right'); e.preventDefault(); }
+    else if (k === 'ArrowDown'  || k === 's' || k === 'S') { move('down');  e.preventDefault(); }
+    else if (k === 'ArrowLeft'  || k === 'a' || k === 'A') { move('left');  e.preventDefault(); }
+    else if (k === 'n' || k === 'N') newGame();
+    else if (k === 'm' || k === 'M') muteBtn.click();
   });
 
   document.querySelectorAll('.arrow').forEach(btn => {
-    btn.addEventListener('click', () => { onFirstInput(); move(btn.dataset.dir); });
+    btn.addEventListener('click', () => move(btn.dataset.dir));
   });
-  document.getElementById('newGame').addEventListener('click', () => { onFirstInput(); newGame(); });
-  document.getElementById('howBtn').addEventListener('click', () => {
-    showModal('FACET', 'A raw ruby starts at 2048. Every merge cuts the stone in half. Reach a perfect diamond — 2.', 'Back to the vein', true);
-  });
-  modalBtn.addEventListener('click', () => {
-    onFirstInput();
-    if (!started || over) newGame();
-    else overlay.classList.remove('show');
-  });
+  document.getElementById('newGame').addEventListener('click', newGame);
+  document.getElementById('modalBtn').addEventListener('click', newGame);
   muteBtn.addEventListener('click', () => {
     muted = !muted;
     muteBtn.textContent = muted ? '🔇' : '♪';
     try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch (e) {}
-    if (!muted) onFirstInput();
+    if (!muted) initAudio();
   });
 
-  window.addEventListener('resize', () => {
-    layout();
-    drawSockets();
-    tiles && tiles.forEach(t => placeCrystal(t, false));
-  });
-
-  layout();
-  drawSockets();
-  document.addEventListener('pointerdown', onFirstInput, { once: true });
-
-  window.__FACET = {
-    move, newGame,
-    state() {
-      return {
-        board: board.map(r => r.slice()),
-        score, cuts, won, over, started,
-        tiles: tiles.map(t => ({ r: t.r, c: t.c, v: t.v }))
-      };
-    },
-    plant(cells) {
-      if (!nextId) nextId = 1;
-      if (typeof score !== 'number') score = 0;
-      if (typeof cuts !== 'number') cuts = 0;
-      board = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
-      tiles = [];
-      crystalsEl.innerHTML = '';
-      cells.forEach(([r, c, v]) => {
-        board[r][c] = v;
-        const tile = { id: nextId++, r, c, v };
-        tiles.push(tile);
-        makeCrystal(tile);
-      });
-      won = false; over = false; busy = false; started = true;
-      overlay.classList.remove('show');
-      setHud();
-    }
-  };
+  newGame();
 })();
 </script>
 </body>
